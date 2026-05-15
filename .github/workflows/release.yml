@@ -1,0 +1,112 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, for example v0.1.0"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Resolve tag
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            tag="${{ inputs.tag }}"
+          else
+            tag="${GITHUB_REF_NAME}"
+          fi
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid release tag: $tag" >&2
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.release.outputs.tag }}
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 1.24.x
+          cache: true
+
+      - name: Verify module
+        run: go test ./...
+
+      - name: Extract release notes
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          version = os.environ["RELEASE_VERSION"]
+          changelog = Path("CHANGELOG.md").read_text(encoding="utf-8")
+          lines = changelog.splitlines()
+          heading = re.compile(rf"^## \[{re.escape(version)}\](?:\s+-\s+.*)?$")
+
+          start = None
+          for index, line in enumerate(lines):
+              if heading.match(line):
+                  start = index + 1
+                  break
+
+          if start is None:
+              raise SystemExit(f"CHANGELOG.md has no section for {version}")
+
+          end = len(lines)
+          for index in range(start, len(lines)):
+              if lines[index].startswith("## "):
+                  end = index
+                  break
+
+          body = "\n".join(lines[start:end]).strip()
+          if not body:
+              raise SystemExit(f"CHANGELOG.md section for {version} is empty")
+
+          Path("release-notes.md").write_text(body + "\n", encoding="utf-8")
+          PY
+
+      - name: Package source archive
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          archive="dist/nexus-agent-sdk-bridge-${RELEASE_TAG}.tar.gz"
+          git archive --format=tar.gz --prefix="nexus-agent-sdk-bridge-${RELEASE_TAG}/" --output="$archive" "$RELEASE_TAG"
+          shasum -a 256 "$archive" > "$archive.sha256"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release.outputs.tag }}
+          name: ${{ steps.release.outputs.tag }}
+          body_path: release-notes.md
+          files: |
+            dist/*.tar.gz
+            dist/*.sha256
