@@ -119,6 +119,28 @@ if err != nil {
 fmt.Println(result.Result)
 ```
 
+### Runtime Primitives
+
+Hosts can attach generic metadata to outbound messages without changing normal `Send` behavior:
+
+```go
+stream, err := session.SendWithOptions(ctx, "Continue the internal task.", protocol.OutboundMessageOptions{
+    Meta:           true,
+    Synthetic:      true,
+    HiddenFromUser: true,
+    Purpose:        "host_continuation",
+})
+```
+
+Result messages expose helper methods for host-side orchestration:
+
+```go
+usage, ok := result.TokenUsage()
+category := result.TerminalCategory()
+```
+
+`session.Supports(client.CapabilityInternalContext)` reports whether the backend can inject true internal context. When unsupported, `session.Control().SetNextTurnContext(...)` returns `client.ErrUnsupportedCapability`; hosts should choose their own fallback policy.
+
 ## Backend Modes
 
 The SDK provides a stable public API regardless of the underlying transport:

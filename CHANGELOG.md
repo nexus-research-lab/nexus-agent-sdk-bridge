@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented in this file.
 
+## Unreleased
+
+### Added
+
+- Runtime primitives for long-running host features: typed token usage helpers, terminal result classification, outbound send options, capability detection, and structured stream-close errors.
+- Additive session APIs for meta/synthetic outbound messages via `SendWithOptions` and `SendMessageWithOptions`.
+- Capability-gated `SetNextTurnContext` API that returns an explicit unsupported-capability error for backends that cannot inject hidden context.
+
 ## [0.1.0] - 2026-05-15
 
 Initial public release of the Nexus Agent SDK Bridge for Go.

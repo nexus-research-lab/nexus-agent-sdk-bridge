@@ -377,6 +377,16 @@ type OutboundMessage interface {
 	encodeOutboundMessage(defaultSessionID string) map[string]any
 }
 
+// OutboundMessageOptions 描述发送给 SDK 的用户消息附加语义。
+type OutboundMessageOptions struct {
+	Meta           bool              `json:"is_meta,omitempty"`
+	Synthetic      bool              `json:"is_synthetic,omitempty"`
+	HiddenFromUser bool              `json:"hidden_from_user,omitempty"`
+	Purpose        string            `json:"purpose,omitempty"`
+	Priority       string            `json:"priority,omitempty"`
+	Metadata       map[string]string `json:"metadata,omitempty"`
+}
+
 // OutboundContentBlock 表示发送给 SDK 的结构化内容块。
 type OutboundContentBlock interface {
 	encodeOutboundContentBlock() map[string]any
@@ -386,11 +396,17 @@ type OutboundContentBlock interface {
 type UserTextMessage struct {
 	Text            string
 	ParentToolUseID *string
+	Options         OutboundMessageOptions
 }
 
 // NewUserTextMessage 创建文本用户消息。
 func NewUserTextMessage(text string) UserTextMessage {
 	return UserTextMessage{Text: text}
+}
+
+// NewUserTextMessageWithOptions 创建带附加语义的文本用户消息。
+func NewUserTextMessageWithOptions(text string, options OutboundMessageOptions) UserTextMessage {
+	return UserTextMessage{Text: text, Options: options.normalized()}
 }
 
 // WithParentToolUseID 为文本用户消息设置父工具调用 ID。
@@ -399,14 +415,21 @@ func (m UserTextMessage) WithParentToolUseID(toolUseID string) UserTextMessage {
 	return m
 }
 
+// WithOptions 为文本用户消息设置附加发送语义。
+func (m UserTextMessage) WithOptions(options OutboundMessageOptions) UserTextMessage {
+	m.Options = options.normalized()
+	return m
+}
+
 func (m UserTextMessage) encodeOutboundMessage(defaultSessionID string) map[string]any {
-	return buildUserOutboundMessage(defaultSessionID, m.ParentToolUseID, m.Text)
+	return buildUserOutboundMessage(defaultSessionID, m.ParentToolUseID, m.Text, m.Options)
 }
 
 // UserBlocksMessage 表示结构化用户消息。
 type UserBlocksMessage struct {
 	Blocks          []OutboundContentBlock
 	ParentToolUseID *string
+	Options         OutboundMessageOptions
 }
 
 // NewUserBlocksMessage 创建结构化用户消息。
@@ -414,9 +437,23 @@ func NewUserBlocksMessage(blocks ...OutboundContentBlock) UserBlocksMessage {
 	return UserBlocksMessage{Blocks: append([]OutboundContentBlock(nil), blocks...)}
 }
 
+// NewUserBlocksMessageWithOptions 创建带附加语义的结构化用户消息。
+func NewUserBlocksMessageWithOptions(options OutboundMessageOptions, blocks ...OutboundContentBlock) UserBlocksMessage {
+	return UserBlocksMessage{
+		Blocks:  append([]OutboundContentBlock(nil), blocks...),
+		Options: options.normalized(),
+	}
+}
+
 // WithParentToolUseID 为结构化用户消息设置父工具调用 ID。
 func (m UserBlocksMessage) WithParentToolUseID(toolUseID string) UserBlocksMessage {
 	m.ParentToolUseID = &toolUseID
+	return m
+}
+
+// WithOptions 为结构化用户消息设置附加发送语义。
+func (m UserBlocksMessage) WithOptions(options OutboundMessageOptions) UserBlocksMessage {
+	m.Options = options.normalized()
 	return m
 }
 
@@ -428,7 +465,7 @@ func (m UserBlocksMessage) encodeOutboundMessage(defaultSessionID string) map[st
 		}
 		content = append(content, block.encodeOutboundContentBlock())
 	}
-	return buildUserOutboundMessage(defaultSessionID, m.ParentToolUseID, content)
+	return buildUserOutboundMessage(defaultSessionID, m.ParentToolUseID, content, m.Options)
 }
 
 // RawMessage 表示兼容场景下的原始 SDK 消息。
@@ -637,7 +674,41 @@ func EncodeOutboundMessage(message OutboundMessage, defaultSessionID string) map
 	return message.encodeOutboundMessage(defaultSessionID)
 }
 
-func buildUserOutboundMessage(sessionID string, parentToolUseID *string, content any) map[string]any {
+// EncodeOutboundMessageWithOptions 将强类型消息编码为 SDK 原始负载并应用发送选项。
+func EncodeOutboundMessageWithOptions(message OutboundMessage, defaultSessionID string, options OutboundMessageOptions) map[string]any {
+	payload := EncodeOutboundMessage(message, defaultSessionID)
+	return ApplyOutboundMessageOptions(payload, options)
+}
+
+// ApplyOutboundMessageOptions 将发送选项应用到原始 SDK 消息副本。
+func ApplyOutboundMessageOptions(payload map[string]any, options OutboundMessageOptions) map[string]any {
+	result := jsonvalue.CloneMapPreserveTypedSlices(payload)
+	if result == nil {
+		result = map[string]any{}
+	}
+	options = options.normalized()
+	if options.Meta {
+		result["is_meta"] = true
+	}
+	if options.Synthetic || options.Meta {
+		result["is_synthetic"] = true
+	}
+	if options.HiddenFromUser {
+		result["hidden_from_user"] = true
+	}
+	if options.Purpose != "" {
+		result["purpose"] = options.Purpose
+	}
+	if options.Priority != "" {
+		result["priority"] = options.Priority
+	}
+	if len(options.Metadata) > 0 {
+		result["metadata"] = jsonvalue.CloneStringMap(options.Metadata)
+	}
+	return result
+}
+
+func buildUserOutboundMessage(sessionID string, parentToolUseID *string, content any, options OutboundMessageOptions) map[string]any {
 	payload := map[string]any{
 		"type":               "user",
 		"parent_tool_use_id": parentToolUseID,
@@ -649,7 +720,17 @@ func buildUserOutboundMessage(sessionID string, parentToolUseID *string, content
 	if sessionID != "" {
 		payload["session_id"] = sessionID
 	}
-	return payload
+	return ApplyOutboundMessageOptions(payload, options)
+}
+
+func (o OutboundMessageOptions) normalized() OutboundMessageOptions {
+	o.Purpose = strings.TrimSpace(o.Purpose)
+	o.Priority = strings.TrimSpace(o.Priority)
+	o.Metadata = jsonvalue.CloneStringMap(o.Metadata)
+	if o.Meta {
+		o.Synthetic = true
+	}
+	return o
 }
 
 // MessageType 表示 SDK 接收消息的顶层类型。

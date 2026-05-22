@@ -61,6 +61,28 @@ if err != nil {
 fmt.Println(result.Result)
 ```
 
+### 运行时原语
+
+宿主可以给出站消息附加通用元数据，不影响普通 `Send` 行为：
+
+```go
+stream, err := session.SendWithOptions(ctx, "继续内部任务。", protocol.OutboundMessageOptions{
+    Meta:           true,
+    Synthetic:      true,
+    HiddenFromUser: true,
+    Purpose:        "host_continuation",
+})
+```
+
+`ResultMessage` 提供 host 编排可用的 helper：
+
+```go
+usage, ok := result.TokenUsage()
+category := result.TerminalCategory()
+```
+
+`session.Supports(client.CapabilityInternalContext)` 用于判断后端是否支持真正的内部上下文注入。不支持时，`session.Control().SetNextTurnContext(...)` 会返回 `client.ErrUnsupportedCapability`，由宿主自行决定 fallback 策略。
+
 ### 流式输出
 
 通过 `stream.Recv()` 逐条读取 Agent 返回的消息，实时处理文本、工具调用等内容：

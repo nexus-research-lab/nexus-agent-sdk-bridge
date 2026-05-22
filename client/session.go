@@ -150,10 +150,15 @@ func newSession(ctx context.Context, options Options) (*Session, error) {
 
 // Send 发送一条文本用户消息并返回本轮响应流。
 func (s *Session) Send(ctx context.Context, prompt string) (*Stream, error) {
+	return s.SendWithOptions(ctx, prompt, protocol.OutboundMessageOptions{})
+}
+
+// SendWithOptions 发送一条带附加语义的文本用户消息并返回本轮响应流。
+func (s *Session) SendWithOptions(ctx context.Context, prompt string, options protocol.OutboundMessageOptions) (*Stream, error) {
 	if s == nil || s.client == nil {
 		return nil, ErrNotConnected
 	}
-	if err := s.client.Query(ctx, prompt); err != nil {
+	if err := s.client.SendWithOptions(ctx, prompt, nil, "", options); err != nil {
 		return nil, err
 	}
 	return &Stream{client: s.client}, nil
@@ -161,10 +166,15 @@ func (s *Session) Send(ctx context.Context, prompt string) (*Stream, error) {
 
 // SendMessage 发送一条强类型用户消息并返回本轮响应流。
 func (s *Session) SendMessage(ctx context.Context, message protocol.OutboundMessage) (*Stream, error) {
+	return s.SendMessageWithOptions(ctx, message, protocol.OutboundMessageOptions{})
+}
+
+// SendMessageWithOptions 发送一条带附加语义的强类型用户消息并返回本轮响应流。
+func (s *Session) SendMessageWithOptions(ctx context.Context, message protocol.OutboundMessage, options protocol.OutboundMessageOptions) (*Stream, error) {
 	if s == nil || s.client == nil {
 		return nil, ErrNotConnected
 	}
-	if err := s.client.SendMessage(ctx, message, ""); err != nil {
+	if err := s.client.SendMessageWithOptions(ctx, message, "", options); err != nil {
 		return nil, err
 	}
 	return &Stream{client: s.client}, nil
@@ -268,6 +278,15 @@ func (c *SessionControl) SetMaxThinkingTokens(ctx context.Context, maxThinkingTo
 		return err
 	}
 	return client.setMaxThinkingTokens(ctx, maxThinkingTokens)
+}
+
+// SetNextTurnContext 尝试为下一轮设置内部上下文；当前 process backend 不支持时返回 ErrUnsupportedCapability。
+func (c *SessionControl) SetNextTurnContext(ctx context.Context, blocks []InternalContextBlock) error {
+	client, err := c.activeClient()
+	if err != nil {
+		return err
+	}
+	return client.setNextTurnContext(ctx, blocks)
 }
 
 // ContextUsage 获取当前上下文使用量。
@@ -832,15 +851,25 @@ func (c *sessionClient) Query(ctx context.Context, prompt string) error {
 
 // Send 发送一条用户消息。
 func (c *sessionClient) Send(ctx context.Context, prompt string, parentToolUseID *string, sessionID string) error {
-	return c.sendContent(ctx, prompt, parentToolUseID, sessionID)
+	return c.SendWithOptions(ctx, prompt, parentToolUseID, sessionID, protocol.OutboundMessageOptions{})
+}
+
+// SendWithOptions 发送一条带附加语义的用户消息。
+func (c *sessionClient) SendWithOptions(ctx context.Context, prompt string, parentToolUseID *string, sessionID string, options protocol.OutboundMessageOptions) error {
+	return c.sendContentWithOptions(ctx, prompt, parentToolUseID, sessionID, options)
 }
 
 // SendMessage 发送一条强类型 SDK 消息。
 func (c *sessionClient) SendMessage(ctx context.Context, message protocol.OutboundMessage, sessionID string) error {
+	return c.SendMessageWithOptions(ctx, message, sessionID, protocol.OutboundMessageOptions{})
+}
+
+// SendMessageWithOptions 发送一条带附加语义的强类型 SDK 消息。
+func (c *sessionClient) SendMessageWithOptions(ctx context.Context, message protocol.OutboundMessage, sessionID string, options protocol.OutboundMessageOptions) error {
 	if message == nil {
 		return nil
 	}
-	return c.SendRawMessage(ctx, protocol.EncodeOutboundMessage(message, sessionID), sessionID)
+	return c.SendRawMessage(ctx, protocol.EncodeOutboundMessageWithOptions(message, sessionID, options), sessionID)
 }
 
 // SendRawMessage 发送一条原始 SDK 消息。
@@ -936,6 +965,10 @@ func (c *sessionClient) finishInputStreamFor(streams *sessionStreams) {
 }
 
 func (c *sessionClient) sendContent(ctx context.Context, content any, parentToolUseID *string, sessionID string) error {
+	return c.sendContentWithOptions(ctx, content, parentToolUseID, sessionID, protocol.OutboundMessageOptions{})
+}
+
+func (c *sessionClient) sendContentWithOptions(ctx context.Context, content any, parentToolUseID *string, sessionID string, options protocol.OutboundMessageOptions) error {
 	if !c.isConnected() {
 		return ErrNotConnected
 	}
@@ -954,8 +987,19 @@ func (c *sessionClient) sendContent(ctx context.Context, content any, parentTool
 			"content": content,
 		},
 	}
+	payload = protocol.ApplyOutboundMessageOptions(payload, options)
 
 	return c.SendRawMessage(ctx, payload, effectiveSessionID)
+}
+
+func (c *sessionClient) setNextTurnContext(ctx context.Context, blocks []InternalContextBlock) error {
+	if !c.isConnected() {
+		return ErrNotConnected
+	}
+	if !c.supports(CapabilityInternalContext) {
+		return &UnsupportedCapabilityError{Capability: CapabilityInternalContext}
+	}
+	return &UnsupportedCapabilityError{Capability: CapabilityInternalContext}
 }
 
 // ReceiveMessages 返回消息流。
