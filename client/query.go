@@ -24,7 +24,7 @@ type PromptRequest struct {
 
 // Stream 表示 SDK 返回的消息流。
 type Stream struct {
-	client     *sessionClient
+	core       *sessionCore
 	ownsClient bool
 	closeInput bool
 }
@@ -37,16 +37,16 @@ func Query(ctx context.Context, request QueryRequest) (*Stream, error) {
 	}
 
 	stream := &Stream{
-		client:     session.client,
+		core:       session.core,
 		ownsClient: true,
 		closeInput: request.Messages == nil,
 	}
 	if request.Messages != nil {
-		session.client.startMessageStream(request.Messages)
+		session.core.startMessageStream(request.Messages)
 		return stream, nil
 	}
-	if err := session.client.Query(ctx, request.Prompt); err != nil {
-		_ = session.client.Disconnect(ctx)
+	if err := session.core.Query(ctx, request.Prompt); err != nil {
+		_ = session.core.Disconnect(ctx)
 		return nil, err
 	}
 	go stream.closeInputAfterResult()
@@ -69,11 +69,11 @@ func Prompt(ctx context.Context, request PromptRequest) (protocol.ResultMessage,
 
 // Recv 读取下一条 SDK 消息。
 func (s *Stream) Recv(ctx context.Context) (protocol.ReceivedMessage, error) {
-	if s == nil || s.client == nil {
+	if s == nil || s.core == nil {
 		return protocol.ReceivedMessage{}, ErrNotConnected
 	}
 
-	messages := s.client.Messages()
+	messages := s.core.Messages()
 	select {
 	case <-ctx.Done():
 		return protocol.ReceivedMessage{}, ctx.Err()
@@ -91,7 +91,7 @@ func (s *Stream) Result(ctx context.Context) (protocol.ResultMessage, error) {
 		message, err := s.Recv(ctx)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
-				if waitErr := s.client.Wait(); waitErr != nil {
+				if waitErr := s.core.Wait(); waitErr != nil {
 					return protocol.ResultMessage{}, waitErr
 				}
 				return protocol.ResultMessage{}, ErrNoResult
@@ -109,15 +109,15 @@ func (s *Stream) Result(ctx context.Context) (protocol.ResultMessage, error) {
 
 // Close 释放一次性查询持有的底层会话。
 func (s *Stream) Close(ctx context.Context) error {
-	if s == nil || s.client == nil || !s.ownsClient {
+	if s == nil || s.core == nil || !s.ownsClient {
 		return nil
 	}
-	return s.client.Disconnect(ctx)
+	return s.core.Disconnect(ctx)
 }
 
 func (s *Stream) closeInputAfterResult() {
-	if s == nil || s.client == nil || !s.closeInput {
+	if s == nil || s.core == nil || !s.closeInput {
 		return
 	}
-	s.client.finishInputStream()
+	s.core.finishInputStream()
 }

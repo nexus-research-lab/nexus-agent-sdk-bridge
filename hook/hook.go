@@ -26,7 +26,6 @@ const (
 	EventPreCompact         Event = "PreCompact"
 	EventPostCompact        Event = "PostCompact"
 	EventPermissionRequest  Event = "PermissionRequest"
-	EventPermissionDenied   Event = "PermissionDenied"
 	EventSetup              Event = "Setup"
 	EventTeammateIdle       Event = "TeammateIdle"
 	EventTaskCreated        Event = "TaskCreated"
@@ -37,7 +36,7 @@ const (
 	EventWorktreeCreate     Event = "WorktreeCreate"
 	EventWorktreeRemove     Event = "WorktreeRemove"
 	EventInstructionsLoaded Event = "InstructionsLoaded"
-	EventCWDChanged         Event = "CwdChanged"
+	EventCwdChanged         Event = "CwdChanged"
 	EventFileChanged        Event = "FileChanged"
 )
 

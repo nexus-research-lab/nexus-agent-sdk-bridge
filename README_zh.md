@@ -119,24 +119,25 @@ if err != nil {
 fmt.Println(result.Result)
 ```
 
-## 连接方式
+## Transport
 
-SDK 对外提供统一的 API，底层传输方式根据部署形态决定：
+SDK 按官方 Agent SDK 的形态收口：选项负责配置本地 CLI；如果宿主管理连接，则直接注入自定义 `Transport`。
 
-| 后端 | 说明 |
+| 模式 | 配置 |
 |------|------|
-| Process（默认） | 自动启动本地 bridge 子进程 |
-| `client.ProcessBackend` | 指定可执行文件路径启动本地进程 |
-| `client.DirectConnectBackend` | 连接远端 bridge 端点，地址格式 `cc://host:port/token` |
-| `client.TransportBackend` | 注入自定义 Transport，用于测试或自管运行时 |
+| 本地 CLI（默认） | 无需额外配置，SDK 自动启动默认 CLI 进程 |
+| 指定 CLI 路径 | `client.NewOptions().WithCLIPath("/path/to/cli")` |
+| JavaScript 运行时包装 | `client.NewOptions().WithPathToClaudeCodeExecutable("/path/to/cli.js").WithExecutable("node")` |
+| Direct connect | `client.NewOptions().WithDirectConnect(client.DirectConnectOptions{...})` |
+| 宿主管理 transport | `client.NewOptions().WithTransport(transport)` |
 
 ```go
 options := client.NewOptions().
-    WithBackend(client.DirectConnectBackend(client.DirectConnectOptions{
+    WithDirectConnect(client.DirectConnectOptions{
         URL:                  "cc://127.0.0.1:54321/token",
         SessionKey:           "project-session",
         DeleteSessionOnClose: true,
-    })).
+    }).
     WithCWD(".")
 ```
 
@@ -152,6 +153,21 @@ client.NewOptions().
     WithAppendSystemPrompt("始终用中文回答。")
 ```
 
+### 运行时设置
+
+inline settings、sandbox、debug、固定 session ID 和 resume 截断点都通过 `client.Options` 设置，并会转成 process bridge 参数：
+
+```go
+enabled := true
+
+client.NewOptions().
+    WithSessionID("00000000-0000-0000-0000-000000000001").
+    WithResumeSessionAt("11111111-1111-1111-1111-111111111111").
+    WithSettingsObject(map[string]any{"model": "sonnet"}).
+    WithSandbox(client.SandboxSettings{Enabled: &enabled}).
+    WithDebugFile("/tmp/nexus-agent-sdk.log")
+```
+
 ### 自定义工具
 
 通过 `tools` 包以纯 Go 定义工具，注册后作为 MCP 工具供 Agent 调用：
@@ -160,7 +176,7 @@ client.NewOptions().
 searchTool, _ := tools.NewTyped[SearchInput](
     "search_docs",
     "搜索内部文档",
-    func(ctx context.Context, input SearchInput, tc tools.ToolContext) (tools.Result, error) {
+    func(ctx context.Context, input SearchInput, tc *tools.Context) (tools.Result, error) {
         results := search(input.Query)
         return tools.Text(results), nil
     },
@@ -172,7 +188,7 @@ client.NewOptions().WithCustomTools("my-server", searchTool)
 
 ### MCP 服务器
 
-支持外部 MCP 服务器（stdio / SSE / HTTP / WebSocket）和进程内 SDK Server：
+支持外部 MCP 服务器（stdio / SSE / HTTP）和进程内 SDK Server：
 
 ```go
 client.NewOptions().
@@ -182,6 +198,17 @@ client.NewOptions().
         Env:     map[string]string{"GITHUB_TOKEN": token},
     }).
     WithSDKMCPServer("internal", myInProcessServer)
+```
+
+Go 原生进程内 server 通过 `tools` 包构造：
+
+```go
+server := tools.CreateSDKMCPServer(tools.SDKMCPServerOptions{
+    Name:  "internal",
+    Tools: []tools.Tool{searchTool},
+})
+
+client.NewOptions().WithSDKMCPServer("internal", server)
 ```
 
 ### 权限管理
@@ -200,6 +227,9 @@ client.NewOptions().
 
 ```go
 session.Control().SetPermissionMode(ctx, permission.ModeBypassPermissions)
+commands, _ := session.Control().SupportedCommands(ctx)
+_ = commands
+_ = session.MCP().Reconnect(ctx, "github")
 ```
 
 ### Hook
@@ -256,9 +286,9 @@ client.NewOptions().
 
 | 包 | 说明 |
 |----|------|
-| `client` | 会话管理、查询接口、后端选择、配置构建与回调 |
-| `protocol` | 消息格式定义，包括内容块、控制请求与 Agent 定义 |
-| `mcp` | MCP 服务器配置（stdio / SSE / HTTP / WebSocket / 进程内） |
+| `client` | 会话管理、查询接口、执行连接、配置构建、回调、Agent 定义与运行期控制结果 |
+| `protocol` | 流式消息、内容块、出站消息与 control wire 模型 |
+| `mcp` | MCP 服务器配置、SDK server 接口与 MCP 状态结果 |
 | `tools` | Go 原生自定义工具定义与结果构造 |
 | `permission` | 权限模式、请求、决策与权限更新 |
 | `hook` | Hook 事件、匹配器与回调签名 |

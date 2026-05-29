@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/hook"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/jsonvalue"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/permission"
 )
@@ -662,26 +661,18 @@ const (
 	MessageTypeUser MessageType = "user"
 	// MessageTypeAssistant 表示助手消息。
 	MessageTypeAssistant MessageType = "assistant"
-	// MessageTypeTombstone 表示撤回 orphaned 消息的内部控制消息。
-	MessageTypeTombstone MessageType = "tombstone"
-	// MessageTypeAttachment 表示内部 attachment 消息。
-	MessageTypeAttachment MessageType = "attachment"
 	// MessageTypeResult 表示结果消息。
 	MessageTypeResult MessageType = "result"
 	// MessageTypeStreamEvent 表示流式事件。
 	MessageTypeStreamEvent MessageType = "stream_event"
-	// MessageTypeStreamRequestStart 表示一次模型流式请求即将开始。
-	MessageTypeStreamRequestStart MessageType = "stream_request_start"
-	// MessageTypeToolProgress 表示工具进度消息。
-	MessageTypeToolProgress MessageType = "tool_progress"
-	// MessageTypeToolUseSummary 表示工具摘要消息。
-	MessageTypeToolUseSummary MessageType = "tool_use_summary"
 	// MessageTypeRateLimitEvent 表示限流消息。
 	MessageTypeRateLimitEvent MessageType = "rate_limit_event"
-	// MessageTypePromptSuggestion 表示提示建议消息。
-	MessageTypePromptSuggestion MessageType = "prompt_suggestion"
-	// MessageTypeAuthStatus 表示鉴权状态消息。
-	MessageTypeAuthStatus MessageType = "auth_status"
+	// MessageTypeTaskStarted 表示任务开始消息。
+	MessageTypeTaskStarted MessageType = "task_started"
+	// MessageTypeTaskProgress 表示任务进度消息。
+	MessageTypeTaskProgress MessageType = "task_progress"
+	// MessageTypeTaskNotification 表示任务通知消息。
+	MessageTypeTaskNotification MessageType = "task_notification"
 	// MessageTypeUnknown 表示未知消息。
 	MessageTypeUnknown MessageType = "unknown"
 )
@@ -725,72 +716,9 @@ type StreamEvent struct {
 	Data  map[string]any `json:"data,omitempty"`
 }
 
-// ToolProgressMessage 表示工具运行进度。
-type ToolProgressMessage struct {
-	ToolUseID          string         `json:"tool_use_id,omitempty"`
-	ToolName           string         `json:"tool_name,omitempty"`
-	ParentToolUseID    *string        `json:"parent_tool_use_id,omitempty"`
-	ElapsedTimeSeconds float64        `json:"elapsed_time_seconds,omitempty"`
-	TaskID             string         `json:"task_id,omitempty"`
-	Additional         map[string]any `json:"additional,omitempty"`
-}
-
-// ToolUseSummaryMessage 表示工具摘要。
-type ToolUseSummaryMessage struct {
-	Summary             string         `json:"summary,omitempty"`
-	PrecedingToolUseIDs []string       `json:"preceding_tool_use_ids,omitempty"`
-	Additional          map[string]any `json:"additional,omitempty"`
-}
-
 // RateLimitEvent 表示限流信息。
 type RateLimitEvent struct {
 	RateLimitInfo map[string]any `json:"rate_limit_info,omitempty"`
-}
-
-// PromptSuggestionMessage 表示提示建议。
-type PromptSuggestionMessage struct {
-	Suggestion string `json:"suggestion,omitempty"`
-}
-
-// AuthStatusMessage 表示认证状态消息。
-type AuthStatusMessage struct {
-	IsAuthenticating bool           `json:"is_authenticating,omitempty"`
-	Output           []string       `json:"output,omitempty"`
-	Error            string         `json:"error,omitempty"`
-	Additional       map[string]any `json:"additional,omitempty"`
-}
-
-// AttachmentMessage 表示 headless runtime 的 attachment 消息。
-type AttachmentMessage struct {
-	Type        string         `json:"type,omitempty"`
-	Content     any            `json:"content,omitempty"`
-	Data        any            `json:"data,omitempty"`
-	Message     string         `json:"message,omitempty"`
-	Prompt      string         `json:"prompt,omitempty"`
-	PromptRaw   any            `json:"prompt_raw,omitempty"`
-	SourceUUID  string         `json:"source_uuid,omitempty"`
-	ToolUseID   string         `json:"tool_use_id,omitempty"`
-	HookName    string         `json:"hook_name,omitempty"`
-	HookEvent   hook.Event     `json:"hook_event,omitempty"`
-	Command     string         `json:"command,omitempty"`
-	CommandMode string         `json:"command_mode,omitempty"`
-	Stdout      string         `json:"stdout,omitempty"`
-	Stderr      string         `json:"stderr,omitempty"`
-	ExitCode    *int           `json:"exit_code,omitempty"`
-	DurationMS  *int           `json:"duration_ms,omitempty"`
-	TurnCount   int            `json:"turn_count,omitempty"`
-	MaxTurns    int            `json:"max_turns,omitempty"`
-	IsMeta      bool           `json:"is_meta,omitempty"`
-	Origin      map[string]any `json:"origin,omitempty"`
-	Additional  map[string]any `json:"additional,omitempty"`
-}
-
-// TombstoneMessage 表示撤回既有消息的内部控制信号。
-type TombstoneMessage struct {
-	Message          map[string]any `json:"message,omitempty"`
-	MessageSessionID string         `json:"message_session_id,omitempty"`
-	MessageType      MessageType    `json:"message_type,omitempty"`
-	MessageUUID      string         `json:"message_uuid,omitempty"`
 }
 
 // ReceivedMessage 表示统一接收消息。
@@ -802,16 +730,13 @@ type ReceivedMessage struct {
 	ParentToolUseID  *string                  `json:"parent_tool_use_id,omitempty"`
 	User             *UserMessage             `json:"user,omitempty"`
 	Assistant        *AssistantMessage        `json:"assistant,omitempty"`
-	Tombstone        *TombstoneMessage        `json:"tombstone,omitempty"`
-	Attachment       *AttachmentMessage       `json:"attachment,omitempty"`
 	System           *SystemMessage           `json:"system,omitempty"`
 	Result           *ResultMessage           `json:"result,omitempty"`
 	Stream           *StreamEvent             `json:"stream,omitempty"`
-	ToolProgress     *ToolProgressMessage     `json:"tool_progress,omitempty"`
-	ToolUseSummary   *ToolUseSummaryMessage   `json:"tool_use_summary,omitempty"`
 	RateLimit        *RateLimitEvent          `json:"rate_limit,omitempty"`
-	PromptSuggestion *PromptSuggestionMessage `json:"prompt_suggestion,omitempty"`
-	AuthStatus       *AuthStatusMessage       `json:"auth_status,omitempty"`
+	TaskStarted      *TaskStartedMessage      `json:"task_started,omitempty"`
+	TaskProgress     *TaskProgressMessage     `json:"task_progress,omitempty"`
+	TaskNotification *TaskNotificationMessage `json:"task_notification,omitempty"`
 	Raw              map[string]any           `json:"raw,omitempty"`
 }
 
@@ -915,30 +840,6 @@ type StatusSystemMessage struct {
 	Additional     map[string]any  `json:"additional,omitempty"`
 }
 
-// PostTurnSummaryMessage 表示 post turn summary 系统消息。
-type PostTurnSummaryMessage struct {
-	SummarizesUUID string         `json:"summarizes_uuid,omitempty"`
-	StatusCategory string         `json:"status_category,omitempty"`
-	StatusDetail   string         `json:"status_detail,omitempty"`
-	IsNoteworthy   bool           `json:"is_noteworthy,omitempty"`
-	Title          string         `json:"title,omitempty"`
-	Description    string         `json:"description,omitempty"`
-	RecentAction   string         `json:"recent_action,omitempty"`
-	NeedsAction    string         `json:"needs_action,omitempty"`
-	ArtifactURLs   []string       `json:"artifact_urls,omitempty"`
-	Additional     map[string]any `json:"additional,omitempty"`
-}
-
-// APIRetryMessage 表示 API 重试系统消息。
-type APIRetryMessage struct {
-	Attempt      int            `json:"attempt,omitempty"`
-	MaxRetries   int            `json:"max_retries,omitempty"`
-	RetryDelayMS int            `json:"retry_delay_ms,omitempty"`
-	ErrorStatus  *int           `json:"error_status,omitempty"`
-	Error        string         `json:"error,omitempty"`
-	Additional   map[string]any `json:"additional,omitempty"`
-}
-
 // InformationalSystemMessage 表示 informational 系统消息。
 type InformationalSystemMessage struct {
 	Content             string         `json:"content,omitempty"`
@@ -946,44 +847,6 @@ type InformationalSystemMessage struct {
 	ToolUseID           string         `json:"tool_use_id,omitempty"`
 	PreventContinuation bool           `json:"prevent_continuation,omitempty"`
 	Additional          map[string]any `json:"additional,omitempty"`
-}
-
-// LocalCommandOutputMessage 表示本地命令输出系统消息。
-type LocalCommandOutputMessage struct {
-	Content    string         `json:"content,omitempty"`
-	Additional map[string]any `json:"additional,omitempty"`
-}
-
-// HookStartedMessage 表示 hook 启动消息。
-type HookStartedMessage struct {
-	HookID     string         `json:"hook_id,omitempty"`
-	HookName   string         `json:"hook_name,omitempty"`
-	HookEvent  hook.Event     `json:"hook_event,omitempty"`
-	Additional map[string]any `json:"additional,omitempty"`
-}
-
-// HookProgressMessage 表示 hook 进度消息。
-type HookProgressMessage struct {
-	HookID     string         `json:"hook_id,omitempty"`
-	HookName   string         `json:"hook_name,omitempty"`
-	HookEvent  hook.Event     `json:"hook_event,omitempty"`
-	Stdout     string         `json:"stdout,omitempty"`
-	Stderr     string         `json:"stderr,omitempty"`
-	Output     string         `json:"output,omitempty"`
-	Additional map[string]any `json:"additional,omitempty"`
-}
-
-// HookResponseMessage 表示 hook 响应消息。
-type HookResponseMessage struct {
-	HookID     string         `json:"hook_id,omitempty"`
-	HookName   string         `json:"hook_name,omitempty"`
-	HookEvent  hook.Event     `json:"hook_event,omitempty"`
-	Output     string         `json:"output,omitempty"`
-	Stdout     string         `json:"stdout,omitempty"`
-	Stderr     string         `json:"stderr,omitempty"`
-	ExitCode   *int           `json:"exit_code,omitempty"`
-	Outcome    string         `json:"outcome,omitempty"`
-	Additional map[string]any `json:"additional,omitempty"`
 }
 
 // TaskStartedMessage 表示任务开始消息。
@@ -997,8 +860,8 @@ type TaskStartedMessage struct {
 	Additional   map[string]any `json:"additional,omitempty"`
 }
 
-// TaskProgressUsage 表示任务进度中的 usage。
-type TaskProgressUsage struct {
+// TaskUsage 表示任务进度中的 usage。
+type TaskUsage struct {
 	TotalTokens int `json:"total_tokens,omitempty"`
 	ToolUses    int `json:"tool_uses,omitempty"`
 	DurationMS  int `json:"duration_ms,omitempty"`
@@ -1006,116 +869,36 @@ type TaskProgressUsage struct {
 
 // TaskProgressMessage 表示任务进度消息。
 type TaskProgressMessage struct {
-	TaskID       string            `json:"task_id,omitempty"`
-	ToolUseID    string            `json:"tool_use_id,omitempty"`
-	Description  string            `json:"description,omitempty"`
-	LastToolName string            `json:"last_tool_name,omitempty"`
-	Summary      string            `json:"summary,omitempty"`
-	Usage        TaskProgressUsage `json:"usage,omitempty"`
-	Additional   map[string]any    `json:"additional,omitempty"`
+	TaskID       string         `json:"task_id,omitempty"`
+	ToolUseID    string         `json:"tool_use_id,omitempty"`
+	Description  string         `json:"description,omitempty"`
+	LastToolName string         `json:"last_tool_name,omitempty"`
+	Summary      string         `json:"summary,omitempty"`
+	Usage        TaskUsage      `json:"usage,omitempty"`
+	Additional   map[string]any `json:"additional,omitempty"`
 }
 
 // TaskNotificationMessage 表示任务通知消息。
 type TaskNotificationMessage struct {
-	TaskID     string            `json:"task_id,omitempty"`
-	ToolUseID  string            `json:"tool_use_id,omitempty"`
-	Status     string            `json:"status,omitempty"`
-	OutputFile string            `json:"output_file,omitempty"`
-	Summary    string            `json:"summary,omitempty"`
-	Usage      TaskProgressUsage `json:"usage,omitempty"`
-	Additional map[string]any    `json:"additional,omitempty"`
-}
-
-// CompactBoundaryMessage 表示压缩边界系统消息。
-type CompactBoundaryMessage struct {
-	UUID            string         `json:"uuid,omitempty"`
-	CompactMetadata map[string]any `json:"compact_metadata,omitempty"`
-	Summary         string         `json:"summary,omitempty"`
-	Additional      map[string]any `json:"additional,omitempty"`
-}
-
-// MicrocompactBoundaryMessage 表示微压缩边界系统消息。
-type MicrocompactBoundaryMessage struct {
-	UUID                 string         `json:"uuid,omitempty"`
-	Content              string         `json:"content,omitempty"`
-	Level                string         `json:"level,omitempty"`
-	MicrocompactMetadata map[string]any `json:"microcompact_metadata,omitempty"`
-	Additional           map[string]any `json:"additional,omitempty"`
-}
-
-// SnipBoundaryMessage 表示 history snip 边界系统消息。
-type SnipBoundaryMessage struct {
-	UUID         string         `json:"uuid,omitempty"`
-	SnipMetadata map[string]any `json:"snip_metadata,omitempty"`
-	Summary      string         `json:"summary,omitempty"`
-	Additional   map[string]any `json:"additional,omitempty"`
-}
-
-// ContextCollapseMessage 表示上下文折叠系统消息。
-type ContextCollapseMessage struct {
-	UUID       string           `json:"uuid,omitempty"`
-	Commits    []map[string]any `json:"commits,omitempty"`
-	Snapshot   map[string]any   `json:"snapshot,omitempty"`
-	Summary    string           `json:"summary,omitempty"`
-	Additional map[string]any   `json:"additional,omitempty"`
-}
-
-// PersistedFile 表示持久化成功的文件。
-type PersistedFile struct {
-	Filename string `json:"filename,omitempty"`
-	FileID   string `json:"file_id,omitempty"`
-}
-
-// PersistedFileFailure 表示持久化失败的文件。
-type PersistedFileFailure struct {
-	Filename string `json:"filename,omitempty"`
-	Error    string `json:"error,omitempty"`
-}
-
-// FilesPersistedMessage 表示文件持久化消息。
-type FilesPersistedMessage struct {
-	Files       []PersistedFile        `json:"files,omitempty"`
-	Failed      []PersistedFileFailure `json:"failed,omitempty"`
-	ProcessedAt string                 `json:"processed_at,omitempty"`
-	Additional  map[string]any         `json:"additional,omitempty"`
-}
-
-// SessionStateChangedMessage 表示会话状态变化消息。
-type SessionStateChangedMessage struct {
-	State      string         `json:"state,omitempty"`
+	TaskID     string         `json:"task_id,omitempty"`
+	ToolUseID  string         `json:"tool_use_id,omitempty"`
+	Status     string         `json:"status,omitempty"`
+	OutputFile string         `json:"output_file,omitempty"`
+	Summary    string         `json:"summary,omitempty"`
+	Usage      TaskUsage      `json:"usage,omitempty"`
 	Additional map[string]any `json:"additional,omitempty"`
-}
-
-// ElicitationCompleteMessage 表示 URL elicitation 完成消息。
-type ElicitationCompleteMessage struct {
-	MCPServerName string         `json:"mcp_server_name,omitempty"`
-	ElicitationID string         `json:"elicitation_id,omitempty"`
-	Additional    map[string]any `json:"additional,omitempty"`
 }
 
 // SystemMessage 表示统一系统消息。
 type SystemMessage struct {
-	Subtype          string                       `json:"subtype,omitempty"`
-	Init             *InitSystemMessage           `json:"init,omitempty"`
-	Status           *StatusSystemMessage         `json:"status,omitempty"`
-	Informational    *InformationalSystemMessage  `json:"informational,omitempty"`
-	PostTurnSummary  *PostTurnSummaryMessage      `json:"post_turn_summary,omitempty"`
-	APIRetry         *APIRetryMessage             `json:"api_retry,omitempty"`
-	LocalCommand     *LocalCommandOutputMessage   `json:"local_command,omitempty"`
-	HookStarted      *HookStartedMessage          `json:"hook_started,omitempty"`
-	HookProgress     *HookProgressMessage         `json:"hook_progress,omitempty"`
-	HookResponse     *HookResponseMessage         `json:"hook_response,omitempty"`
-	TaskStarted      *TaskStartedMessage          `json:"task_started,omitempty"`
-	TaskProgress     *TaskProgressMessage         `json:"task_progress,omitempty"`
-	TaskNotification *TaskNotificationMessage     `json:"task_notification,omitempty"`
-	CompactBoundary  *CompactBoundaryMessage      `json:"compact_boundary,omitempty"`
-	Microcompact     *MicrocompactBoundaryMessage `json:"microcompact_boundary,omitempty"`
-	SnipBoundary     *SnipBoundaryMessage         `json:"snip_boundary,omitempty"`
-	ContextCollapse  *ContextCollapseMessage      `json:"context_collapse,omitempty"`
-	FilesPersisted   *FilesPersistedMessage       `json:"files_persisted,omitempty"`
-	SessionState     *SessionStateChangedMessage  `json:"session_state_changed,omitempty"`
-	ElicitationDone  *ElicitationCompleteMessage  `json:"elicitation_complete,omitempty"`
-	Data             map[string]any               `json:"data,omitempty"`
+	Subtype          string                      `json:"subtype,omitempty"`
+	Init             *InitSystemMessage          `json:"init,omitempty"`
+	Status           *StatusSystemMessage        `json:"status,omitempty"`
+	Informational    *InformationalSystemMessage `json:"informational,omitempty"`
+	TaskStarted      *TaskStartedMessage         `json:"task_started,omitempty"`
+	TaskProgress     *TaskProgressMessage        `json:"task_progress,omitempty"`
+	TaskNotification *TaskNotificationMessage    `json:"task_notification,omitempty"`
+	Data             map[string]any              `json:"data,omitempty"`
 }
 
 func decodeSystemMessage(payload map[string]any) *SystemMessage {
@@ -1156,161 +939,15 @@ func decodeSystemMessage(payload map[string]any) *SystemMessage {
 			PreventContinuation: jsonvalue.BoolValue(payload["prevent_continuation"]),
 			Additional:          payload,
 		}
-	case "post_turn_summary":
-		system.PostTurnSummary = &PostTurnSummaryMessage{
-			SummarizesUUID: jsonvalue.StringValue(payload["summarizes_uuid"]),
-			StatusCategory: jsonvalue.StringValue(payload["status_category"]),
-			StatusDetail:   jsonvalue.StringValue(payload["status_detail"]),
-			IsNoteworthy:   jsonvalue.BoolValue(payload["is_noteworthy"]),
-			Title:          jsonvalue.StringValue(payload["title"]),
-			Description:    jsonvalue.StringValue(payload["description"]),
-			RecentAction:   jsonvalue.StringValue(payload["recent_action"]),
-			NeedsAction:    jsonvalue.StringValue(payload["needs_action"]),
-			ArtifactURLs:   jsonvalue.StringSliceValue(payload["artifact_urls"]),
-			Additional:     payload,
-		}
-	case "api_error":
-		system.APIRetry = decodeAPIRetryPayload(payload)
-	case "api_retry":
-		system.APIRetry = decodeAPIRetryPayload(payload)
-	case "local_command_output":
-		system.LocalCommand = &LocalCommandOutputMessage{
-			Content:    jsonvalue.StringValue(payload["content"]),
-			Additional: payload,
-		}
-	case "hook_started":
-		system.HookStarted = &HookStartedMessage{
-			HookID:     jsonvalue.StringValue(payload["hook_id"]),
-			HookName:   jsonvalue.StringValue(payload["hook_name"]),
-			HookEvent:  hook.Event(jsonvalue.StringValue(payload["hook_event"])),
-			Additional: payload,
-		}
-	case "hook_progress":
-		system.HookProgress = &HookProgressMessage{
-			HookID:     jsonvalue.StringValue(payload["hook_id"]),
-			HookName:   jsonvalue.StringValue(payload["hook_name"]),
-			HookEvent:  hook.Event(jsonvalue.StringValue(payload["hook_event"])),
-			Stdout:     jsonvalue.StringValue(payload["stdout"]),
-			Stderr:     jsonvalue.StringValue(payload["stderr"]),
-			Output:     jsonvalue.StringValue(payload["output"]),
-			Additional: payload,
-		}
-	case "hook_response":
-		system.HookResponse = &HookResponseMessage{
-			HookID:     jsonvalue.StringValue(payload["hook_id"]),
-			HookName:   jsonvalue.StringValue(payload["hook_name"]),
-			HookEvent:  hook.Event(jsonvalue.StringValue(payload["hook_event"])),
-			Output:     jsonvalue.StringValue(payload["output"]),
-			Stdout:     jsonvalue.StringValue(payload["stdout"]),
-			Stderr:     jsonvalue.StringValue(payload["stderr"]),
-			ExitCode:   jsonvalue.IntPointer(payload["exit_code"]),
-			Outcome:    jsonvalue.StringValue(payload["outcome"]),
-			Additional: payload,
-		}
 	case "task_started":
-		system.TaskStarted = &TaskStartedMessage{
-			TaskID:       jsonvalue.StringValue(payload["task_id"]),
-			ToolUseID:    jsonvalue.StringValue(payload["tool_use_id"]),
-			Description:  jsonvalue.StringValue(payload["description"]),
-			TaskType:     jsonvalue.StringValue(payload["task_type"]),
-			WorkflowName: jsonvalue.StringValue(payload["workflow_name"]),
-			Prompt:       jsonvalue.StringValue(payload["prompt"]),
-			Additional:   payload,
-		}
+		system.TaskStarted = decodeTaskStartedMessage(payload)
 	case "task_progress":
-		system.TaskProgress = &TaskProgressMessage{
-			TaskID:       jsonvalue.StringValue(payload["task_id"]),
-			ToolUseID:    jsonvalue.StringValue(payload["tool_use_id"]),
-			Description:  jsonvalue.StringValue(payload["description"]),
-			LastToolName: jsonvalue.StringValue(payload["last_tool_name"]),
-			Summary:      jsonvalue.StringValue(payload["summary"]),
-			Usage:        decodeTaskProgressUsage(payload["usage"]),
-			Additional:   payload,
-		}
+		system.TaskProgress = decodeTaskProgressMessage(payload)
 	case "task_notification":
-		system.TaskNotification = &TaskNotificationMessage{
-			TaskID:     jsonvalue.StringValue(payload["task_id"]),
-			ToolUseID:  jsonvalue.StringValue(payload["tool_use_id"]),
-			Status:     jsonvalue.StringValue(payload["status"]),
-			OutputFile: jsonvalue.StringValue(payload["output_file"]),
-			Summary:    jsonvalue.StringValue(payload["summary"]),
-			Usage:      decodeTaskProgressUsage(payload["usage"]),
-			Additional: payload,
-		}
-	case "compact_boundary":
-		system.CompactBoundary = &CompactBoundaryMessage{
-			UUID:            jsonvalue.StringValue(payload["uuid"]),
-			CompactMetadata: jsonvalue.MapValue(payload["compact_metadata"]),
-			Summary:         jsonvalue.StringValue(payload["summary"]),
-			Additional:      payload,
-		}
-	case "microcompact_boundary":
-		system.Microcompact = &MicrocompactBoundaryMessage{
-			UUID:                 jsonvalue.StringValue(payload["uuid"]),
-			Content:              jsonvalue.StringValue(payload["content"]),
-			Level:                jsonvalue.StringValue(payload["level"]),
-			MicrocompactMetadata: jsonvalue.MapValue(payload["microcompact_metadata"]),
-			Additional:           payload,
-		}
-	case "snip_boundary":
-		system.SnipBoundary = &SnipBoundaryMessage{
-			UUID:         jsonvalue.StringValue(payload["uuid"]),
-			SnipMetadata: jsonvalue.MapValue(payload["snip_metadata"]),
-			Summary:      jsonvalue.StringValue(payload["summary"]),
-			Additional:   payload,
-		}
-	case "context_collapse":
-		system.ContextCollapse = &ContextCollapseMessage{
-			UUID:       jsonvalue.StringValue(payload["uuid"]),
-			Commits:    jsonvalue.MapSliceValue(payload["commits"]),
-			Snapshot:   jsonvalue.MapValue(payload["snapshot"]),
-			Summary:    jsonvalue.StringValue(payload["summary"]),
-			Additional: payload,
-		}
-	case "files_persisted":
-		system.FilesPersisted = &FilesPersistedMessage{
-			Files:       decodePersistedFiles(payload["files"]),
-			Failed:      decodePersistedFileFailures(payload["failed"]),
-			ProcessedAt: jsonvalue.StringValue(payload["processed_at"]),
-			Additional:  payload,
-		}
-	case "session_state_changed":
-		system.SessionState = &SessionStateChangedMessage{
-			State:      jsonvalue.StringValue(payload["state"]),
-			Additional: payload,
-		}
-	case "elicitation_complete":
-		system.ElicitationDone = &ElicitationCompleteMessage{
-			MCPServerName: jsonvalue.StringValue(payload["mcp_server_name"]),
-			ElicitationID: jsonvalue.StringValue(payload["elicitation_id"]),
-			Additional:    payload,
-		}
+		system.TaskNotification = decodeTaskNotificationMessage(payload)
 	}
 
 	return system
-}
-
-func decodeAPIRetryPayload(payload map[string]any) *APIRetryMessage {
-	if len(payload) == 0 {
-		return nil
-	}
-	errorPayload := jsonvalue.MapValue(payload["error"])
-	status := jsonvalue.FirstNonNilIntPointer(payload["error_status"], payload["status"], errorPayload["status"])
-	rawCategory := jsonvalue.FirstNonEmptyString(
-		payload["error_type"],
-		payload["category"],
-		payload["error"],
-		errorPayload["type"],
-		errorPayload["message"],
-	)
-	return &APIRetryMessage{
-		Attempt:      jsonvalue.IntValue(payload["attempt"]),
-		MaxRetries:   jsonvalue.IntValue(payload["max_retries"]),
-		RetryDelayMS: jsonvalue.IntValue(payload["retry_delay_ms"]),
-		ErrorStatus:  status,
-		Error:        normalizeSDKAssistantMessageError(rawCategory, status),
-		Additional:   payload,
-	}
 }
 
 func normalizeSDKAssistantMessageError(raw string, status *int) string {
@@ -1387,43 +1024,49 @@ func decodePluginInfo(raw any) []PluginInfo {
 	return plugins
 }
 
-func decodeTaskProgressUsage(raw any) TaskProgressUsage {
+func decodeTaskStartedMessage(payload map[string]any) *TaskStartedMessage {
+	return &TaskStartedMessage{
+		TaskID:       jsonvalue.StringValue(payload["task_id"]),
+		ToolUseID:    jsonvalue.StringValue(payload["tool_use_id"]),
+		Description:  jsonvalue.StringValue(payload["description"]),
+		TaskType:     jsonvalue.StringValue(payload["task_type"]),
+		WorkflowName: jsonvalue.StringValue(payload["workflow_name"]),
+		Prompt:       jsonvalue.StringValue(payload["prompt"]),
+		Additional:   payload,
+	}
+}
+
+func decodeTaskProgressMessage(payload map[string]any) *TaskProgressMessage {
+	return &TaskProgressMessage{
+		TaskID:       jsonvalue.StringValue(payload["task_id"]),
+		ToolUseID:    jsonvalue.StringValue(payload["tool_use_id"]),
+		Description:  jsonvalue.StringValue(payload["description"]),
+		LastToolName: jsonvalue.StringValue(payload["last_tool_name"]),
+		Summary:      jsonvalue.StringValue(payload["summary"]),
+		Usage:        decodeTaskUsage(payload["usage"]),
+		Additional:   payload,
+	}
+}
+
+func decodeTaskNotificationMessage(payload map[string]any) *TaskNotificationMessage {
+	return &TaskNotificationMessage{
+		TaskID:     jsonvalue.StringValue(payload["task_id"]),
+		ToolUseID:  jsonvalue.StringValue(payload["tool_use_id"]),
+		Status:     jsonvalue.StringValue(payload["status"]),
+		OutputFile: jsonvalue.StringValue(payload["output_file"]),
+		Summary:    jsonvalue.StringValue(payload["summary"]),
+		Usage:      decodeTaskUsage(payload["usage"]),
+		Additional: payload,
+	}
+}
+
+func decodeTaskUsage(raw any) TaskUsage {
 	payload := jsonvalue.MapValue(raw)
-	return TaskProgressUsage{
+	return TaskUsage{
 		TotalTokens: jsonvalue.IntValue(payload["total_tokens"]),
 		ToolUses:    jsonvalue.IntValue(payload["tool_uses"]),
 		DurationMS:  jsonvalue.IntValue(payload["duration_ms"]),
 	}
-}
-
-func decodePersistedFiles(raw any) []PersistedFile {
-	items := jsonvalue.MapSliceValue(raw)
-	results := make([]PersistedFile, 0, len(items))
-	for _, item := range items {
-		if len(item) == 0 {
-			continue
-		}
-		results = append(results, PersistedFile{
-			Filename: jsonvalue.StringValue(item["filename"]),
-			FileID:   jsonvalue.StringValue(item["file_id"]),
-		})
-	}
-	return results
-}
-
-func decodePersistedFileFailures(raw any) []PersistedFileFailure {
-	items := jsonvalue.MapSliceValue(raw)
-	results := make([]PersistedFileFailure, 0, len(items))
-	for _, item := range items {
-		if len(item) == 0 {
-			continue
-		}
-		results = append(results, PersistedFileFailure{
-			Filename: jsonvalue.StringValue(item["filename"]),
-			Error:    jsonvalue.StringValue(item["error"]),
-		})
-	}
-	return results
 }
 
 // ParseMessage 解析原始 JSON 消息。
@@ -1482,13 +1125,6 @@ func DecodeMessage(payload map[string]any) (ReceivedMessage, error) {
 			IsAPIError:      jsonvalue.BoolValue(payload["is_api_error_message"]),
 			ParentToolUseID: message.ParentToolUseID,
 		}
-	case MessageTypeTombstone:
-		message.Tombstone = decodeTombstoneMessage(payload)
-		if message.SessionID == "" && message.Tombstone != nil {
-			message.SessionID = message.Tombstone.MessageSessionID
-		}
-	case MessageTypeAttachment:
-		message.Attachment = decodeAttachmentMessage(payload)
 	case MessageTypeSystem:
 		message.System = decodeSystemMessage(payload)
 	case MessageTypeResult:
@@ -1498,37 +1134,16 @@ func DecodeMessage(payload map[string]any) (ReceivedMessage, error) {
 			Event: payload["event"],
 			Data:  payload,
 		}
-	case MessageTypeStreamRequestStart:
-	case MessageTypeToolProgress:
-		message.ToolProgress = &ToolProgressMessage{
-			ToolUseID:          jsonvalue.StringValue(payload["tool_use_id"]),
-			ToolName:           jsonvalue.StringValue(payload["tool_name"]),
-			ParentToolUseID:    jsonvalue.StringPointer(payload["parent_tool_use_id"]),
-			ElapsedTimeSeconds: jsonvalue.FloatValue(payload["elapsed_time_seconds"]),
-			TaskID:             jsonvalue.StringValue(payload["task_id"]),
-			Additional:         payload,
-		}
-	case MessageTypeToolUseSummary:
-		message.ToolUseSummary = &ToolUseSummaryMessage{
-			Summary:             jsonvalue.StringValue(payload["summary"]),
-			PrecedingToolUseIDs: jsonvalue.StringSliceValue(payload["preceding_tool_use_ids"]),
-			Additional:          payload,
-		}
 	case MessageTypeRateLimitEvent:
 		message.RateLimit = &RateLimitEvent{
 			RateLimitInfo: jsonvalue.MapValue(payload["rate_limit_info"]),
 		}
-	case MessageTypePromptSuggestion:
-		message.PromptSuggestion = &PromptSuggestionMessage{
-			Suggestion: jsonvalue.StringValue(payload["suggestion"]),
-		}
-	case MessageTypeAuthStatus:
-		message.AuthStatus = &AuthStatusMessage{
-			IsAuthenticating: jsonvalue.BoolValue(payload["is_authenticating"]),
-			Output:           jsonvalue.StringSliceValue(payload["output"]),
-			Error:            jsonvalue.StringValue(payload["error"]),
-			Additional:       payload,
-		}
+	case MessageTypeTaskStarted:
+		message.TaskStarted = decodeTaskStartedMessage(payload)
+	case MessageTypeTaskProgress:
+		message.TaskProgress = decodeTaskProgressMessage(payload)
+	case MessageTypeTaskNotification:
+		message.TaskNotification = decodeTaskNotificationMessage(payload)
 	default:
 		message.Type = MessageTypeUnknown
 	}
@@ -1541,59 +1156,15 @@ func normalizeMessageType(messageType MessageType) MessageType {
 	case MessageTypeSystem,
 		MessageTypeUser,
 		MessageTypeAssistant,
-		MessageTypeTombstone,
-		MessageTypeAttachment,
 		MessageTypeResult,
 		MessageTypeStreamEvent,
-		MessageTypeStreamRequestStart,
-		MessageTypeToolProgress,
-		MessageTypeToolUseSummary,
 		MessageTypeRateLimitEvent,
-		MessageTypePromptSuggestion,
-		MessageTypeAuthStatus:
+		MessageTypeTaskStarted,
+		MessageTypeTaskProgress,
+		MessageTypeTaskNotification:
 		return messageType
 	default:
 		return MessageTypeUnknown
-	}
-}
-
-func decodeTombstoneMessage(payload map[string]any) *TombstoneMessage {
-	messagePayload := jsonvalue.CloneMapOrEmpty(jsonvalue.MapValue(payload["message"]))
-	return &TombstoneMessage{
-		Message:          messagePayload,
-		MessageSessionID: jsonvalue.StringValue(messagePayload["session_id"]),
-		MessageType:      MessageType(jsonvalue.FirstNonEmptyString(messagePayload["type"])),
-		MessageUUID:      jsonvalue.FirstNonEmptyString(payload["message_uuid"], messagePayload["uuid"]),
-	}
-}
-
-func decodeAttachmentMessage(payload map[string]any) *AttachmentMessage {
-	attachmentPayload := jsonvalue.MapValue(payload["attachment"])
-	if len(attachmentPayload) == 0 {
-		attachmentPayload = payload
-	}
-	return &AttachmentMessage{
-		Type:        jsonvalue.StringValue(attachmentPayload["type"]),
-		Content:     attachmentPayload["content"],
-		Data:        attachmentPayload["data"],
-		Message:     jsonvalue.StringValue(attachmentPayload["message"]),
-		Prompt:      jsonvalue.StringValue(attachmentPayload["prompt"]),
-		PromptRaw:   attachmentPayload["prompt"],
-		SourceUUID:  jsonvalue.StringValue(attachmentPayload["source_uuid"]),
-		ToolUseID:   jsonvalue.StringValue(attachmentPayload["tool_use_id"]),
-		HookName:    jsonvalue.StringValue(attachmentPayload["hook_name"]),
-		HookEvent:   hook.Event(jsonvalue.StringValue(attachmentPayload["hook_event"])),
-		Command:     jsonvalue.StringValue(attachmentPayload["command"]),
-		CommandMode: jsonvalue.StringValue(attachmentPayload["command_mode"]),
-		Stdout:      jsonvalue.StringValue(attachmentPayload["stdout"]),
-		Stderr:      jsonvalue.StringValue(attachmentPayload["stderr"]),
-		ExitCode:    jsonvalue.IntPointer(attachmentPayload["exit_code"]),
-		DurationMS:  jsonvalue.IntPointer(attachmentPayload["duration_ms"]),
-		TurnCount:   jsonvalue.IntValue(attachmentPayload["turn_count"]),
-		MaxTurns:    jsonvalue.IntValue(attachmentPayload["max_turns"]),
-		IsMeta:      jsonvalue.BoolValue(attachmentPayload["is_meta"]),
-		Origin:      jsonvalue.CloneMapOrEmpty(jsonvalue.MapValue(attachmentPayload["origin"])),
-		Additional:  jsonvalue.CloneMapOrEmpty(attachmentPayload),
 	}
 }
 

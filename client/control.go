@@ -49,7 +49,7 @@ func decodePermissionRuleValues(raw any) []permission.RuleValue {
 	}
 	return values
 }
-func (c *sessionClient) resolvePermissionRequest(ctx context.Context, request map[string]any) map[string]any {
+func (c *sessionCore) resolvePermissionRequest(ctx context.Context, request map[string]any) map[string]any {
 	if c.options.Callbacks.PermissionHandler == nil {
 		return map[string]any{
 			"behavior": "deny",
@@ -103,7 +103,7 @@ func (c *sessionClient) resolvePermissionRequest(ctx context.Context, request ma
 	return response
 }
 
-func (c *sessionClient) resolveHookCallback(ctx context.Context, request map[string]any) (map[string]any, error) {
+func (c *sessionCore) resolveHookCallback(ctx context.Context, request map[string]any) (map[string]any, error) {
 	callbackID := jsonvalue.StringValue(request["callback_id"])
 	if callbackID == "" {
 		return nil, errors.New("hook callback id is missing")
@@ -122,7 +122,7 @@ func (c *sessionClient) resolveHookCallback(ctx context.Context, request map[str
 	return output.ToMap(), nil
 }
 
-func (c *sessionClient) resolveElicitation(ctx context.Context, request map[string]any) (map[string]any, error) {
+func (c *sessionCore) resolveElicitation(ctx context.Context, request map[string]any) (map[string]any, error) {
 	elicitationRequest := protocol.DecodeElicitationRequest(request)
 
 	if c.options.Callbacks.ElicitationHandler == nil {
@@ -135,7 +135,7 @@ func (c *sessionClient) resolveElicitation(ctx context.Context, request map[stri
 	return protocol.NormalizeElicitationResponse(response).ContentMap(), nil
 }
 
-func (c *sessionClient) resolveUserDialog(ctx context.Context, request map[string]any) (map[string]any, error) {
+func (c *sessionCore) resolveUserDialog(ctx context.Context, request map[string]any) (map[string]any, error) {
 	if c.options.Callbacks.UserDialogHandler == nil {
 		return nil, errors.New("user dialog handler is not configured")
 	}
@@ -147,7 +147,7 @@ func (c *sessionClient) resolveUserDialog(ctx context.Context, request map[strin
 	return response.ContentMap(), nil
 }
 
-func (c *sessionClient) resolveOAuthTokenRefresh(ctx context.Context) (map[string]any, error) {
+func (c *sessionCore) resolveOAuthTokenRefresh(ctx context.Context) (map[string]any, error) {
 	if c.options.Callbacks.OAuthTokenHandler == nil {
 		return nil, errors.New("oauth token handler is not configured")
 	}
@@ -165,7 +165,7 @@ func (c *sessionClient) resolveOAuthTokenRefresh(ctx context.Context) (map[strin
 		"accessToken": accessToken,
 	}, nil
 }
-func (c *sessionClient) buildInitializeRequest() protocol.ControlRequest {
+func (c *sessionCore) buildInitializeRequest() protocol.ControlRequest {
 	request := protocol.ControlRequest{
 		Subtype: "initialize",
 	}
@@ -203,7 +203,7 @@ func (c *sessionClient) buildInitializeRequest() protocol.ControlRequest {
 	return request
 }
 
-func (c *sessionClient) buildHookInitialization() map[string]any {
+func (c *sessionCore) buildHookInitialization() map[string]any {
 	result := map[string]any{}
 	if len(c.options.Hooks.Matchers) == 0 {
 		return result
@@ -248,10 +248,7 @@ func (c *sessionClient) buildHookInitialization() map[string]any {
 	return result
 }
 
-func encodeAgentDefinitions(definitions map[string]protocol.AgentDefinition) map[string]any {
-	return protocol.EncodeAgentDefinitions(definitions)
-}
-func (c *sessionClient) handleControlResponse(payload map[string]any) {
+func (c *sessionCore) handleControlResponse(payload map[string]any) {
 	response := jsonvalue.MapValue(payload["response"])
 	requestID := jsonvalue.StringValue(response["request_id"])
 	if requestID == "" {
@@ -267,7 +264,7 @@ func (c *sessionClient) handleControlResponse(payload map[string]any) {
 	c.pendingRequests.resolve(requestID, controlWaitResult{Response: jsonvalue.MapValue(response["response"])})
 }
 
-func (c *sessionClient) handleControlRequest(payload map[string]any) {
+func (c *sessionCore) handleControlRequest(payload map[string]any) {
 	requestID := jsonvalue.StringValue(payload["request_id"])
 	request := jsonvalue.MapValue(payload["request"])
 	if requestID == "" || len(request) == 0 {
@@ -348,7 +345,7 @@ func (c *sessionClient) handleControlRequest(payload map[string]any) {
 	}
 }
 
-func (c *sessionClient) handleControlCancelRequest(payload map[string]any) {
+func (c *sessionCore) handleControlCancelRequest(payload map[string]any) {
 	requestID := jsonvalue.StringValue(payload["request_id"])
 	if requestID == "" {
 		return
@@ -357,7 +354,7 @@ func (c *sessionClient) handleControlCancelRequest(payload map[string]any) {
 	c.inflightRequests.cancel(requestID)
 }
 
-func (c *sessionClient) sendControlRequest(
+func (c *sessionCore) sendControlRequest(
 	ctx context.Context,
 	request protocol.ControlRequest,
 	timeout time.Duration,
@@ -393,14 +390,14 @@ func (c *sessionClient) sendControlRequest(
 	}
 }
 
-func (c *sessionClient) failPendingRequests(err error) {
+func (c *sessionCore) failPendingRequests(err error) {
 	c.pendingRequests.rejectAll(err)
 }
 
-func (c *sessionClient) setReadError(err error) {
+func (c *sessionCore) setReadError(err error) {
 	c.lifecycleState().setReadError(err)
 }
 
-func (c *sessionClient) getReadError() error {
+func (c *sessionCore) getReadError() error {
 	return c.lifecycleState().readError()
 }

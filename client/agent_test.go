@@ -1,4 +1,4 @@
-package protocol
+package client
 
 import (
 	"testing"
@@ -24,7 +24,7 @@ func TestAgentDefinitionToMapMatchesAgentShape(t *testing.T) {
 		PermissionMode:  permission.ModePlan,
 	}
 
-	payload := definition.ToMap()
+	payload := definition.toMap()
 	if got := payload["mcp_servers"]; len(got.([]any)) != 1 {
 		t.Fatalf("mcp_servers = %#v, want one server", got)
 	}

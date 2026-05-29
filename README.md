@@ -119,24 +119,27 @@ if err != nil {
 fmt.Println(result.Result)
 ```
 
-## Backend Modes
+## Transport
 
-The SDK provides a stable public API regardless of the underlying transport:
+The SDK follows the official Agent SDK shape: options configure the local CLI,
+and callers may inject a custom `Transport` when they manage the connection
+themselves.
 
-| Backend | Description |
-|---------|-------------|
-| Process (default) | Spawns a local bridge subprocess automatically |
-| `client.ProcessBackend` | Starts a local process with an explicit executable path |
-| `client.DirectConnectBackend` | Connects to a remote bridge endpoint (`cc://host:port/token`) |
-| `client.TransportBackend` | Injects a custom transport for testing or host-managed runtimes |
+| Mode | Configuration |
+|------|---------------|
+| Local CLI (default) | No extra option; the SDK starts the bundled/default CLI process |
+| Explicit CLI path | `client.NewOptions().WithCLIPath("/path/to/cli")` |
+| JavaScript runtime wrapper | `client.NewOptions().WithPathToClaudeCodeExecutable("/path/to/cli.js").WithExecutable("node")` |
+| Direct connect | `client.NewOptions().WithDirectConnect(client.DirectConnectOptions{...})` |
+| Host-managed transport | `client.NewOptions().WithTransport(transport)` |
 
 ```go
 options := client.NewOptions().
-    WithBackend(client.DirectConnectBackend(client.DirectConnectOptions{
+    WithDirectConnect(client.DirectConnectOptions{
         URL:                  "cc://127.0.0.1:54321/token",
         SessionKey:           "project-session",
         DeleteSessionOnClose: true,
-    })).
+    }).
     WithCWD(".")
 ```
 
@@ -152,6 +155,21 @@ client.NewOptions().
     WithAppendSystemPrompt("Always respond in Chinese.")
 ```
 
+### Runtime Settings
+
+Inline settings, sandbox settings, debug flags, fixed session IDs, and resume points are configured on `client.Options` and translated to the process bridge:
+
+```go
+enabled := true
+
+client.NewOptions().
+    WithSessionID("00000000-0000-0000-0000-000000000001").
+    WithResumeSessionAt("11111111-1111-1111-1111-111111111111").
+    WithSettingsObject(map[string]any{"model": "sonnet"}).
+    WithSandbox(client.SandboxSettings{Enabled: &enabled}).
+    WithDebugFile("/tmp/nexus-agent-sdk.log")
+```
+
 ### Custom Tools
 
 Define tools in Go via the `tools` package. Registered tools are exposed as MCP tools for the agent to call:
@@ -160,7 +178,7 @@ Define tools in Go via the `tools` package. Registered tools are exposed as MCP 
 searchTool, _ := tools.NewTyped[SearchInput](
     "search_docs",
     "Search the internal documentation",
-    func(ctx context.Context, input SearchInput, tc tools.ToolContext) (tools.Result, error) {
+    func(ctx context.Context, input SearchInput, tc *tools.Context) (tools.Result, error) {
         results := search(input.Query)
         return tools.Text(results), nil
     },
@@ -172,7 +190,7 @@ client.NewOptions().WithCustomTools("my-server", searchTool)
 
 ### MCP Servers
 
-Supports external MCP servers (stdio / SSE / HTTP / WebSocket) and in-process SDK servers:
+Supports external MCP servers (stdio / SSE / HTTP) and in-process SDK servers:
 
 ```go
 client.NewOptions().
@@ -182,6 +200,17 @@ client.NewOptions().
         Env:     map[string]string{"GITHUB_TOKEN": token},
     }).
     WithSDKMCPServer("internal", myInProcessServer)
+```
+
+For Go-native in-process servers, build tools through the `tools` package:
+
+```go
+server := tools.CreateSDKMCPServer(tools.SDKMCPServerOptions{
+    Name:  "internal",
+    Tools: []tools.Tool{searchTool},
+})
+
+client.NewOptions().WithSDKMCPServer("internal", server)
 ```
 
 ### Permissions
@@ -200,6 +229,9 @@ Permission mode can be changed at runtime via `session.Control()`:
 
 ```go
 session.Control().SetPermissionMode(ctx, permission.ModeBypassPermissions)
+commands, _ := session.Control().SupportedCommands(ctx)
+_ = commands
+_ = session.MCP().Reconnect(ctx, "github")
 ```
 
 ### Hooks
@@ -256,9 +288,9 @@ client.NewOptions().
 
 | Package | Description |
 |---------|-------------|
-| `client` | Session management, queries, backend selection, option builder, and callbacks |
-| `protocol` | Message format definitions — content blocks, control requests, and agent definitions |
-| `mcp` | MCP server configuration (stdio / SSE / HTTP / WebSocket / in-process) |
+| `client` | Session management, queries, execution connection, option builder, callbacks, agent definitions, and runtime control results |
+| `protocol` | Streamed message, content block, outbound message, and control wire models |
+| `mcp` | MCP server configuration, SDK server interface, and MCP status results |
 | `tools` | Go-native custom tool definitions and result helpers |
 | `permission` | Permission modes, requests, decisions, and permission updates |
 | `hook` | Hook events, matchers, and callback signatures |

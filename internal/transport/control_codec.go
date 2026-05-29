@@ -182,6 +182,10 @@ func formatControlRequestForClaude(request map[string]any) map[string]any {
 	switch jsonvalue.StringValue(request["subtype"]) {
 	case "initialize":
 		return formatInitializeRequestForClaude(request)
+	case "mcp_reconnect", "mcp_toggle":
+		return renameKeys(request, map[string]string{
+			"server_name": "serverName",
+		})
 	default:
 		return request
 	}
