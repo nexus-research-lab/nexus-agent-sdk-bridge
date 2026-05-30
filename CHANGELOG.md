@@ -4,10 +4,17 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
+## [0.1.2] - 2026-05-30
+
 ### Changed
 
 - Added `client.ErrAborted` as the Go sentinel equivalent of the official SDK `AbortError`; cancellation and interrupt paths keep `context.Canceled` discoverable through `errors.Is`.
 - Added `client.SessionMutationOptions` and changed `RenameSession` / `TagSession` to use it instead of lookup options, matching the native Go SDK API shape.
+
+## [0.1.1] - 2026-05-29
+
+### Changed
+
 - Moved public agent definitions and runtime control result types out of `protocol`: agent definitions and control results now belong to `client`, while MCP status and set-servers results belong to `mcp`.
 - Kept runtime initialization, slash command, model, agent, account, and plugin reload snapshots internal to the bridge client lifecycle instead of exporting them as protocol API.
 - Exposed runtime initialization snapshots, supported commands/models/agents, account info, task stop, flag settings, streaming input, and MCP reconnect/toggle through `client.Session` capability objects.
