@@ -83,12 +83,21 @@ for {
                 fmt.Print(text.Text)
             }
         }
+    case protocol.MessageTypeTaskProgress:
+        fmt.Printf("task %s: %s\n", msg.TaskProgress.TaskID, msg.TaskProgress.Summary)
     case protocol.MessageTypeResult:
         fmt.Println("\n--- done ---")
         return
     }
 }
 ```
+
+Task events are strongly typed as `protocol.MessageTypeTaskStarted`,
+`protocol.MessageTypeTaskProgress`, and `protocol.MessageTypeTaskNotification`.
+Official system-subtype task events remain available under `msg.System.Task*`;
+top-level task events use `msg.TaskStarted`, `msg.TaskProgress`, or
+`msg.TaskNotification`. Task progress and notification messages share
+`protocol.TaskUsage`.
 
 ### Streaming Input
 
@@ -117,6 +126,40 @@ if err != nil {
     return err
 }
 fmt.Println(result.Result)
+```
+
+### Session History
+
+Local session transcripts are stored under `~/.nexus/projects/` by default.
+Lookup and mutation options are intentionally separate: reads use
+`SessionLookupOptions`, while title/tag updates use `SessionMutationOptions`.
+
+```go
+info, err := client.GetSessionInfo(sessionID, client.SessionLookupOptions{})
+if err != nil {
+    return err
+}
+_ = info
+
+if err := client.RenameSession(sessionID, "review notes", client.SessionMutationOptions{}); err != nil {
+    return err
+}
+tag := "review"
+if err := client.TagSession(sessionID, &tag, client.SessionMutationOptions{}); err != nil {
+    return err
+}
+```
+
+### Cancellation
+
+Cancellation and user abort paths return errors that match
+`client.ErrAborted`. Context cancellation is still preserved, so callers can
+check both sentinels:
+
+```go
+if errors.Is(err, client.ErrAborted) || errors.Is(err, context.Canceled) {
+    return nil
+}
 ```
 
 ## Transport

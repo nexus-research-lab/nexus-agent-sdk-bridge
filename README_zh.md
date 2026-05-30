@@ -83,12 +83,20 @@ for {
                 fmt.Print(text.Text)
             }
         }
+    case protocol.MessageTypeTaskProgress:
+        fmt.Printf("task %s: %s\n", msg.TaskProgress.TaskID, msg.TaskProgress.Summary)
     case protocol.MessageTypeResult:
         fmt.Println("\n--- done ---")
         return
     }
 }
 ```
+
+Task 事件使用强类型消息：`protocol.MessageTypeTaskStarted`、
+`protocol.MessageTypeTaskProgress` 和 `protocol.MessageTypeTaskNotification`。
+官方 system subtype 形态仍可从 `msg.System.Task*` 读取；顶层 task 事件使用
+`msg.TaskStarted`、`msg.TaskProgress` 或 `msg.TaskNotification`。
+task progress 和 notification 共用 `protocol.TaskUsage`。
 
 ### 流式输入
 
@@ -117,6 +125,38 @@ if err != nil {
     return err
 }
 fmt.Println(result.Result)
+```
+
+### 会话历史
+
+本地会话记录默认存储在 `~/.nexus/projects/`。查询和修改使用不同 options：
+读取入口使用 `SessionLookupOptions`，标题/标签修改使用 `SessionMutationOptions`。
+
+```go
+info, err := client.GetSessionInfo(sessionID, client.SessionLookupOptions{})
+if err != nil {
+    return err
+}
+_ = info
+
+if err := client.RenameSession(sessionID, "review notes", client.SessionMutationOptions{}); err != nil {
+    return err
+}
+tag := "review"
+if err := client.TagSession(sessionID, &tag, client.SessionMutationOptions{}); err != nil {
+    return err
+}
+```
+
+### 取消语义
+
+用户中断或 context 主动取消会返回可用 `client.ErrAborted` 判定的错误。
+同时保留 `context.Canceled`，调用方可以同时判断两个 sentinel：
+
+```go
+if errors.Is(err, client.ErrAborted) || errors.Is(err, context.Canceled) {
+    return nil
+}
 ```
 
 ## Transport
