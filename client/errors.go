@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os/exec"
@@ -14,6 +15,8 @@ var (
 	ErrNotConnected = errors.New("client: not connected")
 	// ErrNoResult 表示消息流结束前没有收到 result 消息。
 	ErrNoResult = errors.New("client: stream closed before result message")
+	// ErrAborted 表示 SDK 操作被调用方或会话中断取消。
+	ErrAborted = errors.New("client: operation aborted")
 	// ErrBypassPermissionsNotAllowed 表示会话启动时没有允许运行期切换到 bypassPermissions。
 	ErrBypassPermissionsNotAllowed = errors.New("client: bypassPermissions requires allowDangerouslySkipPermissions at session launch")
 )
@@ -114,6 +117,19 @@ type MessageParseError = protocol.MessageParseError
 // NewCLIJSONDecodeError 创建 CLI JSON 解析错误。
 func NewCLIJSONDecodeError(message string, raw string, cause error) *CLIJSONDecodeError {
 	return protocol.NewJSONDecodeErrorWithCause(message, raw, cause)
+}
+
+func abortError(err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, ErrAborted) {
+		return err
+	}
+	if errors.Is(err, context.Canceled) {
+		return fmt.Errorf("%w: %w", ErrAborted, err)
+	}
+	return err
 }
 
 func classifyTransportStartError(options Options, err error) error {

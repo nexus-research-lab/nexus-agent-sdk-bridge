@@ -33,7 +33,7 @@ type Stream struct {
 func Query(ctx context.Context, request QueryRequest) (*Stream, error) {
 	session, err := newSession(ctx, request.Options)
 	if err != nil {
-		return nil, err
+		return nil, abortError(err)
 	}
 
 	stream := &Stream{
@@ -47,7 +47,7 @@ func Query(ctx context.Context, request QueryRequest) (*Stream, error) {
 	}
 	if err := session.core.Query(ctx, request.Prompt); err != nil {
 		_ = session.core.Disconnect(ctx)
-		return nil, err
+		return nil, abortError(err)
 	}
 	go stream.closeInputAfterResult()
 	return stream, nil
@@ -76,7 +76,7 @@ func (s *Stream) Recv(ctx context.Context) (protocol.ReceivedMessage, error) {
 	messages := s.core.Messages()
 	select {
 	case <-ctx.Done():
-		return protocol.ReceivedMessage{}, ctx.Err()
+		return protocol.ReceivedMessage{}, abortError(ctx.Err())
 	case message, ok := <-messages:
 		if !ok {
 			return protocol.ReceivedMessage{}, io.EOF
@@ -92,7 +92,7 @@ func (s *Stream) Result(ctx context.Context) (protocol.ResultMessage, error) {
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				if waitErr := s.core.Wait(); waitErr != nil {
-					return protocol.ResultMessage{}, waitErr
+					return protocol.ResultMessage{}, abortError(waitErr)
 				}
 				return protocol.ResultMessage{}, ErrNoResult
 			}

@@ -49,11 +49,11 @@ func TestSessionCatalogLifecycle(t *testing.T) {
 		t.Fatalf("messages = %#v", messages)
 	}
 
-	if err := RenameSession("session-1", "Custom title", SessionLookupOptions{}); err != nil {
+	if err := RenameSession("session-1", "Custom title", SessionMutationOptions{}); err != nil {
 		t.Fatal(err)
 	}
 	tag := "review"
-	if err := TagSession("session-1", &tag, SessionLookupOptions{}); err != nil {
+	if err := TagSession("session-1", &tag, SessionMutationOptions{}); err != nil {
 		t.Fatal(err)
 	}
 

@@ -33,6 +33,11 @@ type SessionLookupOptions struct {
 	Directory string
 }
 
+// SessionMutationOptions 表示按 session id 修改本地会话元数据的参数。
+type SessionMutationOptions struct {
+	Directory string
+}
+
 // SessionInfo 表示本地持久化会话的摘要信息。
 type SessionInfo struct {
 	SessionID    string
@@ -135,7 +140,7 @@ func GetSessionMessages(sessionID string, options GetSessionMessagesOptions) ([]
 }
 
 // RenameSession 写入自定义会话标题；重复调用时最后一次生效。
-func RenameSession(sessionID string, title string, options SessionLookupOptions) error {
+func RenameSession(sessionID string, title string, options SessionMutationOptions) error {
 	title = strings.TrimSpace(title)
 	if strings.TrimSpace(sessionID) == "" {
 		return errors.New("client: session id is required")
@@ -159,7 +164,7 @@ func RenameSession(sessionID string, title string, options SessionLookupOptions)
 }
 
 // TagSession 写入或清除会话标签；tag 为 nil 时清除标签。
-func TagSession(sessionID string, tag *string, options SessionLookupOptions) error {
+func TagSession(sessionID string, tag *string, options SessionMutationOptions) error {
 	if strings.TrimSpace(sessionID) == "" {
 		return errors.New("client: session id is required")
 	}

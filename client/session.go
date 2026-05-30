@@ -174,11 +174,11 @@ func (s *Session) StreamInput(ctx context.Context, messages <-chan protocol.Outb
 	}
 	select {
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return nil, abortError(ctx.Err())
 	default:
 	}
 	if err := s.core.ConnectWithMessages(ctx, messages); err != nil {
-		return nil, err
+		return nil, abortError(err)
 	}
 	return &Stream{core: s.core}, nil
 }
@@ -216,7 +216,7 @@ func (s *Session) Wait() error {
 	if s == nil || s.core == nil {
 		return nil
 	}
-	return s.core.Wait()
+	return abortError(s.core.Wait())
 }
 
 // Interrupt 中断当前执行。

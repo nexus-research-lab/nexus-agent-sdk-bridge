@@ -77,7 +77,7 @@ func (c *sessionCore) Wait() error {
 	if c.getReadError() == nil {
 		result = withLastErrorResult(result, c.lifecycleState().lastErrorResultValue())
 	}
-	return classifyProcessExitError(joinErrors(c.getReadError(), result))
+	return abortError(classifyProcessExitError(joinErrors(c.getReadError(), result)))
 }
 
 // Disconnect 断开连接。
