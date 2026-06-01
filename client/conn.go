@@ -234,6 +234,7 @@ func (c *sessionCore) SendRawMessage(ctx context.Context, message map[string]any
 		}
 		payload["session_id"] = effectiveSessionID
 	}
+	payload = c.applyNextTurnContext(payload)
 
 	if c.transport == nil {
 		return ErrNotConnected
@@ -344,7 +345,15 @@ func (c *sessionCore) setNextTurnContext(ctx context.Context, blocks []InternalC
 	if !c.supports(CapabilityInternalContext) {
 		return &UnsupportedCapabilityError{Capability: CapabilityInternalContext}
 	}
-	return &UnsupportedCapabilityError{Capability: CapabilityInternalContext}
+	if ctx != nil {
+		select {
+		case <-ctx.Done():
+			return abortError(ctx.Err())
+		default:
+		}
+	}
+	c.nextTurnContextBuffer().set(blocks)
+	return nil
 }
 
 // ReceiveMessages 返回消息流。

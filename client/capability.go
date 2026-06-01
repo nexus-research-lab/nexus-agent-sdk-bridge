@@ -28,10 +28,8 @@ func (s *Session) Supports(capability Capability) bool {
 
 func (c *sessionCore) supports(capability Capability) bool {
 	switch capability {
-	case CapabilitySendOptions, CapabilityTypedUsage, CapabilityTerminalCategory:
+	case CapabilitySendOptions, CapabilityInternalContext, CapabilityTypedUsage, CapabilityTerminalCategory:
 		return true
-	case CapabilityInternalContext:
-		return false
 	default:
 		return false
 	}

@@ -31,6 +31,7 @@ type runner struct {
 	inflightRequests *inflightControlRequests
 	hookCallbacks    *hookCallbackRegistry
 	sdkMCPServers    *registry[mcp.SDKMCPServer]
+	nextTurnContext  *nextTurnContextBuffer
 }
 
 func newSessionCore(options Options) *sessionCore {
@@ -58,6 +59,7 @@ func newRunner(
 		inflightRequests: newInflightControlRequests(),
 		hookCallbacks:    newHookCallbackRegistry(),
 		sdkMCPServers:    newRegistry[mcp.SDKMCPServer](),
+		nextTurnContext:  newNextTurnContextBuffer(),
 	}
 }
 

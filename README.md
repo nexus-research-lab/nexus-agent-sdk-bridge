@@ -139,7 +139,7 @@ usage, ok := result.TokenUsage()
 category := result.TerminalCategory()
 ```
 
-`session.Supports(client.CapabilityInternalContext)` reports whether the backend can inject true internal context. When unsupported, `session.Control().SetNextTurnContext(...)` returns `client.ErrUnsupportedCapability`; hosts should choose their own fallback policy.
+`session.Control().SetNextTurnContext(...)` injects runtime-owned context into the next user turn. For the Claude Code transport, the bridge maps it to a one-shot `<system-reminder>` block so the model can use the context without treating it as a user-authored instruction.
 
 ## Transport
 

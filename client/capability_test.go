@@ -16,8 +16,8 @@ func TestSessionSupportsHostRuntimePrimitives(t *testing.T) {
 	if !session.Supports(CapabilityTerminalCategory) {
 		t.Fatal("Supports(terminal_category) = false, want true")
 	}
-	if session.Supports(CapabilityInternalContext) {
-		t.Fatal("Supports(internal_context) = true, want false for current process bridge")
+	if !session.Supports(CapabilityInternalContext) {
+		t.Fatal("Supports(internal_context) = false, want true")
 	}
 }
 

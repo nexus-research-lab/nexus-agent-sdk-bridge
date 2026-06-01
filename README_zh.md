@@ -81,7 +81,7 @@ usage, ok := result.TokenUsage()
 category := result.TerminalCategory()
 ```
 
-`session.Supports(client.CapabilityInternalContext)` 用于判断后端是否支持真正的内部上下文注入。不支持时，`session.Control().SetNextTurnContext(...)` 会返回 `client.ErrUnsupportedCapability`，由宿主自行决定 fallback 策略。
+`session.Control().SetNextTurnContext(...)` 会把运行时拥有的上下文注入到下一轮用户输入中。对于 Claude Code transport，bridge 会将其映射成一次性的 `<system-reminder>` 文本块，让模型能使用这段上下文，但不把它当成用户亲自发出的指令。
 
 ### 流式输出
 
