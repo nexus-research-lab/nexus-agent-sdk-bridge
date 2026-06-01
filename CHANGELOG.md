@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
+### Changed
+
+- Documented `client.NewOptions().WithCLIPath("nxs")` as the supported way to run the Go-native Nexus runtime executable while keeping default Claude Code command discovery unchanged.
+
 ## [0.1.2] - 2026-05-30
 
 ### Changed

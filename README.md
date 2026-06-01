@@ -171,10 +171,24 @@ themselves.
 | Mode | Configuration |
 |------|---------------|
 | Local CLI (default) | No extra option; the SDK starts the bundled/default CLI process |
-| Explicit CLI path | `client.NewOptions().WithCLIPath("/path/to/cli")` |
+| Nexus native runtime | `client.NewOptions().WithCLIPath("nxs")` |
+| Explicit CLI path | `client.NewOptions().WithCLIPath("/path/to/nxs")` |
 | JavaScript runtime wrapper | `client.NewOptions().WithPathToClaudeCodeExecutable("/path/to/cli.js").WithExecutable("node")` |
 | Direct connect | `client.NewOptions().WithDirectConnect(client.DirectConnectOptions{...})` |
 | Host-managed transport | `client.NewOptions().WithTransport(transport)` |
+
+The default command discovery remains compatible with Claude Code and looks for
+`claude`. To run the Go-native Nexus runtime, build or install the `nxs` binary
+and pass it through `WithCLIPath`; an absolute path is safer when the host
+process has a constrained `PATH`.
+
+```go
+options := client.NewOptions().
+    WithCLIPath("nxs").
+    WithCWD(".")
+```
+
+Direct-connect remains separate when the host manages the runtime process:
 
 ```go
 options := client.NewOptions().

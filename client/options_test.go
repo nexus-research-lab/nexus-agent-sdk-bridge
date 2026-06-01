@@ -10,11 +10,11 @@ import (
 func TestOptionsTransportConfiguration(t *testing.T) {
 	custom := fakeTransport{}
 	options := NewOptions().
-		WithCLIPath("/tmp/nexus-cli").
+		WithCLIPath("nxs").
 		WithDirectConnect(DirectConnectOptions{URL: "cc://127.0.0.1:1234/token"}).
 		WithTransport(custom)
 
-	if options.CLIPath != "/tmp/nexus-cli" {
+	if options.CLIPath != "nxs" {
 		t.Fatalf("CLIPath = %q", options.CLIPath)
 	}
 	if options.Transport == nil {
@@ -23,7 +23,7 @@ func TestOptionsTransportConfiguration(t *testing.T) {
 	if options.DirectConnect != nil {
 		t.Fatalf("DirectConnect = %#v, want cleared by WithTransport", options.DirectConnect)
 	}
-	if got := options.processConfig().CommandPath; got != "/tmp/nexus-cli" {
+	if got := options.processConfig().CommandPath; got != "nxs" {
 		t.Fatalf("process command path = %q", got)
 	}
 }
