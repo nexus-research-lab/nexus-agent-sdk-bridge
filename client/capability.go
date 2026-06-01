@@ -20,13 +20,13 @@ type InternalContextBlock struct {
 
 // Supports 判断当前会话是否支持某个能力。
 func (s *Session) Supports(capability Capability) bool {
-	if s == nil || s.client == nil {
+	if s == nil || s.core == nil {
 		return false
 	}
-	return s.client.supports(capability)
+	return s.core.supports(capability)
 }
 
-func (c *sessionClient) supports(capability Capability) bool {
+func (c *sessionCore) supports(capability Capability) bool {
 	switch capability {
 	case CapabilitySendOptions, CapabilityTypedUsage, CapabilityTerminalCategory:
 		return true

@@ -24,7 +24,7 @@ type PromptRequest struct {
 
 // Stream 表示 SDK 返回的消息流。
 type Stream struct {
-	client     *sessionClient
+	core       *sessionCore
 	ownsClient bool
 	closeInput bool
 }
@@ -33,21 +33,21 @@ type Stream struct {
 func Query(ctx context.Context, request QueryRequest) (*Stream, error) {
 	session, err := newSession(ctx, request.Options)
 	if err != nil {
-		return nil, err
+		return nil, abortError(err)
 	}
 
 	stream := &Stream{
-		client:     session.client,
+		core:       session.core,
 		ownsClient: true,
 		closeInput: request.Messages == nil,
 	}
 	if request.Messages != nil {
-		session.client.startMessageStream(request.Messages)
+		session.core.startMessageStream(request.Messages)
 		return stream, nil
 	}
-	if err := session.client.Query(ctx, request.Prompt); err != nil {
-		_ = session.client.Disconnect(ctx)
-		return nil, err
+	if err := session.core.Query(ctx, request.Prompt); err != nil {
+		_ = session.core.Disconnect(ctx)
+		return nil, abortError(err)
 	}
 	go stream.closeInputAfterResult()
 	return stream, nil
@@ -69,14 +69,14 @@ func Prompt(ctx context.Context, request PromptRequest) (protocol.ResultMessage,
 
 // Recv 读取下一条 SDK 消息。
 func (s *Stream) Recv(ctx context.Context) (protocol.ReceivedMessage, error) {
-	if s == nil || s.client == nil {
+	if s == nil || s.core == nil {
 		return protocol.ReceivedMessage{}, ErrNotConnected
 	}
 
-	messages := s.client.Messages()
+	messages := s.core.Messages()
 	select {
 	case <-ctx.Done():
-		return protocol.ReceivedMessage{}, ctx.Err()
+		return protocol.ReceivedMessage{}, abortError(ctx.Err())
 	case message, ok := <-messages:
 		if !ok {
 			return protocol.ReceivedMessage{}, io.EOF
@@ -92,8 +92,8 @@ func (s *Stream) Result(ctx context.Context) (protocol.ResultMessage, error) {
 		message, err := s.Recv(ctx)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
-				if waitErr := s.client.Wait(); waitErr != nil {
-					return protocol.ResultMessage{}, waitErr
+				if waitErr := s.core.Wait(); waitErr != nil {
+					return protocol.ResultMessage{}, abortError(waitErr)
 				}
 				return protocol.ResultMessage{}, &StreamClosedBeforeTerminalError{
 					LastMessageID:   lastMessage.UUID,
@@ -115,15 +115,15 @@ func (s *Stream) Result(ctx context.Context) (protocol.ResultMessage, error) {
 
 // Close 释放一次性查询持有的底层会话。
 func (s *Stream) Close(ctx context.Context) error {
-	if s == nil || s.client == nil || !s.ownsClient {
+	if s == nil || s.core == nil || !s.ownsClient {
 		return nil
 	}
-	return s.client.Disconnect(ctx)
+	return s.core.Disconnect(ctx)
 }
 
 func (s *Stream) closeInputAfterResult() {
-	if s == nil || s.client == nil || !s.closeInput {
+	if s == nil || s.core == nil || !s.closeInput {
 		return
 	}
-	s.client.finishInputStream()
+	s.core.finishInputStream()
 }

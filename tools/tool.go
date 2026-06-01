@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/mcp"
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/mcpserver"
 )
 
 // Context provides SDK runtime context for one custom tool call.
@@ -185,7 +185,7 @@ func NewTypedTool[T any](
 
 // JSONSchemaFor infers a JSON Schema from a Go type.
 func JSONSchemaFor[T any]() (map[string]any, error) {
-	return mcp.JSONSchemaFor[T]()
+	return mcpserver.JSONSchemaFor[T]()
 }
 
 // Name returns the tool's unique name.
@@ -233,21 +233,21 @@ func (d Definition) ToolMetadata() Metadata {
 	}
 }
 
-func sdkTool(tool Tool) mcp.Tool {
+func sdkTool(tool Tool) mcpserver.Tool {
 	metadata := metadataForTool(tool)
-	return mcp.Tool{
+	return mcpserver.Tool{
 		Name:        tool.Name(),
 		Description: tool.Description(),
 		InputSchema: tool.InputSchema(),
 		SearchHint:  metadata.SearchHint,
 		AlwaysLoad:  metadata.AlwaysLoad,
 		Annotations: sdkAnnotations(metadata.Annotations),
-		Handler: func(ctx context.Context, input map[string]any) (mcp.ToolResult, error) {
+		Handler: func(ctx context.Context, input map[string]any) (mcpserver.ToolResult, error) {
 			result, err := tool.Call(ctx, input, &Context{})
 			if err != nil {
-				return mcp.ToolResult{}, err
+				return mcpserver.ToolResult{}, err
 			}
-			return mcp.ToolResult{
+			return mcpserver.ToolResult{
 				Content:           result.Content,
 				StructuredContent: result.StructuredContent,
 				Meta:              result.Meta,
@@ -280,11 +280,11 @@ func cloneAnnotations(annotations *Annotations) *Annotations {
 	return &copy
 }
 
-func sdkAnnotations(annotations *Annotations) *mcp.ToolAnnotations {
+func sdkAnnotations(annotations *Annotations) *mcpserver.ToolAnnotations {
 	if annotations == nil {
 		return nil
 	}
-	return &mcp.ToolAnnotations{
+	return &mcpserver.ToolAnnotations{
 		ReadOnlyHint:       annotations.ReadOnlyHint,
 		DestructiveHint:    annotations.DestructiveHint,
 		IdempotentHint:     annotations.IdempotentHint,

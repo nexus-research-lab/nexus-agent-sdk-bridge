@@ -1,8 +1,8 @@
-package protocol
+package client
 
 import "github.com/nexus-research-lab/nexus-agent-sdk-bridge/permission"
 
-// AgentDefinition 表示自定义子代理定义。
+// AgentDefinition 表示可通过 Options 注入的子 agent 定义。
 type AgentDefinition struct {
 	Description     string          `json:"description"`
 	Tools           []string        `json:"tools,omitempty"`
@@ -28,8 +28,7 @@ func (d AgentDefinition) Clone() AgentDefinition {
 	return d
 }
 
-// ToMap 将 AgentDefinition 编码为控制协议 agents 负载。
-func (d AgentDefinition) ToMap() map[string]any {
+func (d AgentDefinition) toMap() map[string]any {
 	result := map[string]any{
 		"description": d.Description,
 		"prompt":      d.Prompt,
@@ -70,14 +69,13 @@ func (d AgentDefinition) ToMap() map[string]any {
 	return result
 }
 
-// EncodeAgentDefinitions 编码 agents 控制负载。
-func EncodeAgentDefinitions(definitions map[string]AgentDefinition) map[string]any {
+func encodeAgentDefinitions(definitions map[string]AgentDefinition) map[string]any {
 	if len(definitions) == 0 {
 		return nil
 	}
 	result := make(map[string]any, len(definitions))
 	for name, definition := range definitions {
-		result[name] = definition.ToMap()
+		result[name] = definition.toMap()
 	}
 	return result
 }

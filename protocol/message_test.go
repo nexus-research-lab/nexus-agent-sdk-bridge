@@ -136,7 +136,56 @@ func TestParseResultMessageIgnoresLegacyAliases(t *testing.T) {
 	}
 }
 
-func TestParseStreamRequestStartMessage(t *testing.T) {
+func TestParseTaskProgressMessage(t *testing.T) {
+	message, err := ParseMessage([]byte(`{
+		"type":"task_progress",
+		"session_id":"session-1",
+		"task_id":"task-1",
+		"tool_use_id":"tool-1",
+		"description":"运行子任务",
+		"last_tool_name":"Read",
+		"summary":"已读取文件",
+		"usage":{"total_tokens":123,"tool_uses":2,"duration_ms":456}
+	}`))
+	if err != nil {
+		t.Fatalf("ParseMessage(task_progress) error = %v", err)
+	}
+	if message.Type != MessageTypeTaskProgress {
+		t.Fatalf("Type = %q, want task_progress", message.Type)
+	}
+	if message.TaskProgress == nil {
+		t.Fatal("TaskProgress = nil")
+	}
+	if message.TaskProgress.TaskID != "task-1" {
+		t.Fatalf("TaskID = %q, want task-1", message.TaskProgress.TaskID)
+	}
+	if message.TaskProgress.Usage.TotalTokens != 123 {
+		t.Fatalf("TotalTokens = %d, want 123", message.TaskProgress.Usage.TotalTokens)
+	}
+}
+
+func TestParseSystemTaskNotificationMessage(t *testing.T) {
+	message, err := ParseMessage([]byte(`{
+		"type":"system",
+		"subtype":"task_notification",
+		"session_id":"session-1",
+		"task_id":"task-1",
+		"tool_use_id":"tool-1",
+		"status":"completed",
+		"summary":"完成"
+	}`))
+	if err != nil {
+		t.Fatalf("ParseMessage(system task_notification) error = %v", err)
+	}
+	if message.System == nil || message.System.TaskNotification == nil {
+		t.Fatal("System.TaskNotification = nil")
+	}
+	if message.System.TaskNotification.Status != "completed" {
+		t.Fatalf("Status = %q, want completed", message.System.TaskNotification.Status)
+	}
+}
+
+func TestParseInternalBridgeMessageKeepsRawPayload(t *testing.T) {
 	message, err := ParseMessage([]byte(`{
 		"type":"stream_request_start",
 		"session_id":"session-1"
@@ -144,10 +193,13 @@ func TestParseStreamRequestStartMessage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseMessage(stream_request_start) error = %v", err)
 	}
-	if message.Type != MessageTypeStreamRequestStart {
-		t.Fatalf("Type = %q, want stream_request_start", message.Type)
+	if message.Type != MessageTypeUnknown {
+		t.Fatalf("Type = %q, want unknown", message.Type)
 	}
 	if message.SessionID != "session-1" {
 		t.Fatalf("SessionID = %q, want session-1", message.SessionID)
+	}
+	if message.Raw["type"] != "stream_request_start" {
+		t.Fatalf("Raw[type] = %#v, want stream_request_start", message.Raw["type"])
 	}
 }

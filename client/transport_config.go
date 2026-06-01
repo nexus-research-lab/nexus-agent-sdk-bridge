@@ -14,79 +14,16 @@ import (
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/transport"
 )
 
-// Backend 描述可选的执行后端；未设置时使用本地 process bridge。
-type Backend interface {
-	applyBackend(*Options) backendRuntime
-}
+// Transport 表示可替换的 SDK 底层通信实现。
+type Transport = transport.Transport
 
-type backendRuntime struct {
-	transport Transport
-	external  bool
-}
-
-// ProcessOptions 表示外部进程后端配置。
-type ProcessOptions struct {
-	CommandPath string
-}
-
-type processBackend struct {
-	options ProcessOptions
-}
-
-// ProcessBackend 选择外部进程后端。
-func ProcessBackend(options ProcessOptions) Backend {
-	return processBackend{options: options}
-}
-
-func (b processBackend) applyBackend(options *Options) backendRuntime {
-	options.commandPath = b.options.CommandPath
-	options.directConnect = nil
-	return backendRuntime{external: true}
-}
-
-type directConnectBackend struct {
-	options DirectConnectOptions
-}
-
-// DirectConnectOptions 表示 direct-connect 后端配置。
+// DirectConnectOptions 表示 direct-connect transport 配置。
 type DirectConnectOptions struct {
 	URL                  string
 	SessionKey           string
 	DeleteSessionOnClose bool
 	DialTimeout          time.Duration
 	HTTPClient           *http.Client
-}
-
-// DirectConnectBackend 选择 direct-connect 后端。
-func DirectConnectBackend(options DirectConnectOptions) Backend {
-	return directConnectBackend{options: options}
-}
-
-func (b directConnectBackend) applyBackend(options *Options) backendRuntime {
-	options.directConnect = cloneDirectConnectOptions(&b.options)
-	return backendRuntime{external: true}
-}
-
-type transportBackend struct {
-	transport Transport
-}
-
-// TransportBackend 注入自定义后端传输。
-func TransportBackend(transport Transport) Backend {
-	return transportBackend{transport: transport}
-}
-
-func (b transportBackend) applyBackend(*Options) backendRuntime {
-	return backendRuntime{transport: b.transport, external: true}
-}
-
-func applyBackend(options Options) (Options, Transport) {
-	if options.Backend == nil {
-		return options, nil
-	}
-	runtime := options.Backend.applyBackend(&options)
-	options.usesExternalBackend = runtime.external
-	return options, runtime.transport
 }
 
 // DirectConnectEndpoint 表示解析后的 direct-connect 地址。
@@ -110,16 +47,20 @@ func ParseDirectConnectURL(raw string) (DirectConnectEndpoint, error) {
 	}, nil
 }
 
-// Transport 表示可替换的 SDK 底层传输实现。
-type Transport = transport.Transport
-
-func buildProcessBackendArgs(o resolvedOptions) []string {
-	args := []string{
+func buildProcessTransportArgs(o resolvedOptions) []string {
+	args := []string{}
+	if strings.TrimSpace(o.Executable) != "" {
+		args = append(args, o.ExecutableArgs...)
+		if scriptPath := processClaudeCodeScriptPath(o); scriptPath != "" {
+			args = append(args, scriptPath)
+		}
+	}
+	args = append(args,
 		"--output-format", "stream-json",
 		"--verbose",
 		"--input-format", "stream-json",
-	}
-	effectiveAllowedTools, effectiveSettingSources := processBackendSkillDefaults(o)
+	)
+	effectiveAllowedTools, effectiveSettingSources := processTransportSkillDefaults(o)
 
 	switch {
 	case strings.TrimSpace(o.SystemPromptFile) != "":
@@ -176,10 +117,19 @@ func buildProcessBackendArgs(o resolvedOptions) []string {
 	if o.Resume != "" {
 		args = append(args, "--resume", o.Resume)
 	}
+	if o.SessionID != "" {
+		args = append(args, "--session-id", o.SessionID)
+	}
+	if o.ResumeSessionAt != "" {
+		args = append(args, "--resume-session-at", o.ResumeSessionAt)
+	}
+	if o.SessionTitle != "" {
+		args = append(args, "--name", o.SessionTitle)
+	}
 	if o.Agent != "" {
 		args = append(args, "--agent", o.Agent)
 	}
-	if settingsValue := buildProcessBackendSettingsValue(o); settingsValue != "" {
+	if settingsValue := buildProcessTransportSettingsValue(o); settingsValue != "" {
 		args = append(args, "--settings", settingsValue)
 	}
 	if len(effectiveSettingSources) > 0 {
@@ -188,7 +138,7 @@ func buildProcessBackendArgs(o resolvedOptions) []string {
 	for _, directory := range o.AdditionalDirectories {
 		args = append(args, "--add-dir", directory)
 	}
-	if mcpConfigValue := buildProcessBackendMCPConfigValue(o); mcpConfigValue != "" {
+	if mcpConfigValue := buildProcessTransportMCPConfigValue(o); mcpConfigValue != "" {
 		args = append(args, "--mcp-config", mcpConfigValue)
 	}
 	for _, plugin := range o.Plugins {
@@ -238,6 +188,12 @@ func buildProcessBackendArgs(o resolvedOptions) []string {
 	if o.ExcludeDynamicSections != nil && *o.ExcludeDynamicSections {
 		args = append(args, "--exclude-dynamic-system-prompt-sections")
 	}
+	if o.Debug {
+		args = append(args, "--debug")
+	}
+	if o.DebugFile != "" {
+		args = append(args, "--debug-file", o.DebugFile)
+	}
 
 	boolArgKeys := append([]string(nil), o.ExtraBoolArgs...)
 	sort.Strings(boolArgKeys)
@@ -257,7 +213,24 @@ func buildProcessBackendArgs(o resolvedOptions) []string {
 	return args
 }
 
-func processBackendSkillDefaults(o resolvedOptions) ([]string, []string) {
+func processCommandPath(o resolvedOptions) string {
+	if strings.TrimSpace(o.Executable) != "" {
+		return o.Executable
+	}
+	if strings.TrimSpace(o.PathToExecutable) != "" {
+		return o.PathToExecutable
+	}
+	return o.CommandPath
+}
+
+func processClaudeCodeScriptPath(o resolvedOptions) string {
+	if strings.TrimSpace(o.PathToExecutable) != "" {
+		return o.PathToExecutable
+	}
+	return o.CommandPath
+}
+
+func processTransportSkillDefaults(o resolvedOptions) ([]string, []string) {
 	allowedTools := append([]string(nil), o.AllowedTools...)
 	settingSources := append([]string(nil), o.SettingSources...)
 
@@ -290,11 +263,47 @@ func appendStringOnce(values []string, value string) []string {
 	}
 	return append(values, value)
 }
-func buildProcessBackendSettingsValue(o resolvedOptions) string {
-	return o.Settings
+func buildProcessTransportSettingsValue(o resolvedOptions) string {
+	settings, ok, err := decodeInlineSettingsObject(o.Settings)
+	if err != nil {
+		return o.Settings
+	}
+	if !ok {
+		settings = map[string]any{}
+	}
+	mergeAnyMap(settings, o.SettingsObject)
+	if o.Sandbox != nil {
+		settings["sandbox"] = sandboxSettingsMap(o.Sandbox)
+	}
+	if len(settings) == 0 {
+		return o.Settings
+	}
+	return mustJSONString(settings)
 }
 
-func buildProcessBackendMCPConfigValue(o resolvedOptions) string {
+func mergeAnyMap(dst map[string]any, src map[string]any) {
+	for key, value := range src {
+		dst[key] = value
+	}
+}
+
+func sandboxSettingsMap(settings *SandboxSettings) map[string]any {
+	if settings == nil {
+		return nil
+	}
+	data, err := json.Marshal(settings)
+	if err != nil {
+		return map[string]any{}
+	}
+	value := map[string]any{}
+	if err := json.Unmarshal(data, &value); err != nil {
+		return map[string]any{}
+	}
+	mergeAnyMap(value, settings.Extra)
+	return value
+}
+
+func buildProcessTransportMCPConfigValue(o resolvedOptions) string {
 	if strings.TrimSpace(o.MCPConfig) != "" {
 		return o.MCPConfig
 	}
@@ -321,7 +330,7 @@ const (
 	processOAuthRefreshEnv      = "CLAUDE_CODE_SDK_HAS_OAUTH_REFRESH"
 )
 
-func buildDirectConnectBackendConfig(o resolvedOptions) (transport.DirectConnectConfig, error) {
+func buildDirectConnectTransportConfig(o resolvedOptions) (transport.DirectConnectConfig, error) {
 	if o.DirectConnect == nil {
 		return transport.DirectConnectConfig{}, errors.New("client: direct connect config is not configured")
 	}
@@ -344,7 +353,7 @@ func buildDirectConnectBackendConfig(o resolvedOptions) (transport.DirectConnect
 	}, nil
 }
 
-func buildProcessBackendConfig(o resolvedOptions) transport.ProcessConfig {
+func buildProcessTransportConfig(o resolvedOptions) transport.ProcessConfig {
 	processEnv := map[string]string{}
 	for key, value := range o.Env {
 		processEnv[key] = value
@@ -358,11 +367,11 @@ func buildProcessBackendConfig(o resolvedOptions) transport.ProcessConfig {
 		processEnv[processOAuthRefreshEnv] = "1"
 	}
 	return transport.ProcessConfig{
-		CommandPath:   o.CommandPath,
+		CommandPath:   processCommandPath(o),
 		CWD:           o.CWD,
 		User:          o.User,
 		MaxBufferSize: o.MaxBufferSize,
-		Args:          buildProcessBackendArgs(o),
+		Args:          buildProcessTransportArgs(o),
 		Env:           processEnv,
 		Stderr:        o.Stderr,
 		Diagnostics:   processDiagnosticHandler(o.Diagnostics),

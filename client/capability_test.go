@@ -6,7 +6,7 @@ import (
 )
 
 func TestSessionSupportsHostRuntimePrimitives(t *testing.T) {
-	session := &Session{client: newSessionClient(Options{})}
+	session := &Session{core: newSessionCore(Options{})}
 	if !session.Supports(CapabilitySendOptions) {
 		t.Fatal("Supports(send_options) = false, want true")
 	}

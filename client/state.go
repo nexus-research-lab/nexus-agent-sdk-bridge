@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/hook"
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/runtimeinfo"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/protocol"
 )
 
@@ -22,7 +23,7 @@ type sessionLifecycle struct {
 	sessionID          string
 	readErr            error
 	lastErrorResult    string
-	initializeResponse protocol.InitializeResponse
+	initializeResponse runtimeinfo.InitializeResponse
 
 	inputStreamMu     sync.RWMutex
 	inputStreamActive bool
@@ -81,7 +82,7 @@ func (l *sessionLifecycle) resetRuntimeState(sessionID string) {
 	l.sessionID = sessionID
 	l.readErr = nil
 	l.lastErrorResult = ""
-	l.initializeResponse = protocol.InitializeResponse{}
+	l.initializeResponse = runtimeinfo.InitializeResponse{}
 	l.stateMu.Unlock()
 }
 
@@ -139,13 +140,13 @@ func (l *sessionLifecycle) currentSessionID(defaultSessionID string, optionSessi
 	return defaultSessionID
 }
 
-func (l *sessionLifecycle) setInitializeResponse(response protocol.InitializeResponse) {
+func (l *sessionLifecycle) setInitializeResponse(response runtimeinfo.InitializeResponse) {
 	l.stateMu.Lock()
 	l.initializeResponse = response
 	l.stateMu.Unlock()
 }
 
-func (l *sessionLifecycle) initializeResponseValue() protocol.InitializeResponse {
+func (l *sessionLifecycle) initializeResponseValue() runtimeinfo.InitializeResponse {
 	l.stateMu.RLock()
 	defer l.stateMu.RUnlock()
 	return l.initializeResponse

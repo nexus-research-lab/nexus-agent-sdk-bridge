@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os/exec"
@@ -14,49 +15,51 @@ var (
 	ErrNotConnected = errors.New("client: not connected")
 	// ErrNoResult 表示消息流结束前没有收到 result 消息。
 	ErrNoResult = errors.New("client: stream closed before result message")
+	// ErrAborted 表示 SDK 操作被调用方或会话中断取消。
+	ErrAborted = errors.New("client: operation aborted")
 	// ErrBypassPermissionsNotAllowed 表示会话启动时没有允许运行期切换到 bypassPermissions。
 	ErrBypassPermissionsNotAllowed = errors.New("client: bypassPermissions requires allowDangerouslySkipPermissions at session launch")
 	// ErrUnsupportedCapability 表示当前后端不支持请求的运行时能力。
 	ErrUnsupportedCapability = errors.New("client: unsupported runtime capability")
 )
 
-// BackendNotFoundError 表示后端可执行文件未找到。
-type BackendNotFoundError struct {
+// CLINotFoundError 表示本地 CLI 可执行文件未找到。
+type CLINotFoundError struct {
 	Command string
 	Cause   error
 }
 
-func (e *BackendNotFoundError) Error() string {
+func (e *CLINotFoundError) Error() string {
 	command := strings.TrimSpace(e.Command)
 	if command == "" {
-		command = "backend"
+		command = "cli"
 	}
-	message := fmt.Sprintf("client: backend executable %q not found", command)
+	message := fmt.Sprintf("client: cli executable %q not found", command)
 	if e.Cause != nil {
 		message += ": " + e.Cause.Error()
 	}
 	return message
 }
 
-func (e *BackendNotFoundError) Unwrap() error {
+func (e *CLINotFoundError) Unwrap() error {
 	return e.Cause
 }
 
-func (e *BackendNotFoundError) Is(target error) bool {
-	_, ok := target.(*BackendNotFoundError)
+func (e *CLINotFoundError) Is(target error) bool {
+	_, ok := target.(*CLINotFoundError)
 	return ok
 }
 
-// BackendConnectionError 表示 SDK 与底层后端传输连接失败。
-type BackendConnectionError struct {
+// CLIConnectionError 表示 SDK 与底层 CLI transport 连接失败。
+type CLIConnectionError struct {
 	Message string
 	Cause   error
 }
 
-func (e *BackendConnectionError) Error() string {
+func (e *CLIConnectionError) Error() string {
 	message := strings.TrimSpace(e.Message)
 	if message == "" {
-		message = "client: backend connection failed"
+		message = "client: cli connection failed"
 	}
 	if e.Cause != nil {
 		message += ": " + e.Cause.Error()
@@ -64,27 +67,27 @@ func (e *BackendConnectionError) Error() string {
 	return message
 }
 
-func (e *BackendConnectionError) Unwrap() error {
+func (e *CLIConnectionError) Unwrap() error {
 	return e.Cause
 }
 
-func (e *BackendConnectionError) Is(target error) bool {
-	_, ok := target.(*BackendConnectionError)
+func (e *CLIConnectionError) Is(target error) bool {
+	_, ok := target.(*CLIConnectionError)
 	return ok
 }
 
-// BackendProcessError 表示底层进程后端异常退出。
-type BackendProcessError struct {
+// ProcessError 表示底层 CLI 进程异常退出。
+type ProcessError struct {
 	Message  string
 	Stderr   string
 	ExitCode int
 	Cause    error
 }
 
-func (e *BackendProcessError) Error() string {
+func (e *ProcessError) Error() string {
 	message := strings.TrimSpace(e.Message)
 	if message == "" {
-		message = "client: backend process exited with error"
+		message = "client: cli process exited with error"
 	}
 	if e.ExitCode != 0 {
 		message = fmt.Sprintf("%s (exit code %d)", message, e.ExitCode)
@@ -98,17 +101,17 @@ func (e *BackendProcessError) Error() string {
 	return message
 }
 
-func (e *BackendProcessError) Unwrap() error {
+func (e *ProcessError) Unwrap() error {
 	return e.Cause
 }
 
-func (e *BackendProcessError) Is(target error) bool {
-	_, ok := target.(*BackendProcessError)
+func (e *ProcessError) Is(target error) bool {
+	_, ok := target.(*ProcessError)
 	return ok
 }
 
-// BackendJSONDecodeError 表示底层后端输出了无法解析的 JSON 消息。
-type BackendJSONDecodeError = protocol.JSONDecodeError
+// CLIJSONDecodeError 表示底层 CLI 输出了无法解析的 JSON 消息。
+type CLIJSONDecodeError = protocol.JSONDecodeError
 
 // MessageParseError 表示底层消息结构无法映射到 SDK 协议模型。
 type MessageParseError = protocol.MessageParseError
@@ -168,30 +171,43 @@ func (e *StreamClosedBeforeTerminalError) Is(target error) bool {
 	return target == ErrNoResult
 }
 
-// NewBackendJSONDecodeError 创建后端 JSON 解析错误。
-func NewBackendJSONDecodeError(message string, raw string, cause error) *BackendJSONDecodeError {
+// NewCLIJSONDecodeError 创建 CLI JSON 解析错误。
+func NewCLIJSONDecodeError(message string, raw string, cause error) *CLIJSONDecodeError {
 	return protocol.NewJSONDecodeErrorWithCause(message, raw, cause)
+}
+
+func abortError(err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, ErrAborted) {
+		return err
+	}
+	if errors.Is(err, context.Canceled) {
+		return fmt.Errorf("%w: %w", ErrAborted, err)
+	}
+	return err
 }
 
 func classifyTransportStartError(options Options, err error) error {
 	if err == nil {
 		return nil
 	}
-	var notFound *BackendNotFoundError
+	var notFound *CLINotFoundError
 	if errors.As(err, &notFound) {
 		return err
 	}
 	if isExecNotFound(err) {
-		return &BackendNotFoundError{
-			Command: backendCommandName(options, err),
+		return &CLINotFoundError{
+			Command: cliCommandName(options, err),
 			Cause:   err,
 		}
 	}
-	var connection *BackendConnectionError
+	var connection *CLIConnectionError
 	if errors.As(err, &connection) {
 		return err
 	}
-	return &BackendConnectionError{
+	return &CLIConnectionError{
 		Message: "client: start sdk transport failed",
 		Cause:   err,
 	}
@@ -201,7 +217,7 @@ func classifyProcessExitError(err error) error {
 	if err == nil {
 		return nil
 	}
-	var processErr *BackendProcessError
+	var processErr *ProcessError
 	if errors.As(err, &processErr) {
 		return err
 	}
@@ -209,7 +225,7 @@ func classifyProcessExitError(err error) error {
 	if !errors.As(err, &exitErr) {
 		return err
 	}
-	return &BackendProcessError{
+	return &ProcessError{
 		ExitCode: exitErr.ExitCode(),
 		Stderr:   string(exitErr.Stderr),
 		Cause:    err,
@@ -226,12 +242,12 @@ func withLastErrorResult(err error, text string) error {
 	}
 
 	classified := classifyProcessExitError(err)
-	var processErr *BackendProcessError
+	var processErr *ProcessError
 	if !errors.As(classified, &processErr) {
 		return classified
 	}
-	return &BackendProcessError{
-		Message:  "process backend returned an error result: " + text,
+	return &ProcessError{
+		Message:  "cli process returned an error result: " + text,
 		ExitCode: processErr.ExitCode,
 		Stderr:   processErr.Stderr,
 		Cause:    processErr.Cause,
@@ -246,14 +262,14 @@ func isExecNotFound(err error) bool {
 	return errors.As(err, &execErr) && errors.Is(execErr.Err, exec.ErrNotFound)
 }
 
-func backendCommandName(options Options, cause error) string {
-	command := strings.TrimSpace(options.commandPath)
+func cliCommandName(options Options, cause error) string {
+	command := strings.TrimSpace(options.CLIPath)
 	if command == "" {
 		var execErr *exec.Error
 		if errors.As(cause, &execErr) && strings.TrimSpace(execErr.Name) != "" {
 			return strings.TrimSpace(execErr.Name)
 		}
-		return "process backend"
+		return "cli"
 	}
 	return command
 }
