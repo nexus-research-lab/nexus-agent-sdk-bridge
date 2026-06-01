@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
+## [0.1.3] - 2026-06-01
+
 ### Added
 
 - Runtime primitives for long-running host features: typed token usage helpers, terminal result classification, outbound send options, capability detection, and structured stream-close errors.
