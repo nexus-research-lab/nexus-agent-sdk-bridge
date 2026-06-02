@@ -215,7 +215,7 @@ func (m *ProcessManager) Start(ctx context.Context) error {
 	m.stderrWriter = stderrWriter
 
 	m.stderrWG.Add(1)
-	go m.readStderr()
+	go m.readStderr(stderrReader)
 
 	go func() {
 		defer close(m.done)
@@ -533,6 +533,7 @@ func (m *ProcessManager) Wait() error {
 	}
 
 	<-m.done
+	m.closeOutputPipes()
 	m.stderrWG.Wait()
 	return normalizeExitError(m.waitError())
 }
@@ -570,18 +571,24 @@ func (m *ProcessManager) Close() error {
 			}
 		}
 
+		m.closeOutputPipes()
 		m.stderrWG.Wait()
-		if m.stdout != nil {
-			_ = m.stdout.Close()
-		}
-		if m.stderr != nil {
-			_ = m.stderr.Close()
-		}
 		if !forcedExit {
 			closeErr = normalizeExitError(m.waitError())
 		}
 	})
 	return closeErr
+}
+
+func (m *ProcessManager) closeOutputPipes() {
+	if m.stdout != nil {
+		_ = m.stdout.Close()
+		m.stdout = nil
+	}
+	if m.stderr != nil {
+		_ = m.stderr.Close()
+		m.stderr = nil
+	}
 }
 
 func (m *ProcessManager) waitForDone(timeout time.Duration) bool {
@@ -593,10 +600,13 @@ func (m *ProcessManager) waitForDone(timeout time.Duration) bool {
 	}
 }
 
-func (m *ProcessManager) readStderr() {
+func (m *ProcessManager) readStderr(stderr io.Reader) {
 	defer m.stderrWG.Done()
+	if stderr == nil {
+		return
+	}
 
-	reader := bufio.NewReader(m.stderr)
+	reader := bufio.NewReader(stderr)
 	for {
 		line, err := reader.ReadString('\n')
 		line = strings.TrimSpace(line)
@@ -608,7 +618,7 @@ func (m *ProcessManager) readStderr() {
 		}
 
 		if err != nil {
-			if errors.Is(err, io.EOF) {
+			if errors.Is(err, io.EOF) || isClosedReadError(err) {
 				return
 			}
 			m.emitDiagnostic("stderr_read_error", map[string]any{

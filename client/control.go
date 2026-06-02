@@ -285,27 +285,27 @@ func (c *sessionCore) handleControlRequest(payload map[string]any) {
 		if ctx.Err() != nil {
 			return
 		}
-		_ = c.transport.WriteJSON(protocol.NewControlSuccessResponse(requestID, response))
+		c.writeControlResponse(protocol.NewControlSuccessResponse(requestID, response))
 	case "hook_callback":
 		response, err := c.resolveHookCallback(ctx, request)
 		if ctx.Err() != nil {
 			return
 		}
 		if err != nil {
-			_ = c.transport.WriteJSON(protocol.NewControlErrorResponse(requestID, err.Error()))
+			c.writeControlResponse(protocol.NewControlErrorResponse(requestID, err.Error()))
 			return
 		}
-		_ = c.transport.WriteJSON(protocol.NewControlSuccessResponse(requestID, response))
+		c.writeControlResponse(protocol.NewControlSuccessResponse(requestID, response))
 	case "mcp_message":
 		response, err := c.resolveMCPMessage(ctx, request)
 		if ctx.Err() != nil {
 			return
 		}
 		if err != nil {
-			_ = c.transport.WriteJSON(protocol.NewControlErrorResponse(requestID, err.Error()))
+			c.writeControlResponse(protocol.NewControlErrorResponse(requestID, err.Error()))
 			return
 		}
-		_ = c.transport.WriteJSON(protocol.NewControlSuccessResponse(requestID, map[string]any{
+		c.writeControlResponse(protocol.NewControlSuccessResponse(requestID, map[string]any{
 			"mcp_response": response,
 		}))
 	case "elicitation":
@@ -314,34 +314,44 @@ func (c *sessionCore) handleControlRequest(payload map[string]any) {
 			return
 		}
 		if err != nil {
-			_ = c.transport.WriteJSON(protocol.NewControlErrorResponse(requestID, err.Error()))
+			c.writeControlResponse(protocol.NewControlErrorResponse(requestID, err.Error()))
 			return
 		}
-		_ = c.transport.WriteJSON(protocol.NewControlSuccessResponse(requestID, response))
+		c.writeControlResponse(protocol.NewControlSuccessResponse(requestID, response))
 	case "request_user_dialog":
 		response, err := c.resolveUserDialog(ctx, request)
 		if ctx.Err() != nil {
 			return
 		}
 		if err != nil {
-			_ = c.transport.WriteJSON(protocol.NewControlErrorResponse(requestID, err.Error()))
+			c.writeControlResponse(protocol.NewControlErrorResponse(requestID, err.Error()))
 			return
 		}
-		_ = c.transport.WriteJSON(protocol.NewControlSuccessResponse(requestID, response))
+		c.writeControlResponse(protocol.NewControlSuccessResponse(requestID, response))
 	case "oauth_token_refresh":
 		response, err := c.resolveOAuthTokenRefresh(ctx)
 		if ctx.Err() != nil {
 			return
 		}
 		if err != nil {
-			_ = c.transport.WriteJSON(protocol.NewControlErrorResponse(requestID, err.Error()))
+			c.writeControlResponse(protocol.NewControlErrorResponse(requestID, err.Error()))
 			return
 		}
-		_ = c.transport.WriteJSON(protocol.NewControlSuccessResponse(requestID, response))
+		c.writeControlResponse(protocol.NewControlSuccessResponse(requestID, response))
 	default:
-		_ = c.transport.WriteJSON(
+		c.writeControlResponse(
 			protocol.NewControlErrorResponse(requestID, fmt.Sprintf("unsupported control request subtype: %s", subtype)),
 		)
+	}
+}
+
+func (c *sessionCore) writeControlResponse(payload any) {
+	if c.transport == nil {
+		c.markTransportFailed(ErrNotConnected)
+		return
+	}
+	if err := c.transport.WriteJSON(payload); err != nil {
+		c.markTransportFailed(fmt.Errorf("client: send control response failed: %w", err))
 	}
 }
 

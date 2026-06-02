@@ -8,6 +8,10 @@ All notable changes to this project are documented in this file.
 
 - Documented `client.NewOptions().WithCLIPath("nxs")` as the supported way to run the Go-native Nexus runtime executable while keeping default Claude Code command discovery unchanged.
 
+### Fixed
+
+- Fixed process transport teardown so inherited stderr pipes and failed control response writes cannot leave SDK sessions stuck after hook callback stream closure.
+
 ## [0.1.2] - 2026-05-30
 
 ### Changed
