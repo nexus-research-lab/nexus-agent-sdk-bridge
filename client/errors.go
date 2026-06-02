@@ -19,6 +19,8 @@ var (
 	ErrAborted = errors.New("client: operation aborted")
 	// ErrBypassPermissionsNotAllowed 表示会话启动时没有允许运行期切换到 bypassPermissions。
 	ErrBypassPermissionsNotAllowed = errors.New("client: bypassPermissions requires allowDangerouslySkipPermissions at session launch")
+	// ErrUnsupportedCapability 表示当前后端不支持请求的运行时能力。
+	ErrUnsupportedCapability = errors.New("client: unsupported runtime capability")
 )
 
 // CLINotFoundError 表示本地 CLI 可执行文件未找到。
@@ -113,6 +115,61 @@ type CLIJSONDecodeError = protocol.JSONDecodeError
 
 // MessageParseError 表示底层消息结构无法映射到 SDK 协议模型。
 type MessageParseError = protocol.MessageParseError
+
+// UnsupportedCapabilityError 表示某个运行时能力在当前后端不可用。
+type UnsupportedCapabilityError struct {
+	Capability Capability
+}
+
+func (e *UnsupportedCapabilityError) Error() string {
+	if e == nil || e.Capability == "" {
+		return ErrUnsupportedCapability.Error()
+	}
+	return fmt.Sprintf("%s: %s", ErrUnsupportedCapability.Error(), e.Capability)
+}
+
+func (e *UnsupportedCapabilityError) Is(target error) bool {
+	return target == ErrUnsupportedCapability
+}
+
+// StreamClosedBeforeTerminalError 表示消息流在收到 terminal result 前关闭。
+type StreamClosedBeforeTerminalError struct {
+	LastMessageID   string
+	LastMessageType string
+	SessionID       string
+	Cause           error
+}
+
+func (e *StreamClosedBeforeTerminalError) Error() string {
+	message := ErrNoResult.Error()
+	if e == nil {
+		return message
+	}
+	if e.LastMessageType != "" {
+		message += "; last_message_type=" + e.LastMessageType
+	}
+	if e.LastMessageID != "" {
+		message += "; last_message_id=" + e.LastMessageID
+	}
+	if e.SessionID != "" {
+		message += "; session_id=" + e.SessionID
+	}
+	if e.Cause != nil {
+		message += ": " + e.Cause.Error()
+	}
+	return message
+}
+
+func (e *StreamClosedBeforeTerminalError) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.Cause
+}
+
+func (e *StreamClosedBeforeTerminalError) Is(target error) bool {
+	return target == ErrNoResult
+}
 
 // NewCLIJSONDecodeError 创建 CLI JSON 解析错误。
 func NewCLIJSONDecodeError(message string, raw string, cause error) *CLIJSONDecodeError {

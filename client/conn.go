@@ -196,15 +196,25 @@ func (c *sessionCore) Query(ctx context.Context, prompt string) error {
 
 // Send 发送一条用户消息。
 func (c *sessionCore) Send(ctx context.Context, prompt string, parentToolUseID *string, sessionID string) error {
-	return c.sendContent(ctx, prompt, parentToolUseID, sessionID)
+	return c.SendWithOptions(ctx, prompt, parentToolUseID, sessionID, protocol.OutboundMessageOptions{})
+}
+
+// SendWithOptions 发送一条带附加语义的用户消息。
+func (c *sessionCore) SendWithOptions(ctx context.Context, prompt string, parentToolUseID *string, sessionID string, options protocol.OutboundMessageOptions) error {
+	return c.sendContentWithOptions(ctx, prompt, parentToolUseID, sessionID, options)
 }
 
 // SendMessage 发送一条强类型 SDK 消息。
 func (c *sessionCore) SendMessage(ctx context.Context, message protocol.OutboundMessage, sessionID string) error {
+	return c.SendMessageWithOptions(ctx, message, sessionID, protocol.OutboundMessageOptions{})
+}
+
+// SendMessageWithOptions 发送一条带附加语义的强类型 SDK 消息。
+func (c *sessionCore) SendMessageWithOptions(ctx context.Context, message protocol.OutboundMessage, sessionID string, options protocol.OutboundMessageOptions) error {
 	if message == nil {
 		return nil
 	}
-	return c.SendRawMessage(ctx, protocol.EncodeOutboundMessage(message, sessionID), sessionID)
+	return c.SendRawMessage(ctx, protocol.EncodeOutboundMessageWithOptions(message, sessionID, options), sessionID)
 }
 
 // SendRawMessage 发送一条原始 SDK 消息。
@@ -224,6 +234,7 @@ func (c *sessionCore) SendRawMessage(ctx context.Context, message map[string]any
 		}
 		payload["session_id"] = effectiveSessionID
 	}
+	payload = c.applyNextTurnContext(payload)
 
 	if c.transport == nil {
 		return ErrNotConnected
@@ -300,6 +311,10 @@ func (c *sessionCore) finishInputStreamFor(streams *sessionStreams) {
 }
 
 func (c *sessionCore) sendContent(ctx context.Context, content any, parentToolUseID *string, sessionID string) error {
+	return c.sendContentWithOptions(ctx, content, parentToolUseID, sessionID, protocol.OutboundMessageOptions{})
+}
+
+func (c *sessionCore) sendContentWithOptions(ctx context.Context, content any, parentToolUseID *string, sessionID string, options protocol.OutboundMessageOptions) error {
 	if !c.isConnected() {
 		return ErrNotConnected
 	}
@@ -318,8 +333,27 @@ func (c *sessionCore) sendContent(ctx context.Context, content any, parentToolUs
 			"content": content,
 		},
 	}
+	payload = protocol.ApplyOutboundMessageOptions(payload, options)
 
 	return c.SendRawMessage(ctx, payload, effectiveSessionID)
+}
+
+func (c *sessionCore) setNextTurnContext(ctx context.Context, blocks []InternalContextBlock) error {
+	if !c.isConnected() {
+		return ErrNotConnected
+	}
+	if !c.supports(CapabilityInternalContext) {
+		return &UnsupportedCapabilityError{Capability: CapabilityInternalContext}
+	}
+	if ctx != nil {
+		select {
+		case <-ctx.Done():
+			return abortError(ctx.Err())
+		default:
+		}
+	}
+	c.nextTurnContextBuffer().set(blocks)
+	return nil
 }
 
 // ReceiveMessages 返回消息流。

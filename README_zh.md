@@ -61,6 +61,28 @@ if err != nil {
 fmt.Println(result.Result)
 ```
 
+### 运行时原语
+
+宿主可以给出站消息附加通用元数据，不影响普通 `Send` 行为：
+
+```go
+stream, err := session.SendWithOptions(ctx, "继续内部任务。", protocol.OutboundMessageOptions{
+    Meta:           true,
+    Synthetic:      true,
+    HiddenFromUser: true,
+    Purpose:        "host_continuation",
+})
+```
+
+`ResultMessage` 提供 host 编排可用的 helper：
+
+```go
+usage, ok := result.TokenUsage()
+category := result.TerminalCategory()
+```
+
+`session.Control().SetNextTurnContext(...)` 会把运行时拥有的上下文注入到下一轮用户输入中。对于 Claude Code transport，bridge 会将其映射成一次性的 `<system-reminder>` 文本块，让模型能使用这段上下文，但不把它当成用户亲自发出的指令。
+
 ### 流式输出
 
 通过 `stream.Recv()` 逐条读取 Agent 返回的消息，实时处理文本、工具调用等内容：

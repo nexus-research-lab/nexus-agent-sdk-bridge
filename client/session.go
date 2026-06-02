@@ -31,6 +31,7 @@ type runner struct {
 	inflightRequests *inflightControlRequests
 	hookCallbacks    *hookCallbackRegistry
 	sdkMCPServers    *registry[mcp.SDKMCPServer]
+	nextTurnContext  *nextTurnContextBuffer
 }
 
 func newSessionCore(options Options) *sessionCore {
@@ -58,6 +59,7 @@ func newRunner(
 		inflightRequests: newInflightControlRequests(),
 		hookCallbacks:    newHookCallbackRegistry(),
 		sdkMCPServers:    newRegistry[mcp.SDKMCPServer](),
+		nextTurnContext:  newNextTurnContextBuffer(),
 	}
 }
 
@@ -144,10 +146,15 @@ func newSession(ctx context.Context, options Options) (*Session, error) {
 
 // Send 发送一条文本用户消息并返回本轮响应流。
 func (s *Session) Send(ctx context.Context, prompt string) (*Stream, error) {
+	return s.SendWithOptions(ctx, prompt, protocol.OutboundMessageOptions{})
+}
+
+// SendWithOptions 发送一条带附加语义的文本用户消息并返回本轮响应流。
+func (s *Session) SendWithOptions(ctx context.Context, prompt string, options protocol.OutboundMessageOptions) (*Stream, error) {
 	if s == nil || s.core == nil {
 		return nil, ErrNotConnected
 	}
-	if err := s.core.Query(ctx, prompt); err != nil {
+	if err := s.core.SendWithOptions(ctx, prompt, nil, "", options); err != nil {
 		return nil, err
 	}
 	return &Stream{core: s.core}, nil
@@ -155,10 +162,15 @@ func (s *Session) Send(ctx context.Context, prompt string) (*Stream, error) {
 
 // SendMessage 发送一条强类型用户消息并返回本轮响应流。
 func (s *Session) SendMessage(ctx context.Context, message protocol.OutboundMessage) (*Stream, error) {
+	return s.SendMessageWithOptions(ctx, message, protocol.OutboundMessageOptions{})
+}
+
+// SendMessageWithOptions 发送一条带附加语义的强类型用户消息并返回本轮响应流。
+func (s *Session) SendMessageWithOptions(ctx context.Context, message protocol.OutboundMessage, options protocol.OutboundMessageOptions) (*Stream, error) {
 	if s == nil || s.core == nil {
 		return nil, ErrNotConnected
 	}
-	if err := s.core.SendMessage(ctx, message, ""); err != nil {
+	if err := s.core.SendMessageWithOptions(ctx, message, "", options); err != nil {
 		return nil, err
 	}
 	return &Stream{core: s.core}, nil
@@ -375,6 +387,15 @@ func (c *SessionControl) ServerInfo(ctx context.Context) (map[string]any, error)
 		return nil, err
 	}
 	return core.serverInfo(ctx)
+}
+
+// SetNextTurnContext 尝试为下一轮注入内部上下文。
+func (c *SessionControl) SetNextTurnContext(ctx context.Context, blocks []InternalContextBlock) error {
+	core, err := c.activeCore()
+	if err != nil {
+		return err
+	}
+	return core.setNextTurnContext(ctx, blocks)
 }
 
 // SessionMCP 承载会话 MCP 控制能力。

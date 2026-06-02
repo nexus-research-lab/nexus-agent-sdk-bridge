@@ -32,6 +32,28 @@ func TestEncodeOutboundMessages(t *testing.T) {
 	}
 }
 
+func TestEncodeOutboundMessageWithOptions(t *testing.T) {
+	message := NewUserTextMessageWithOptions("continue", OutboundMessageOptions{
+		Meta:           true,
+		HiddenFromUser: true,
+		Purpose:        "host_continuation",
+		Priority:       "internal",
+		Metadata:       map[string]string{"task_id": "task-1"},
+	})
+
+	payload := EncodeOutboundMessage(message, "session-1")
+	if payload["is_meta"] != true || payload["is_synthetic"] != true || payload["hidden_from_user"] != true {
+		t.Fatalf("payload options = %#v, want meta/synthetic/hidden", payload)
+	}
+	if payload["purpose"] != "host_continuation" || payload["priority"] != "internal" {
+		t.Fatalf("payload purpose/priority = %#v, want host continuation", payload)
+	}
+	metadata := payload["metadata"].(map[string]string)
+	if metadata["task_id"] != "task-1" {
+		t.Fatalf("metadata = %#v, want task_id", metadata)
+	}
+}
+
 func TestDecodeAssistantMessageDoesNotInventError(t *testing.T) {
 	message, err := DecodeMessage(map[string]any{
 		"type":       "assistant",

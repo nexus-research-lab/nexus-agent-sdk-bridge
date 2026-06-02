@@ -11,6 +11,10 @@ import (
 // Context provides SDK runtime context for one custom tool call.
 type Context struct {
 	ToolUseID string
+	SessionID string
+	RoundID   string
+	Source    string
+	Metadata  map[string]string
 }
 
 // Tool defines a Go-native SDK custom tool.

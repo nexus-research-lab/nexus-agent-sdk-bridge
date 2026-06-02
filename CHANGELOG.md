@@ -12,6 +12,14 @@ All notable changes to this project are documented in this file.
 
 - Fixed process transport teardown so inherited stderr pipes and failed control response writes cannot leave SDK sessions stuck after hook callback stream closure.
 
+## [0.1.3] - 2026-06-01
+
+### Added
+
+- Runtime primitives for long-running host features: typed token usage helpers, terminal result classification, outbound send options, capability detection, and structured stream-close errors.
+- Additive session APIs for meta/synthetic outbound messages via `SendWithOptions` and `SendMessageWithOptions`.
+- `SetNextTurnContext` now maps runtime-owned next-turn context to a one-shot Claude Code `<system-reminder>` block instead of forcing hosts to prepend their own fallback text.
+
 ## [0.1.2] - 2026-05-30
 
 ### Changed
