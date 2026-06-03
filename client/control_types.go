@@ -5,6 +5,7 @@ import (
 
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/jsonvalue"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/runtimeinfo"
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/mcp"
 )
 
 // ContextUsageCategory 表示上下文使用分类。
@@ -138,6 +139,52 @@ type InitializationResult struct {
 	Raw                   map[string]any `json:"raw,omitempty"`
 }
 
+// PluginStatus 表示 reload_plugins 后的插件状态。
+type PluginStatus struct {
+	Name   string `json:"name,omitempty"`
+	Path   string `json:"path,omitempty"`
+	Source string `json:"source,omitempty"`
+}
+
+// ReloadPluginsResponse 表示 Session.Control().ReloadPlugins 的结果。
+type ReloadPluginsResponse struct {
+	Commands      []SlashCommand     `json:"commands,omitempty"`
+	Agents        []AgentInfo        `json:"agents,omitempty"`
+	Plugins       []PluginStatus     `json:"plugins,omitempty"`
+	MCPServers    []mcp.ServerStatus `json:"mcp_servers,omitempty"`
+	EnabledCount  int                `json:"enabled_count,omitempty"`
+	DisabledCount int                `json:"disabled_count,omitempty"`
+	CommandCount  int                `json:"command_count,omitempty"`
+	AgentCount    int                `json:"agent_count,omitempty"`
+	HookCount     int                `json:"hook_count,omitempty"`
+	MCPCount      int                `json:"mcp_count,omitempty"`
+	LSPCount      int                `json:"lsp_count,omitempty"`
+	ErrorCount    int                `json:"error_count,omitempty"`
+	Raw           map[string]any     `json:"raw,omitempty"`
+}
+
+// SettingsSource 表示 settings 的单个来源。
+type SettingsSource struct {
+	Source   string         `json:"source,omitempty"`
+	Settings map[string]any `json:"settings,omitempty"`
+	Raw      map[string]any `json:"raw,omitempty"`
+}
+
+// SettingsApplied 表示已经投影到 runtime 状态的 settings。
+type SettingsApplied struct {
+	Model  string         `json:"model,omitempty"`
+	Effort *string        `json:"effort,omitempty"`
+	Raw    map[string]any `json:"raw,omitempty"`
+}
+
+// SettingsResponse 表示 Session.Control().GetSettings 的结果。
+type SettingsResponse struct {
+	Effective map[string]any   `json:"effective,omitempty"`
+	Sources   []SettingsSource `json:"sources,omitempty"`
+	Applied   SettingsApplied  `json:"applied,omitempty"`
+	Raw       map[string]any   `json:"raw,omitempty"`
+}
+
 func initializationResultFromRuntime(info runtimeinfo.InitializeResponse) InitializationResult {
 	raw := jsonvalue.CloneMap(info.Raw)
 	if raw == nil {
@@ -206,6 +253,40 @@ func agentInfosFromRuntime(agents []runtimeinfo.AgentInfo) []AgentInfo {
 	return result
 }
 
+func reloadPluginsResponseFromRuntime(info runtimeinfo.ReloadPluginsResponse) ReloadPluginsResponse {
+	raw := jsonvalue.CloneMapPreserveTypedSlices(info.Raw)
+	if raw == nil {
+		raw = map[string]any{}
+	}
+	return ReloadPluginsResponse{
+		Commands:      slashCommandsFromRuntime(info.Commands),
+		Agents:        agentInfosFromRuntime(info.Agents),
+		Plugins:       pluginStatusesFromRuntime(info.Plugins),
+		MCPServers:    append([]mcp.ServerStatus(nil), info.MCPServers...),
+		EnabledCount:  info.EnabledCount,
+		DisabledCount: info.DisabledCount,
+		CommandCount:  info.CommandCount,
+		AgentCount:    info.AgentCount,
+		HookCount:     info.HookCount,
+		MCPCount:      info.MCPCount,
+		LSPCount:      info.LSPCount,
+		ErrorCount:    info.ErrorCount,
+		Raw:           raw,
+	}
+}
+
+func pluginStatusesFromRuntime(plugins []runtimeinfo.PluginStatus) []PluginStatus {
+	result := make([]PluginStatus, 0, len(plugins))
+	for _, plugin := range plugins {
+		result = append(result, PluginStatus{
+			Name:   plugin.Name,
+			Path:   plugin.Path,
+			Source: plugin.Source,
+		})
+	}
+	return result
+}
+
 func accountInfoFromRuntime(account runtimeinfo.AccountInfo) AccountInfo {
 	raw := jsonvalue.CloneMap(account.Raw)
 	if raw == nil {
@@ -219,6 +300,64 @@ func accountInfoFromRuntime(account runtimeinfo.AccountInfo) AccountInfo {
 		SubscriptionType: jsonvalue.FirstNonEmptyString(raw["subscriptionType"], raw["subscription_type"], raw["subscription"], raw["plan"], account.Plan),
 		TokenSource:      jsonvalue.FirstNonEmptyString(raw["tokenSource"], raw["token_source"]),
 		Raw:              raw,
+	}
+}
+
+func decodeReloadPluginsResponse(payload map[string]any) ReloadPluginsResponse {
+	return reloadPluginsResponseFromRuntime(runtimeinfo.DecodeReloadPluginsResponse(payload))
+}
+
+func decodeSettingsResponse(payload map[string]any) SettingsResponse {
+	sources := []SettingsSource{}
+	for _, item := range jsonvalue.SliceValue(payload["sources"]) {
+		source := jsonvalue.MapValue(item)
+		if len(source) == 0 {
+			continue
+		}
+		sources = append(sources, SettingsSource{
+			Source:   jsonvalue.StringValue(source["source"]),
+			Settings: jsonvalue.CloneMapPreserveTypedSlices(jsonvalue.MapValue(source["settings"])),
+			Raw:      jsonvalue.CloneMapPreserveTypedSlices(source),
+		})
+	}
+
+	raw := jsonvalue.CloneMapPreserveTypedSlices(payload)
+	if raw == nil {
+		raw = map[string]any{}
+	}
+	return SettingsResponse{
+		Effective: jsonvalue.CloneMapPreserveTypedSlices(jsonvalue.MapValue(payload["effective"])),
+		Sources:   sources,
+		Applied:   decodeSettingsApplied(payload["applied"]),
+		Raw:       raw,
+	}
+}
+
+func decodeSettingsApplied(raw any) SettingsApplied {
+	payload := jsonvalue.MapValue(raw)
+	if len(payload) == 0 {
+		return SettingsApplied{}
+	}
+	return SettingsApplied{
+		Model:  jsonvalue.StringValue(payload["model"]),
+		Effort: optionalStringValue(payload["effort"]),
+		Raw:    jsonvalue.CloneMapPreserveTypedSlices(payload),
+	}
+}
+
+func optionalStringValue(value any) *string {
+	if value == nil {
+		return nil
+	}
+	switch typed := value.(type) {
+	case string:
+		return &typed
+	default:
+		text := jsonvalue.StringValue(value)
+		if text == "" {
+			return nil
+		}
+		return &text
 	}
 }
 

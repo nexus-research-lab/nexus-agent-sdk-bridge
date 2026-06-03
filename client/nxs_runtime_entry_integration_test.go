@@ -2,12 +2,17 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/mcp"
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/permission"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/protocol"
+	sdktools "github.com/nexus-research-lab/nexus-agent-sdk-bridge/tools"
 )
 
 func TestNXSRuntimeEntryIntegration(t *testing.T) {
@@ -62,6 +67,186 @@ func TestNXSRuntimeEntryIntegration(t *testing.T) {
 	}
 	if result.Raw["pid"] == nil {
 		t.Fatalf("initialization result missing pid: %#v", result.Raw)
+	}
+}
+
+func TestNXSRuntimeBundledEntryIntegration(t *testing.T) {
+	if os.Getenv("NEXUS_NXS_RUNTIME_MANIFEST_URL") == "" {
+		t.Skip("set NEXUS_NXS_RUNTIME_MANIFEST_URL to run the downloaded nxs runtime entry integration test")
+	}
+	cacheDir := t.TempDir()
+	t.Setenv("NEXUS_NXS_RUNTIME_CACHE_DIR", cacheDir)
+
+	configDir := t.TempDir()
+	var startedCommand string
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	session, err := NewSession(ctx, NewOptions().
+		WithRuntime(RuntimeNXS).
+		WithCWD(t.TempDir()).
+		WithEnv(map[string]string{
+			"NEXUS_CONFIG_DIR": configDir,
+		}).
+		WithModel("test-model").
+		WithDiagnostics(func(event DiagnosticEvent) {
+			if event.Event != "process_start" {
+				return
+			}
+			if command, ok := event.Attributes["command_path"].(string); ok {
+				startedCommand = command
+			}
+		}))
+	if err != nil {
+		t.Fatalf("NewSession() error = %v", err)
+	}
+	defer func() {
+		if err := session.Close(context.Background()); err != nil {
+			t.Fatalf("Close() error = %v", err)
+		}
+	}()
+
+	if !strings.HasPrefix(startedCommand, cacheDir) {
+		t.Fatalf("started command = %q, want bundled runtime under %q", startedCommand, cacheDir)
+	}
+	result, err := session.Control().InitializationResult(ctx)
+	if err != nil {
+		t.Fatalf("InitializationResult() error = %v", err)
+	}
+	if result.Raw["pid"] == nil {
+		t.Fatalf("initialization result missing pid: %#v", result.Raw)
+	}
+}
+
+func TestNXSRuntimeBundledEntryWithSDKMCPServerIntegration(t *testing.T) {
+	if os.Getenv("NEXUS_NXS_RUNTIME_MANIFEST_URL") == "" {
+		t.Skip("set NEXUS_NXS_RUNTIME_MANIFEST_URL to run the downloaded nxs runtime SDK MCP integration test")
+	}
+	cacheDir := t.TempDir()
+	t.Setenv("NEXUS_NXS_RUNTIME_CACHE_DIR", cacheDir)
+
+	configDir := t.TempDir()
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	server := sdktools.CreateSDKMCPServer(sdktools.SDKMCPServerOptions{
+		Name:    "test_tools",
+		Version: "1.0.0",
+	})
+	session, err := NewSession(ctx, NewOptions().
+		WithRuntime(RuntimeNXS).
+		WithCWD(t.TempDir()).
+		WithEnv(map[string]string{
+			"NEXUS_CONFIG_DIR": configDir,
+		}).
+		WithModel("test-model").
+		WithSDKMCPServer("test_tools", server))
+	if err != nil {
+		t.Fatalf("NewSession() error = %v", err)
+	}
+	defer func() {
+		if err := session.Close(context.Background()); err != nil {
+			t.Fatalf("Close() error = %v", err)
+		}
+	}()
+
+	result, err := session.Control().InitializationResult(ctx)
+	if err != nil {
+		t.Fatalf("InitializationResult() error = %v", err)
+	}
+	if result.Raw["pid"] == nil {
+		t.Fatalf("initialization result missing pid: %#v", result.Raw)
+	}
+}
+
+func TestNXSRuntimeControlSurfaceIntegration(t *testing.T) {
+	runtimePath := os.Getenv("NXS_RUNTIME_PATH")
+	if runtimePath == "" {
+		t.Skip("set NXS_RUNTIME_PATH to run the nxs runtime control integration test")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	session, err := NewSession(ctx, NewOptions().
+		WithCLIPath(runtimePath).
+		WithCWD(t.TempDir()).
+		WithEnv(map[string]string{
+			"NEXUS_CONFIG_DIR": t.TempDir(),
+		}).
+		WithModel("test-model"))
+	if err != nil {
+		t.Fatalf("NewSession() error = %v", err)
+	}
+	defer func() {
+		if err := session.Close(context.Background()); err != nil {
+			t.Fatalf("Close() error = %v", err)
+		}
+	}()
+
+	if err := session.Control().SetModel(ctx, "runtime-model"); err != nil {
+		t.Fatalf("SetModel() error = %v", err)
+	}
+	if err := session.Control().SetPermissionMode(ctx, permission.ModeAcceptEdits); err != nil {
+		t.Fatalf("SetPermissionMode() error = %v", err)
+	}
+	if err := session.Control().SetMaxThinkingTokens(ctx, 512); err != nil {
+		t.Fatalf("SetMaxThinkingTokens() error = %v", err)
+	}
+	if err := session.Control().ApplyFlagSettings(ctx, map[string]any{"theme": "compact", "model": "flag-model"}); err != nil {
+		t.Fatalf("ApplyFlagSettings() error = %v", err)
+	}
+
+	usage, err := session.Control().ContextUsage(ctx)
+	if err != nil {
+		t.Fatalf("ContextUsage() error = %v", err)
+	}
+	if usage.Model != "runtime-model" {
+		t.Fatalf("ContextUsage().Model = %q, want runtime-model; raw=%#v", usage.Model, usage.Raw)
+	}
+
+	status, err := session.MCP().Status(ctx)
+	if err != nil {
+		t.Fatalf("MCP().Status() error = %v", err)
+	}
+	if _, ok := status.Raw["mcp_servers"]; !ok {
+		t.Fatalf("MCP().Status().Raw missing mcp_servers: %#v", status.Raw)
+	}
+	setResult, err := session.MCP().SetServers(ctx, map[string]mcp.ServerConfig{})
+	if err != nil {
+		t.Fatalf("MCP().SetServers() error = %v", err)
+	}
+	if setResult.Errors == nil || setResult.Raw["errors"] == nil {
+		t.Fatalf("SetServers() = %#v, want errors map in decoded and raw response", setResult)
+	}
+
+	reload, err := session.Control().ReloadPlugins(ctx)
+	if err != nil {
+		t.Fatalf("ReloadPlugins() error = %v", err)
+	}
+	for _, key := range []string{"commands", "agents", "plugins", "mcp_servers", "error_count"} {
+		if _, ok := reload.Raw[key]; !ok {
+			t.Fatalf("ReloadPlugins().Raw missing %s: %#v", key, reload.Raw)
+		}
+	}
+	commands, err := session.Control().SupportedCommands(ctx)
+	if err != nil {
+		t.Fatalf("SupportedCommands() after ReloadPlugins() error = %v", err)
+	}
+	if len(commands) != len(reload.Commands) {
+		t.Fatalf("SupportedCommands() = %d commands, want %d after reload", len(commands), len(reload.Commands))
+	}
+
+	settings, err := session.Control().GetSettings(ctx)
+	if err != nil {
+		t.Fatalf("GetSettings() error = %v", err)
+	}
+	effective := settings.Effective
+	if effective["model"] != "runtime-model" || effective["permission_mode"] != "acceptEdits" {
+		t.Fatalf("GetSettings().Effective = %#v, want runtime model and permission", effective)
+	}
+	if !numericSettingEquals(effective["max_thinking_tokens"], 512) {
+		t.Fatalf("GetSettings().Effective max_thinking_tokens = %#v, want 512", effective["max_thinking_tokens"])
 	}
 }
 
@@ -184,4 +369,19 @@ func firstNonEmptyForTest(values ...string) string {
 		}
 	}
 	return ""
+}
+
+func numericSettingEquals(value any, expected int) bool {
+	switch typed := value.(type) {
+	case float64:
+		return int(typed) == expected
+	case int:
+		return typed == expected
+	case json.Number:
+		return typed.String() == strconv.Itoa(expected)
+	case string:
+		return typed == strconv.Itoa(expected)
+	default:
+		return false
+	}
 }

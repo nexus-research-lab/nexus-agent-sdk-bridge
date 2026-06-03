@@ -367,15 +367,23 @@ func buildProcessTransportConfig(o resolvedOptions) transport.ProcessConfig {
 		processEnv[processOAuthRefreshEnv] = "1"
 	}
 	return transport.ProcessConfig{
-		CommandPath:   processCommandPath(o),
-		CWD:           o.CWD,
-		User:          o.User,
-		MaxBufferSize: o.MaxBufferSize,
-		Args:          buildProcessTransportArgs(o),
-		Env:           processEnv,
-		Stderr:        o.Stderr,
-		Diagnostics:   processDiagnosticHandler(o.Diagnostics),
+		CommandPath:        processCommandPath(o),
+		CWD:                o.CWD,
+		User:               o.User,
+		MaxBufferSize:      o.MaxBufferSize,
+		Args:               buildProcessTransportArgs(o),
+		Env:                processEnv,
+		Stderr:             o.Stderr,
+		Diagnostics:        processDiagnosticHandler(o.Diagnostics),
+		ControlWireDialect: processControlWireDialect(o),
 	}
+}
+
+func processControlWireDialect(o resolvedOptions) transport.ControlWireDialect {
+	if normalizedRuntimeKind(o.RuntimeKind) == RuntimeNXS {
+		return transport.ControlWireDialectSnake
+	}
+	return transport.ControlWireDialectClaude
 }
 
 func resolveConfigDir(env map[string]string) string {

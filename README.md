@@ -171,22 +171,28 @@ themselves.
 | Mode | Configuration |
 |------|---------------|
 | Local CLI (default) | No extra option; the SDK starts the bundled/default CLI process |
-| Nexus native runtime | `client.NewOptions().WithCLIPath("nxs")` |
+| Nexus native runtime | `client.NewOptions().WithRuntime(client.RuntimeNXS)` |
 | Explicit CLI path | `client.NewOptions().WithCLIPath("/path/to/nxs")` |
 | JavaScript runtime wrapper | `client.NewOptions().WithPathToClaudeCodeExecutable("/path/to/cli.js").WithExecutable("node")` |
 | Direct connect | `client.NewOptions().WithDirectConnect(client.DirectConnectOptions{...})` |
 | Host-managed transport | `client.NewOptions().WithTransport(transport)` |
 
 The default command discovery remains compatible with Claude Code and looks for
-`claude`. To run the Go-native Nexus runtime, build or install the `nxs` binary
-and pass it through `WithCLIPath`; an absolute path is safer when the host
-process has a constrained `PATH`.
+`claude`. To run the Go-native Nexus runtime, select the release-backed
+runtime resolver:
 
 ```go
 options := client.NewOptions().
-    WithCLIPath("nxs").
+    WithRuntime(client.RuntimeNXS).
     WithCWD(".")
 ```
+
+The resolver downloads the current platform binary from the public bridge
+runtime release manifest, verifies its SHA-256 digest, and caches the
+executable locally. Set `NEXUS_NXS_RUNTIME_RELEASE` to select a different
+runtime release tag, or `NEXUS_NXS_RUNTIME_MANIFEST_URL` to point at an
+explicit manifest. Set `NEXUS_NXS_RUNTIME_RESOLVER_DISABLED=1` to skip the
+download resolver and fall back to `nxs` on `PATH`.
 
 Direct-connect remains separate when the host manages the runtime process:
 

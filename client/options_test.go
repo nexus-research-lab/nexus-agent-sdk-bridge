@@ -2,9 +2,18 @@ package client
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"runtime"
+	"strings"
 	"testing"
+
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/transport"
 )
 
 func TestOptionsTransportConfiguration(t *testing.T) {
@@ -25,6 +34,78 @@ func TestOptionsTransportConfiguration(t *testing.T) {
 	}
 	if got := options.processConfig().CommandPath; got != "nxs" {
 		t.Fatalf("process command path = %q", got)
+	}
+}
+
+func TestOptionsWithRuntimeNXSUsesDownloadedRuntime(t *testing.T) {
+	cacheDir := t.TempDir()
+	t.Setenv("NEXUS_NXS_RUNTIME_CACHE_DIR", cacheDir)
+	runtimeBytes := []byte("#!/bin/sh\nexit 0\n")
+	digest := sha256.Sum256(runtimeBytes)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/manifest":
+			_, _ = w.Write([]byte(`{"schema_version":1,"version":"0.9.0","assets":[{"goos":"` + runtime.GOOS + `","goarch":"` + runtime.GOARCH + `","filename":"nxs","url":"/nxs","sha256":"` + hex.EncodeToString(digest[:]) + `","archive":"raw"}]}`))
+		case "/nxs":
+			_, _ = w.Write(runtimeBytes)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+	t.Setenv("NEXUS_NXS_RUNTIME_MANIFEST_URL", server.URL+"/manifest")
+
+	config := NewOptions().WithRuntime(RuntimeNXS).processConfig()
+	if !strings.HasPrefix(config.CommandPath, cacheDir) {
+		t.Fatalf("nxs command path = %q, want under %q", config.CommandPath, cacheDir)
+	}
+	info, err := os.Stat(config.CommandPath)
+	if err != nil || info.IsDir() {
+		t.Fatalf("nxs command path is not executable: info=%v err=%v", info, err)
+	}
+	if runtime.GOOS != "windows" && info.Mode().Perm()&0111 == 0 {
+		t.Fatalf("nxs command path is not executable: info=%v err=%v", info, err)
+	}
+	if config.ControlWireDialect != transport.ControlWireDialectSnake {
+		t.Fatalf("control wire dialect = %q, want snake", config.ControlWireDialect)
+	}
+}
+
+func TestOptionsDefaultRuntimeUsesClaudeControlWire(t *testing.T) {
+	config := NewOptions().WithCLIPath("claude").processConfig()
+	if config.ControlWireDialect != transport.ControlWireDialectClaude {
+		t.Fatalf("control wire dialect = %q, want claude", config.ControlWireDialect)
+	}
+}
+
+func TestOptionsWithRuntimeNXSUsesEnvOverride(t *testing.T) {
+	t.Setenv("NEXUS_NXS_COMMAND_PATH", "/tmp/custom-nxs")
+	config := NewOptions().WithRuntime(RuntimeNXS).processConfig()
+	if config.CommandPath != "/tmp/custom-nxs" {
+		t.Fatalf("nxs command path = %q, want env override", config.CommandPath)
+	}
+}
+
+func TestOptionsWithRuntimeNXSCanDisableRuntimeResolver(t *testing.T) {
+	t.Setenv("NEXUS_NXS_RUNTIME_RESOLVER_DISABLED", "1")
+	config := NewOptions().WithRuntime(RuntimeNXS).processConfig()
+	if config.CommandPath != "nxs" {
+		t.Fatalf("nxs command path = %q, want PATH fallback", config.CommandPath)
+	}
+}
+
+func TestOptionsWithRuntimeNXSKeepsExplicitCLIPath(t *testing.T) {
+	t.Setenv("NEXUS_NXS_COMMAND_PATH", "/tmp/custom-nxs")
+	config := NewOptions().WithRuntime(RuntimeNXS).WithCLIPath("/tmp/manual-nxs").processConfig()
+	if config.CommandPath != "/tmp/manual-nxs" {
+		t.Fatalf("nxs command path = %q, want explicit CLIPath", config.CommandPath)
+	}
+}
+
+func TestOptionsRejectUnsupportedRuntimeKind(t *testing.T) {
+	_, err := NewOptions().WithRuntime(RuntimeKind("unknown")).normalized()
+	if err == nil || !strings.Contains(err.Error(), "unsupported runtime kind") {
+		t.Fatalf("normalized() error = %v, want unsupported runtime kind", err)
 	}
 }
 

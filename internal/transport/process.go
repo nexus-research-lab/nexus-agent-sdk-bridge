@@ -82,14 +82,15 @@ func (e *StdoutDecodeError) Unwrap() error {
 
 // ProcessConfig 表示子进程传输配置。
 type ProcessConfig struct {
-	CommandPath   string
-	CWD           string
-	User          string
-	MaxBufferSize int
-	Args          []string
-	Env           map[string]string
-	Stderr        func(string)
-	Diagnostics   func(ProcessDiagnosticEvent)
+	CommandPath        string
+	CWD                string
+	User               string
+	MaxBufferSize      int
+	Args               []string
+	Env                map[string]string
+	Stderr             func(string)
+	Diagnostics        func(ProcessDiagnosticEvent)
+	ControlWireDialect ControlWireDialect
 }
 
 // ProcessManager 管理 Claude CLI 子进程。

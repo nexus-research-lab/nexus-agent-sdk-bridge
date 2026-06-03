@@ -36,6 +36,12 @@ func (o Options) WithExecutableArgs(args ...string) Options {
 	return o
 }
 
+// WithRuntime 设置 bridge 启动的本地 Agent runtime。
+func (o Options) WithRuntime(kind RuntimeKind) Options {
+	o.Runtime.Kind = kind
+	return o
+}
+
 // WithTransport 注入自定义 SDK 通信 transport。
 func (o Options) WithTransport(transport Transport) Options {
 	o.Transport = transport

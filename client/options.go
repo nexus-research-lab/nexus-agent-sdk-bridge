@@ -244,8 +244,19 @@ type SessionOptions struct {
 	Fork           bool
 }
 
+// RuntimeKind 表示 bridge 要启动的本地 Agent runtime 类型。
+type RuntimeKind string
+
+const (
+	// RuntimeClaude 表示兼容 Claude Code CLI 的默认 runtime。
+	RuntimeClaude RuntimeKind = "claude"
+	// RuntimeNXS 表示 bridge 内置的 Nexus 原生 nxs runtime。
+	RuntimeNXS RuntimeKind = "nxs"
+)
+
 // RuntimeOptions 表示运行期权限、预算、thinking 与 checkpoint 配置。
 type RuntimeOptions struct {
+	Kind                            RuntimeKind
 	PermissionMode                  permission.Mode
 	AllowDangerouslySkipPermissions bool
 	PermissionPromptToolName        string

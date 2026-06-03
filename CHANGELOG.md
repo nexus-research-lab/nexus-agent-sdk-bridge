@@ -4,6 +4,11 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
+### Added
+
+- Added `client.NewOptions().WithRuntime(client.RuntimeNXS)` so development hosts can run the native Nexus runtime without depending on the private Go SDK checkout.
+- Added a release-backed `nxs` runtime resolver that downloads platform assets from a bridge runtime release manifest, verifies SHA-256, and caches the executable locally.
+
 ## [0.1.4] - 2026-06-02
 
 ### Changed

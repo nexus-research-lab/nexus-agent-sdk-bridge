@@ -16,6 +16,14 @@ import (
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/transport"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/mcp"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/permission"
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/runtimes/nxs"
+)
+
+const (
+	nxsCommandPathEnvName             = "NEXUS_NXS_COMMAND_PATH"
+	nxsRuntimeResolverDisabledEnvName = "NEXUS_NXS_RUNTIME_RESOLVER_DISABLED"
+	legacyBundledNXSDisabledEnvName   = "NEXUS_BUNDLED_NXS_DISABLED"
+	defaultNXSCommandExecutable       = "nxs"
 )
 
 func defaultInitializeTimeoutFromEnv() time.Duration {
@@ -96,6 +104,9 @@ func (o Options) normalized() (Options, error) {
 	}
 	if result.Callbacks.Diagnostics == nil && diagnosticsToStderrEnabled() {
 		result.Callbacks.Diagnostics = stderrDiagnosticHandler
+	}
+	if err := result.resolveRuntimeCommand(); err != nil {
+		return Options{}, err
 	}
 	if result.System.Text != "" && strings.TrimSpace(result.System.File) != "" {
 		return Options{}, fmt.Errorf("client: system prompt text and system prompt file cannot be used together")
@@ -249,6 +260,66 @@ func (o Options) normalized() (Options, error) {
 	return result, nil
 }
 
+func (o *Options) resolveRuntimeCommand() error {
+	switch normalizedRuntimeKind(o.Runtime.Kind) {
+	case RuntimeClaude:
+		o.Runtime.Kind = RuntimeClaude
+		return nil
+	case RuntimeNXS:
+		o.Runtime.Kind = RuntimeNXS
+		if o.Transport != nil || o.DirectConnect != nil || hasExplicitRuntimeCommand(*o) {
+			return nil
+		}
+		if override := strings.TrimSpace(os.Getenv(nxsCommandPathEnvName)); override != "" {
+			o.CLIPath = override
+			return nil
+		}
+		if !nxsRuntimeResolverDisabled() {
+			if runtimePath, err := nxs.RuntimePath(); err == nil && strings.TrimSpace(runtimePath) != "" {
+				o.CLIPath = runtimePath
+				return nil
+			}
+		}
+		o.CLIPath = defaultNXSCommandExecutable
+		return nil
+	default:
+		return fmt.Errorf("client: unsupported runtime kind %q", o.Runtime.Kind)
+	}
+}
+
+func normalizedRuntimeKind(kind RuntimeKind) RuntimeKind {
+	switch strings.ToLower(strings.TrimSpace(string(kind))) {
+	case "", string(RuntimeClaude), "claude-code", "claudecode":
+		return RuntimeClaude
+	case string(RuntimeNXS), "go", "go-native", "gonative":
+		return RuntimeNXS
+	default:
+		return RuntimeKind(strings.TrimSpace(string(kind)))
+	}
+}
+
+func hasExplicitRuntimeCommand(o Options) bool {
+	return strings.TrimSpace(o.CLIPath) != "" ||
+		strings.TrimSpace(o.Executable) != "" ||
+		strings.TrimSpace(o.PathToExecutable) != ""
+}
+
+func nxsRuntimeResolverDisabled() bool {
+	if envTruthy(os.Getenv(nxsRuntimeResolverDisabledEnvName)) {
+		return true
+	}
+	return envTruthy(os.Getenv(legacyBundledNXSDisabledEnvName))
+}
+
+func envTruthy(value string) bool {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
+}
+
 func (s SkillOptions) normalized() (SkillOptions, error) {
 	result := SkillOptions{
 		Mode:  s.Mode,
@@ -349,6 +420,7 @@ type resolvedTaskBudget struct {
 }
 
 type resolvedOptions struct {
+	RuntimeKind                     RuntimeKind
 	CommandPath                     string
 	Executable                      string
 	ExecutableArgs                  []string
@@ -480,6 +552,11 @@ func (o Options) resolveOptionsLenient() resolvedOptions {
 }
 
 func (o Options) buildResolvedOptions(strictMCP bool) (resolvedOptions, error) {
+	normalizedOptions, err := o.normalized()
+	if err != nil {
+		return resolvedOptions{}, err
+	}
+	o = normalizedOptions
 	serializedServers, _, err := mcpwire.SerializeServers(o.resolvedMCPServers())
 	if err != nil && strictMCP {
 		return resolvedOptions{}, err
@@ -542,6 +619,7 @@ func (o Options) buildResolvedOptions(strictMCP bool) (resolvedOptions, error) {
 	}
 
 	return resolvedOptions{
+		RuntimeKind:                     o.Runtime.Kind,
 		CommandPath:                     o.CLIPath,
 		Executable:                      o.Executable,
 		ExecutableArgs:                  append([]string(nil), o.ExecutableArgs...),

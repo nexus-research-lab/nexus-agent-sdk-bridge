@@ -182,9 +182,27 @@ func formatControlRequestForClaude(request map[string]any) map[string]any {
 	switch jsonvalue.StringValue(request["subtype"]) {
 	case "initialize":
 		return formatInitializeRequestForClaude(request)
-	case "mcp_reconnect", "mcp_toggle":
+	case "set_max_thinking_tokens":
+		return renameKeys(request, map[string]string{
+			"max_thinking_tokens": "maxThinkingTokens",
+		})
+	case "stop_task":
+		return renameKeys(request, map[string]string{
+			"task_id": "taskId",
+		})
+	case "rewind_files":
+		return renameKeys(request, map[string]string{
+			"user_message_id": "userMessageId",
+			"dry_run":         "dryRun",
+		})
+	case "mcp_reconnect", "mcp_toggle", "mcp_authenticate", "mcp_clear_auth":
 		return renameKeys(request, map[string]string{
 			"server_name": "serverName",
+		})
+	case "mcp_oauth_callback_url":
+		return renameKeys(request, map[string]string{
+			"server_name":  "serverName",
+			"callback_url": "callbackUrl",
 		})
 	default:
 		return request
@@ -240,11 +258,14 @@ func formatAgentDefinitionsForClaude(agents map[string]any) map[string]any {
 			continue
 		}
 		output[name] = renameKeys(definition, map[string]string{
-			"disallowed_tools": "disallowedTools",
-			"mcp_servers":      "mcpServers",
-			"initial_prompt":   "initialPrompt",
-			"max_turns":        "maxTurns",
-			"permission_mode":  "permissionMode",
+			"disallowed_tools":                      "disallowedTools",
+			"prompt":                                "systemPrompt",
+			"mcp_servers":                           "mcpServers",
+			"required_mcp_servers":                  "requiredMcpServers",
+			"critical_system_reminder_experimental": "criticalSystemReminderExperimental",
+			"initial_prompt":                        "initialPrompt",
+			"max_turns":                             "maxTurns",
+			"permission_mode":                       "permissionMode",
 		})
 	}
 	return output
@@ -265,6 +286,8 @@ func normalizeControlResponseFromClaude(subtype string, response map[string]any)
 	switch subtype {
 	case "initialize":
 		return normalizeInitializeResponseFromClaude(response)
+	case "get_settings":
+		return normalizeSettingsResponseFromClaude(response)
 	case "mcp_status":
 		return normalizeMCPStatusResponseFromClaude(response)
 	case "get_context_usage":
@@ -282,7 +305,11 @@ func normalizeControlResponseFromClaude(subtype string, response map[string]any)
 }
 
 func normalizeInitializeResponseFromClaude(response map[string]any) map[string]any {
-	output := jsonvalue.CloneMapPreserveTypedSlices(response)
+	output := renameKeys(response, map[string]string{
+		"outputStyle":           "output_style",
+		"availableOutputStyles": "available_output_styles",
+		"fastModeState":         "fast_mode_state",
+	})
 	if commands := normalizeMapSlice(response["commands"], normalizeSlashCommandFromClaude); len(commands) > 0 {
 		output["commands"] = commands
 	}
@@ -335,7 +362,7 @@ func normalizeAccountInfoFromClaude(account map[string]any) map[string]any {
 		"emailAddress":       "email_address",
 		"organizationName":   "organization_name",
 		"subscriptionStatus": "subscription_status",
-		"subscriptionType":   "plan",
+		"subscriptionType":   "subscription_type",
 		"tokenSource":        "token_source",
 		"apiKeySource":       "api_key_source",
 		"apiProvider":        "api_provider",
@@ -345,6 +372,22 @@ func normalizeAccountInfoFromClaude(account map[string]any) map[string]any {
 	}
 	if organization := jsonvalue.StringValue(account["organization"]); organization != "" && output["organization_name"] == nil {
 		output["organization_name"] = organization
+	}
+	if subscriptionType := jsonvalue.StringValue(output["subscription_type"]); subscriptionType != "" && output["plan"] == nil {
+		output["plan"] = subscriptionType
+	}
+	return output
+}
+
+func normalizeSettingsResponseFromClaude(response map[string]any) map[string]any {
+	output := jsonvalue.CloneMapPreserveTypedSlices(response)
+	if effective := jsonvalue.MapValue(response["effective"]); len(effective) > 0 {
+		output["effective"] = renameKeys(effective, map[string]string{
+			"permissionMode":    "permission_mode",
+			"maxThinkingTokens": "max_thinking_tokens",
+			"allowedTools":      "allowed_tools",
+			"disallowedTools":   "disallowed_tools",
+		})
 	}
 	return output
 }
