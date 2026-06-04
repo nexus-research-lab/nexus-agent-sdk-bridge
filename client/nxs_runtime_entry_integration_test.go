@@ -3,6 +3,8 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"strconv"
 	"strings"
@@ -28,6 +30,7 @@ func TestNXSRuntimeEntryIntegration(t *testing.T) {
 	defer cancel()
 
 	session, err := NewSession(ctx, NewOptions().
+		WithRuntime(RuntimeNXS).
 		WithCLIPath(runtimePath).
 		WithCWD(t.TempDir()).
 		WithEnv(map[string]string{
@@ -169,6 +172,7 @@ func TestNXSRuntimeControlSurfaceIntegration(t *testing.T) {
 	defer cancel()
 
 	session, err := NewSession(ctx, NewOptions().
+		WithRuntime(RuntimeNXS).
 		WithCLIPath(runtimePath).
 		WithCWD(t.TempDir()).
 		WithEnv(map[string]string{
@@ -250,6 +254,137 @@ func TestNXSRuntimeControlSurfaceIntegration(t *testing.T) {
 	}
 }
 
+func TestNXSRuntimeOpenAIProviderIntegration(t *testing.T) {
+	runtimePath := os.Getenv("NXS_RUNTIME_PATH")
+	if runtimePath == "" {
+		t.Skip("set NXS_RUNTIME_PATH to run the nxs runtime OpenAI provider integration test")
+	}
+
+	var requestPayload map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/v1/chat/completions" {
+			t.Fatalf("OpenAI path = %q, want /v1/chat/completions", request.URL.Path)
+		}
+		if request.Header.Get("Authorization") != "Bearer test-openai-key" {
+			t.Fatalf("Authorization header = %q, want bearer test key", request.Header.Get("Authorization"))
+		}
+		if err := json.NewDecoder(request.Body).Decode(&requestPayload); err != nil {
+			t.Fatalf("decode OpenAI request: %v", err)
+		}
+		writer.Header().Set("Content-Type", "text/event-stream")
+		writeOpenAIStreamEventForTest(t, writer, map[string]any{
+			"id":    "chatcmpl-nxs-1",
+			"model": "gpt-fake",
+			"choices": []map[string]any{{
+				"index": 0,
+				"delta": map[string]any{"role": "assistant"},
+			}},
+		})
+		writeOpenAIStreamEventForTest(t, writer, map[string]any{
+			"id":    "chatcmpl-nxs-1",
+			"model": "gpt-fake",
+			"choices": []map[string]any{{
+				"index": 0,
+				"delta": map[string]any{"content": "openai provider ok"},
+			}},
+		})
+		writeOpenAIStreamEventForTest(t, writer, map[string]any{
+			"id":    "chatcmpl-nxs-1",
+			"model": "gpt-fake",
+			"choices": []map[string]any{{
+				"index":         0,
+				"delta":         map[string]any{},
+				"finish_reason": "stop",
+			}},
+			"usage": map[string]any{
+				"prompt_tokens":     7,
+				"completion_tokens": 3,
+				"total_tokens":      10,
+			},
+		})
+		if _, err := writer.Write([]byte("data: [DONE]\n\n")); err != nil {
+			t.Fatalf("write OpenAI done event: %v", err)
+		}
+	}))
+	defer server.Close()
+
+	env := map[string]string{
+		"NEXUS_CONFIG_DIR":      t.TempDir(),
+		"NEXUS_API_PROVIDER":    "openai",
+		"OPENAI_API_KEY":        "test-openai-key",
+		"OPENAI_BASE_URL":       server.URL,
+		"OPENAI_MODEL":          "gpt-fake",
+		"OPENAI_CUSTOM_HEADERS": "",
+	}
+	var startedCommand string
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	stream, err := Query(ctx, QueryRequest{
+		Prompt: "只输出 openai provider ok",
+		Options: NewOptions().
+			WithRuntime(RuntimeNXS).
+			WithCLIPath(runtimePath).
+			WithCWD(t.TempDir()).
+			WithEnv(env).
+			WithModel("gpt-fake").
+			WithMaxTurns(1).
+			WithDiagnostics(func(event DiagnosticEvent) {
+				if event.Event != "process_start" {
+					return
+				}
+				if command, ok := event.Attributes["command_path"].(string); ok {
+					startedCommand = command
+				}
+			}),
+	})
+	if err != nil {
+		t.Fatalf("Query() error = %v", err)
+	}
+	defer func() {
+		if err := stream.Close(context.Background()); err != nil {
+			t.Fatalf("Close() error = %v", err)
+		}
+	}()
+
+	var text strings.Builder
+	var result *protocol.ResultMessage
+	for result == nil {
+		message, err := stream.Recv(ctx)
+		if err != nil {
+			t.Fatalf("Recv() error = %v", err)
+		}
+		if message.Assistant != nil {
+			for _, block := range message.Assistant.Message.Content {
+				if textBlock, ok := protocol.AsTextBlock(block); ok {
+					text.WriteString(textBlock.Text)
+				}
+			}
+		}
+		if message.Result != nil {
+			copied := *message.Result
+			result = &copied
+		}
+	}
+
+	if startedCommand != runtimePath {
+		t.Fatalf("started command = %q, want %q", startedCommand, runtimePath)
+	}
+	output := strings.TrimSpace(text.String())
+	if output == "" {
+		output = strings.TrimSpace(result.Result)
+	}
+	if !strings.Contains(output, "openai provider ok") {
+		t.Fatalf("agent output = %q, want OpenAI fake provider response; result=%#v", output, result)
+	}
+	if requestPayload["model"] != "gpt-fake" {
+		t.Fatalf("OpenAI request model = %#v, want gpt-fake", requestPayload["model"])
+	}
+	if requestPayload["stream"] != true {
+		t.Fatalf("OpenAI request stream = %#v, want true", requestPayload["stream"])
+	}
+}
+
 func TestNXSRuntimeLiveAgentEffect(t *testing.T) {
 	runtimePath := os.Getenv("NXS_RUNTIME_PATH")
 	if runtimePath == "" {
@@ -279,6 +414,7 @@ func TestNXSRuntimeLiveAgentEffect(t *testing.T) {
 	stream, err := Query(ctx, QueryRequest{
 		Prompt: "请只用一句中文回答：nxs runtime 已经真实连通并完成一次 agent 响应。不要调用工具。",
 		Options: NewOptions().
+			WithRuntime(RuntimeNXS).
 			WithCLIPath(runtimePath).
 			WithCWD(t.TempDir()).
 			WithEnv(liveEnv).
@@ -335,6 +471,26 @@ func TestNXSRuntimeLiveAgentEffect(t *testing.T) {
 	t.Logf("runtime=%s", startedCommand)
 	t.Logf("agent_output=%s", output)
 	t.Logf("result_subtype=%s total_cost_usd=%f", result.Subtype, result.TotalCostUSD)
+}
+
+func writeOpenAIStreamEventForTest(t *testing.T, writer http.ResponseWriter, payload map[string]any) {
+	t.Helper()
+	encoded, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatalf("marshal OpenAI event: %v", err)
+	}
+	if _, err := writer.Write([]byte("data: ")); err != nil {
+		t.Fatalf("write OpenAI event prefix: %v", err)
+	}
+	if _, err := writer.Write(encoded); err != nil {
+		t.Fatalf("write OpenAI event payload: %v", err)
+	}
+	if _, err := writer.Write([]byte("\n\n")); err != nil {
+		t.Fatalf("write OpenAI event suffix: %v", err)
+	}
+	if flusher, ok := writer.(http.Flusher); ok {
+		flusher.Flush()
+	}
 }
 
 func loadDotEnvForTest(path string) (map[string]string, error) {
