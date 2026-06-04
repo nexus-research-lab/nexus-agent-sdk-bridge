@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased]
+
+### Fixed
+
+- Fixed `RuntimeNXS` command resolution so release-backed runtime download/cache failures surface as explicit resolver errors instead of silently falling back to a bare `nxs` command in `PATH`.
+
 ## [0.1.5] - 2026-06-04
 
 ### Added

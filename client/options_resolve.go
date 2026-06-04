@@ -275,10 +275,15 @@ func (o *Options) resolveRuntimeCommand() error {
 			return nil
 		}
 		if !nxsRuntimeResolverDisabled() {
-			if runtimePath, err := nxs.RuntimePath(); err == nil && strings.TrimSpace(runtimePath) != "" {
-				o.CLIPath = runtimePath
-				return nil
+			runtimePath, err := nxs.RuntimePath()
+			if err != nil {
+				return fmt.Errorf("client: resolve nxs runtime failed: %w", err)
 			}
+			if strings.TrimSpace(runtimePath) == "" {
+				return fmt.Errorf("client: resolve nxs runtime failed: empty runtime path")
+			}
+			o.CLIPath = runtimePath
+			return nil
 		}
 		o.CLIPath = defaultNXSCommandExecutable
 		return nil

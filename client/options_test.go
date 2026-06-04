@@ -71,6 +71,19 @@ func TestOptionsWithRuntimeNXSUsesDownloadedRuntime(t *testing.T) {
 	}
 }
 
+func TestOptionsWithRuntimeNXSReportsRuntimeResolverError(t *testing.T) {
+	server := httptest.NewServer(http.NotFoundHandler())
+	defer server.Close()
+	t.Setenv("NEXUS_NXS_RUNTIME_MANIFEST_URL", server.URL+"/missing")
+
+	_, err := NewOptions().WithRuntime(RuntimeNXS).normalized()
+	if err == nil ||
+		!strings.Contains(err.Error(), "resolve nxs runtime failed") ||
+		!strings.Contains(err.Error(), "download nxs runtime manifest") {
+		t.Fatalf("normalized() error = %v, want nxs runtime resolver error", err)
+	}
+}
+
 func TestOptionsDefaultRuntimeUsesClaudeControlWire(t *testing.T) {
 	config := NewOptions().WithCLIPath("claude").processConfig()
 	if config.ControlWireDialect != transport.ControlWireDialectClaude {
