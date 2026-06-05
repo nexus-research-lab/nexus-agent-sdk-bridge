@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-06-05
+
+### Changed
+
+- Changed the default `RuntimeNXS` resolver to read the `nxs-stable` runtime channel and choose the newest runtime compatible with the linked bridge module version.
+- Kept explicit runtime release and manifest overrides available for hosts that need to pin a specific `nxs` runtime.
+
 ## [0.1.6] - 2026-06-05
 
 ### Changed

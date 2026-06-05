@@ -202,7 +202,7 @@ options := client.NewOptions().
     WithCWD(".")
 ```
 
-resolver 会从公开 bridge runtime release manifest 下载当前平台二进制，校验 SHA-256 后缓存到本地。需要选择其他 runtime release tag 时设置 `NEXUS_NXS_RUNTIME_RELEASE`；需要指定完整 manifest 地址时设置 `NEXUS_NXS_RUNTIME_MANIFEST_URL`；需要跳过下载 resolver 并回退到 PATH 中的 `nxs` 时设置 `NEXUS_NXS_RUNTIME_RESOLVER_DISABLED=1`。
+resolver 会从公开 `nxs-stable` runtime channel 下载当前平台二进制，并选择 `min_bridge_version` 兼容当前 bridge module 的最新 runtime，校验 SHA-256 后缓存到本地。需要固定某个 runtime release tag 时设置 `NEXUS_NXS_RUNTIME_RELEASE`，例如 `nxs-v0.1.2`；需要指定完整 manifest 地址时设置 `NEXUS_NXS_RUNTIME_MANIFEST_URL`。显式固定的 manifest 如果声明了 `min_bridge_version`，仍会做兼容性校验。需要跳过下载 resolver 并回退到 PATH 中的 `nxs` 时设置 `NEXUS_NXS_RUNTIME_RESOLVER_DISABLED=1`。
 
 当宿主自己管理 runtime 进程时，Direct connect 仍是独立配置：
 

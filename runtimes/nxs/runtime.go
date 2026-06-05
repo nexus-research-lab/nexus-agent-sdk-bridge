@@ -18,6 +18,9 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
+	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -27,15 +30,23 @@ const (
 	runtimeReleaseEnvName     = "NEXUS_NXS_RUNTIME_RELEASE"
 	runtimeManifestURLEnvName = "NEXUS_NXS_RUNTIME_MANIFEST_URL"
 
-	defaultRuntimeReleaseTag = "nxs-v0.1.2"
-	bridgeReleaseBaseURL     = "https://github.com/nexus-research-lab/nexus-agent-sdk-bridge/releases/download"
+	defaultRuntimeReleaseTag       = "nxs-stable"
+	bootstrapRuntimeReleaseTag     = "nxs-v0.1.2"
+	bridgeDevelopmentVersion       = "0.1.7"
+	bridgeModulePath               = "github.com/nexus-research-lab/nexus-agent-sdk-bridge"
+	bridgeReleaseBaseURL           = "https://github.com/nexus-research-lab/nexus-agent-sdk-bridge/releases/download"
+	defaultRuntimeManifestName     = "nxs-manifest.json"
+	defaultRuntimeReleaseTagPrefix = "nxs-v"
 )
 
 type runtimeManifest struct {
-	SchemaVersion int                    `json:"schema_version"`
-	Version       string                 `json:"version"`
-	ReleaseTag    string                 `json:"release_tag"`
-	Assets        []runtimeAssetManifest `json:"assets"`
+	SchemaVersion    int                    `json:"schema_version"`
+	Channel          string                 `json:"channel,omitempty"`
+	Version          string                 `json:"version,omitempty"`
+	ReleaseTag       string                 `json:"release_tag,omitempty"`
+	MinBridgeVersion string                 `json:"min_bridge_version,omitempty"`
+	Assets           []runtimeAssetManifest `json:"assets,omitempty"`
+	Runtimes         []runtimeManifest      `json:"runtimes,omitempty"`
 }
 
 type runtimeAssetManifest struct {
@@ -62,9 +73,15 @@ func RuntimePathFor(goos string, goarch string) (string, error) {
 func runtimePathFor(ctx context.Context, goos string, goarch string, manifestURL string) (string, error) {
 	platform := goos + "-" + goarch
 	executableName := runtimeExecutableName(goos)
-	manifest, err := fetchRuntimeManifest(ctx, manifestURL)
+	manifest, err := loadCompatibleRuntimeManifest(ctx, manifestURL, goos, goarch)
 	if err != nil {
-		return "", err
+		if manifestURL != defaultRuntimeManifestURL() {
+			return "", err
+		}
+		manifest, err = loadCompatibleRuntimeManifest(ctx, runtimeReleaseManifestURL(bootstrapRuntimeReleaseTag), goos, goarch)
+		if err != nil {
+			return "", err
+		}
 	}
 	asset, err := selectRuntimeAsset(manifest, goos, goarch)
 	if err != nil {
@@ -109,8 +126,30 @@ func runtimeManifestURL() string {
 	releaseTag := strings.TrimSpace(os.Getenv(runtimeReleaseEnvName))
 	if releaseTag == "" {
 		releaseTag = defaultRuntimeReleaseTag
+	} else {
+		releaseTag = normalizeRuntimeReleaseTag(releaseTag)
 	}
-	return strings.TrimRight(bridgeReleaseBaseURL, "/") + "/" + releaseTag + "/nxs-manifest.json"
+	return runtimeReleaseManifestURL(releaseTag)
+}
+
+func defaultRuntimeManifestURL() string {
+	return runtimeReleaseManifestURL(defaultRuntimeReleaseTag)
+}
+
+func runtimeReleaseManifestURL(releaseTag string) string {
+	return strings.TrimRight(bridgeReleaseBaseURL, "/") + "/" + releaseTag + "/" + defaultRuntimeManifestName
+}
+
+func loadCompatibleRuntimeManifest(ctx context.Context, manifestURL string, goos string, goarch string) (runtimeManifest, error) {
+	manifest, err := fetchRuntimeManifest(ctx, manifestURL)
+	if err != nil {
+		return runtimeManifest{}, err
+	}
+	manifest, err = selectCompatibleRuntimeManifest(manifest, currentBridgeVersion(), goos, goarch)
+	if err != nil {
+		return runtimeManifest{}, err
+	}
+	return manifest, nil
 }
 
 func fetchRuntimeManifest(ctx context.Context, manifestURL string) (runtimeManifest, error) {
@@ -122,10 +161,41 @@ func fetchRuntimeManifest(ctx context.Context, manifestURL string) (runtimeManif
 	if err := json.Unmarshal(data, &manifest); err != nil {
 		return runtimeManifest{}, fmt.Errorf("decode nxs runtime manifest: %w", err)
 	}
-	if len(manifest.Assets) == 0 {
-		return runtimeManifest{}, errors.New("nxs runtime manifest has no assets")
+	if len(manifest.Assets) == 0 && len(manifest.Runtimes) == 0 {
+		return runtimeManifest{}, errors.New("nxs runtime manifest has no assets or runtimes")
 	}
 	return manifest, nil
+}
+
+func selectCompatibleRuntimeManifest(manifest runtimeManifest, bridgeVersion string, goos string, goarch string) (runtimeManifest, error) {
+	if len(manifest.Runtimes) == 0 {
+		if !runtimeSupportsBridge(manifest, bridgeVersion) {
+			return runtimeManifest{}, incompatibleRuntimeError(manifest, bridgeVersion)
+		}
+		return manifest, nil
+	}
+
+	candidates := make([]runtimeManifest, 0, len(manifest.Runtimes))
+	for _, candidate := range manifest.Runtimes {
+		if !runtimeSupportsBridge(candidate, bridgeVersion) {
+			continue
+		}
+		if _, err := selectRuntimeAsset(candidate, goos, goarch); err != nil {
+			continue
+		}
+		candidates = append(candidates, candidate)
+	}
+	if len(candidates) == 0 {
+		channel := strings.TrimSpace(manifest.Channel)
+		if channel == "" {
+			channel = manifestRuntimeLabel(manifest)
+		}
+		return runtimeManifest{}, fmt.Errorf("nxs runtime channel %s has no compatible runtime for bridge %s on %s-%s", channel, bridgeVersion, goos, goarch)
+	}
+	sort.SliceStable(candidates, func(i int, j int) bool {
+		return compareRuntimeVersions(candidates[i].Version, candidates[j].Version) > 0
+	})
+	return candidates[0], nil
 }
 
 func selectRuntimeAsset(manifest runtimeManifest, goos string, goarch string) (runtimeAssetManifest, error) {
@@ -138,6 +208,124 @@ func selectRuntimeAsset(manifest runtimeManifest, goos string, goarch string) (r
 		}
 	}
 	return runtimeAssetManifest{}, fmt.Errorf("nxs runtime asset %s-%s is not available", goos, goarch)
+}
+
+func runtimeSupportsBridge(manifest runtimeManifest, bridgeVersion string) bool {
+	minVersion := strings.TrimSpace(manifest.MinBridgeVersion)
+	if minVersion == "" {
+		return true
+	}
+	return compareRuntimeVersions(bridgeVersion, minVersion) >= 0
+}
+
+func incompatibleRuntimeError(manifest runtimeManifest, bridgeVersion string) error {
+	return fmt.Errorf("nxs runtime %s requires bridge >= %s, current bridge %s", manifestRuntimeLabel(manifest), manifest.MinBridgeVersion, bridgeVersion)
+}
+
+func manifestRuntimeLabel(manifest runtimeManifest) string {
+	if releaseTag := strings.TrimSpace(manifest.ReleaseTag); releaseTag != "" {
+		return releaseTag
+	}
+	if version := strings.TrimSpace(manifest.Version); version != "" {
+		return version
+	}
+	if channel := strings.TrimSpace(manifest.Channel); channel != "" {
+		return channel
+	}
+	return "unknown"
+}
+
+func normalizeRuntimeReleaseTag(releaseTag string) string {
+	tag := strings.TrimSpace(releaseTag)
+	if strings.HasPrefix(tag, "nxs-") {
+		return tag
+	}
+	version := strings.TrimPrefix(tag, "v")
+	if version == tag && !strings.Contains(tag, ".") {
+		return tag
+	}
+	return defaultRuntimeReleaseTagPrefix + version
+}
+
+func currentBridgeVersion() string {
+	buildInfo, ok := debug.ReadBuildInfo()
+	if !ok {
+		return bridgeDevelopmentVersion
+	}
+	if buildInfo.Main.Path == bridgeModulePath && stableBuildVersion(buildInfo.Main.Version) != "" {
+		return stableBuildVersion(buildInfo.Main.Version)
+	}
+	for _, dependency := range buildInfo.Deps {
+		if dependency.Path != bridgeModulePath {
+			continue
+		}
+		if version := stableBuildVersion(dependency.Version); version != "" {
+			return version
+		}
+	}
+	return bridgeDevelopmentVersion
+}
+
+func stableBuildVersion(version string) string {
+	trimmed := strings.TrimSpace(version)
+	if trimmed == "" || trimmed == "(devel)" {
+		return ""
+	}
+	return strings.TrimPrefix(trimmed, "v")
+}
+
+func compareRuntimeVersions(left string, right string) int {
+	leftVersion := parseRuntimeVersion(left)
+	rightVersion := parseRuntimeVersion(right)
+	if !leftVersion.valid || !rightVersion.valid {
+		return strings.Compare(left, right)
+	}
+	for index := 0; index < len(leftVersion.parts); index++ {
+		if leftVersion.parts[index] > rightVersion.parts[index] {
+			return 1
+		}
+		if leftVersion.parts[index] < rightVersion.parts[index] {
+			return -1
+		}
+	}
+	switch {
+	case leftVersion.prerelease == rightVersion.prerelease:
+		return 0
+	case leftVersion.prerelease == "":
+		return 1
+	case rightVersion.prerelease == "":
+		return -1
+	default:
+		return strings.Compare(leftVersion.prerelease, rightVersion.prerelease)
+	}
+}
+
+type runtimeVersion struct {
+	parts      [3]int
+	prerelease string
+	valid      bool
+}
+
+func parseRuntimeVersion(value string) runtimeVersion {
+	trimmed := strings.TrimSpace(value)
+	trimmed = strings.TrimPrefix(trimmed, "nxs-")
+	trimmed = strings.TrimPrefix(trimmed, "v")
+	core, prerelease, _ := strings.Cut(trimmed, "-")
+	segments := strings.Split(core, ".")
+	if len(segments) != 3 {
+		return runtimeVersion{}
+	}
+	var version runtimeVersion
+	for index, segment := range segments {
+		parsed, err := strconv.Atoi(segment)
+		if err != nil {
+			return runtimeVersion{}
+		}
+		version.parts[index] = parsed
+	}
+	version.prerelease = prerelease
+	version.valid = true
+	return version
 }
 
 func resolveRuntimeAssetURL(manifestURL string, assetURL string) (string, error) {
