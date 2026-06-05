@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-06-05
+
+### Changed
+
+- Updated the default `RuntimeNXS` release manifest to `nxs-v0.1.2`.
+
 ### Fixed
 
 - Fixed `RuntimeNXS` command resolution so release-backed runtime download/cache failures surface as explicit resolver errors instead of silently falling back to a bare `nxs` command in `PATH`.

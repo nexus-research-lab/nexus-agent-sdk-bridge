@@ -27,7 +27,7 @@ const (
 	runtimeReleaseEnvName     = "NEXUS_NXS_RUNTIME_RELEASE"
 	runtimeManifestURLEnvName = "NEXUS_NXS_RUNTIME_MANIFEST_URL"
 
-	defaultRuntimeReleaseTag = "nxs-v0.1.1"
+	defaultRuntimeReleaseTag = "nxs-v0.1.2"
 	bridgeReleaseBaseURL     = "https://github.com/nexus-research-lab/nexus-agent-sdk-bridge/releases/download"
 )
 
