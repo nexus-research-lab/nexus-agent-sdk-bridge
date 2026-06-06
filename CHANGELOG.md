@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.1.8] - 2026-06-06
+
+### Changed
+
+- Ignored macOS `.DS_Store` metadata files in the repository.
+
 ## [0.1.7] - 2026-06-05
 
 ### Changed

@@ -25,5 +25,8 @@ go.work.sum
 # env file
 .env
 
+# macOS system files
+.DS_Store
+
 # projects
 .idea
