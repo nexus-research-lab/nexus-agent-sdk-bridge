@@ -12,3 +12,5 @@
 - `NEXUS_NXS_RUNTIME_RESOLVER_DISABLED`：跳过下载 resolver，回退到 PATH 中的 `nxs`。
 
 `nxs` 多平台产物由私有 Go SDK 仓库构建，并上传到公开 bridge release。发布 workflow 会在单版本 manifest 里写入 `min_bridge_version`，再更新 `nxs-stable` 索引；不涉及 bridge 行为的 runtime 更新不需要发布 bridge 新版本。
+
+宿主应用可以用 `InspectRuntime` 只探测本地 `NEXUS_NXS_COMMAND_PATH`、`NEXUS_APP_ROOT/bin/nxs` 和 cache 状态；用 `EnsureRuntime` 在本地不可用时触发 resolver 下载。`NEXUS_NXS_COMMAND_PATH` 是显式覆盖，优先级高于随包内置 runtime。
