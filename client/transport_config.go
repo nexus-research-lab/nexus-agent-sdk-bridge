@@ -328,6 +328,15 @@ const (
 	processConfigDirEnv         = "CLAUDE_CONFIG_DIR"
 	processFileCheckpointingEnv = "CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING"
 	processOAuthRefreshEnv      = "CLAUDE_CODE_SDK_HAS_OAUTH_REFRESH"
+
+	nxsCachedMicrocompactEnvName        = "NEXUS_CACHED_MICROCOMPACT"
+	nxsAPIClearToolResultsEnvName       = "NEXUS_API_CLEAR_TOOL_RESULTS"
+	nxsAPIClearToolUsesEnvName          = "NEXUS_API_CLEAR_TOOL_USES"
+	nxsPromptCache1hEligibleEnvName     = "NEXUS_PROMPT_CACHE_1H_ELIGIBLE"
+	nxsPromptCache1hAllowlistEnvName    = "NEXUS_PROMPT_CACHE_1H_ALLOWLIST"
+	nxsAgentSDKDiagnosticsEnvName       = "NEXUS_AGENT_SDK_DIAGNOSTICS"
+	nxsAgentSDKDebugEnvName             = "NEXUS_AGENT_SDK_DEBUG"
+	nxsAgentSDKProviderDebugBodyEnvName = "NEXUS_AGENT_SDK_PROVIDER_DEBUG_BODY"
 )
 
 func buildDirectConnectTransportConfig(o resolvedOptions) (transport.DirectConnectConfig, error) {
@@ -354,18 +363,7 @@ func buildDirectConnectTransportConfig(o resolvedOptions) (transport.DirectConne
 }
 
 func buildProcessTransportConfig(o resolvedOptions) transport.ProcessConfig {
-	processEnv := map[string]string{}
-	for key, value := range o.Env {
-		processEnv[key] = value
-	}
-	processEnv[nexusConfigDirEnv] = resolveConfigDir(processEnv)
-	processEnv[processConfigDirEnv] = processEnv[nexusConfigDirEnv]
-	if o.EnableFileCheckpointing {
-		processEnv[processFileCheckpointingEnv] = "true"
-	}
-	if o.OAuthTokenHandler != nil {
-		processEnv[processOAuthRefreshEnv] = "1"
-	}
+	processEnv := buildProcessTransportEnv(o)
 	return transport.ProcessConfig{
 		CommandPath:        processCommandPath(o),
 		CWD:                o.CWD,
@@ -377,6 +375,44 @@ func buildProcessTransportConfig(o resolvedOptions) transport.ProcessConfig {
 		Diagnostics:        processDiagnosticHandler(o.Diagnostics),
 		ControlWireDialect: processControlWireDialect(o),
 	}
+}
+
+func buildProcessTransportEnv(o resolvedOptions) map[string]string {
+	processEnv := map[string]string{}
+	for key, value := range o.Env {
+		processEnv[key] = value
+	}
+	applyNXSRuntimeDefaultEnv(processEnv, o)
+	processEnv[nexusConfigDirEnv] = resolveConfigDir(processEnv)
+	processEnv[processConfigDirEnv] = processEnv[nexusConfigDirEnv]
+	if o.EnableFileCheckpointing {
+		processEnv[processFileCheckpointingEnv] = "true"
+	}
+	if o.OAuthTokenHandler != nil {
+		processEnv[processOAuthRefreshEnv] = "1"
+	}
+	return processEnv
+}
+
+func applyNXSRuntimeDefaultEnv(env map[string]string, o resolvedOptions) {
+	if normalizedRuntimeKind(o.RuntimeKind) != RuntimeNXS {
+		return
+	}
+	setDefaultProcessEnv(env, nxsCachedMicrocompactEnvName, "1")
+	setDefaultProcessEnv(env, nxsAPIClearToolResultsEnvName, "1")
+	setDefaultProcessEnv(env, nxsAPIClearToolUsesEnvName, "1")
+	setDefaultProcessEnv(env, nxsPromptCache1hEligibleEnvName, "1")
+	setDefaultProcessEnv(env, nxsPromptCache1hAllowlistEnvName, "sdk")
+	setDefaultProcessEnv(env, nxsAgentSDKDiagnosticsEnvName, "")
+	setDefaultProcessEnv(env, nxsAgentSDKDebugEnvName, "")
+	setDefaultProcessEnv(env, nxsAgentSDKProviderDebugBodyEnvName, "")
+}
+
+func setDefaultProcessEnv(env map[string]string, key string, value string) {
+	if _, exists := env[key]; exists {
+		return
+	}
+	env[key] = value
 }
 
 func processControlWireDialect(o resolvedOptions) transport.ControlWireDialect {

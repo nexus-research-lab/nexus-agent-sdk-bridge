@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -23,7 +24,6 @@ const (
 	nxsCommandPathEnvName             = "NEXUS_NXS_COMMAND_PATH"
 	nxsRuntimeResolverDisabledEnvName = "NEXUS_NXS_RUNTIME_RESOLVER_DISABLED"
 	legacyBundledNXSDisabledEnvName   = "NEXUS_BUNDLED_NXS_DISABLED"
-	defaultNXSCommandExecutable       = "nxs"
 )
 
 func defaultInitializeTimeoutFromEnv() time.Duration {
@@ -174,6 +174,21 @@ func (o Options) normalized() (Options, error) {
 	if result.Agents == nil {
 		result.Agents = map[string]AgentDefinition{}
 	}
+	for name, server := range result.MCP.SDKServers {
+		if server == nil {
+			continue
+		}
+		if _, exists := result.MCP.Servers[name]; exists {
+			continue
+		}
+		result.MCP.Servers[name] = mcp.SDKServerConfig{
+			Name:     name,
+			Instance: server,
+		}
+	}
+	if err := materializeProcessArgFiles(&result); err != nil {
+		return Options{}, err
+	}
 	if result.OutputFormat != nil {
 		if result.OutputFormat.Type != "" && result.OutputFormat.Type != OutputFormatTypeJSONSchema {
 			return Options{}, fmt.Errorf("client: unsupported output format type %q", result.OutputFormat.Type)
@@ -244,26 +259,19 @@ func (o Options) normalized() (Options, error) {
 			return Options{}, fmt.Errorf("client: plugin path cannot be empty")
 		}
 	}
-	for name, server := range result.MCP.SDKServers {
-		if server == nil {
-			continue
-		}
-		if _, exists := result.MCP.Servers[name]; exists {
-			continue
-		}
-		result.MCP.Servers[name] = mcp.SDKServerConfig{
-			Name:     name,
-			Instance: server,
-		}
-	}
 
 	return result, nil
 }
 
 func (o *Options) resolveRuntimeCommand() error {
+	resolver := defaultRuntimeCommandResolver()
 	switch normalizedRuntimeKind(o.Runtime.Kind) {
 	case RuntimeClaude:
 		o.Runtime.Kind = RuntimeClaude
+		if o.Transport != nil || o.DirectConnect != nil || hasExplicitRuntimeCommand(*o) {
+			return nil
+		}
+		o.CLIPath = resolver.resolveClaudeCommandPath()
 		return nil
 	case RuntimeNXS:
 		o.Runtime.Kind = RuntimeNXS
@@ -272,6 +280,10 @@ func (o *Options) resolveRuntimeCommand() error {
 		}
 		if override := strings.TrimSpace(os.Getenv(nxsCommandPathEnvName)); override != "" {
 			o.CLIPath = override
+			return nil
+		}
+		if packaged := resolver.resolvePackagedNXSCommandPath(); packaged != "" {
+			o.CLIPath = packaged
 			return nil
 		}
 		if !nxsRuntimeResolverDisabled() {
@@ -285,7 +297,7 @@ func (o *Options) resolveRuntimeCommand() error {
 			o.CLIPath = runtimePath
 			return nil
 		}
-		o.CLIPath = defaultNXSCommandExecutable
+		o.CLIPath = nxsExecutableName(runtime.GOOS)
 		return nil
 	default:
 		return fmt.Errorf("client: unsupported runtime kind %q", o.Runtime.Kind)

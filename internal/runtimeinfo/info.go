@@ -10,6 +10,7 @@ import (
 
 // InitializeResponse 表示 runtime 初始化响应快照。
 type InitializeResponse struct {
+	SessionID             string             `json:"session_id,omitempty"`
 	Commands              []SlashCommandInfo `json:"commands,omitempty"`
 	Agents                []AgentInfo        `json:"agents,omitempty"`
 	OutputStyle           string             `json:"output_style,omitempty"`
@@ -89,6 +90,7 @@ type ReloadPluginsResponse struct {
 // DecodeInitializeResponse 解析初始化响应。
 func DecodeInitializeResponse(payload map[string]any) InitializeResponse {
 	return InitializeResponse{
+		SessionID:             jsonvalue.FirstNonEmptyString(payload["session_id"], payload["sessionId"]),
 		Commands:              decodeSlashCommands(payload["commands"]),
 		Agents:                decodeAgents(payload["agents"]),
 		OutputStyle:           jsonvalue.StringValue(payload["output_style"]),

@@ -1,0 +1,205 @@
+package client
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"io"
+	"sync"
+	"testing"
+	"time"
+)
+
+func TestConnectWithPromptWaitsForSystemInitSession(t *testing.T) {
+	transport := newScriptedTransport()
+	core := newSessionCoreWithTransport(
+		Options{Runtime: RuntimeOptions{InitializeTimeout: time.Second}},
+		transport,
+	)
+
+	done := make(chan error, 1)
+	go func() {
+		done <- core.ConnectWithPrompt(context.Background(), "hello")
+	}()
+	defer func() {
+		_ = core.Disconnect(context.Background())
+	}()
+
+	assertInitializeRequest(t, receiveWrite(t, transport))
+	transport.pushRead(successfulInitializeResponse(map[string]any{}))
+
+	select {
+	case err := <-done:
+		t.Fatalf("ConnectWithPrompt() returned before system init: %v", err)
+	case write := <-transport.writes:
+		t.Fatalf("unexpected write before system init: %#v", write)
+	case <-time.After(50 * time.Millisecond):
+	}
+
+	transport.pushRead(map[string]any{
+		"type":       "system",
+		"subtype":    "init",
+		"session_id": "session-from-init",
+	})
+
+	userWrite := receiveWrite(t, transport)
+	if userWrite["type"] != "user" || userWrite["session_id"] != "session-from-init" {
+		t.Fatalf("user write = %#v, want session-from-init", userWrite)
+	}
+	if err := receiveDone(t, done); err != nil {
+		t.Fatalf("ConnectWithPrompt() error = %v", err)
+	}
+}
+
+func TestConnectWithPromptUsesInitializeResponseSession(t *testing.T) {
+	transport := newScriptedTransport()
+	core := newSessionCoreWithTransport(
+		Options{Runtime: RuntimeOptions{InitializeTimeout: time.Second}},
+		transport,
+	)
+
+	done := make(chan error, 1)
+	go func() {
+		done <- core.ConnectWithPrompt(context.Background(), "hello")
+	}()
+	defer func() {
+		_ = core.Disconnect(context.Background())
+	}()
+
+	assertInitializeRequest(t, receiveWrite(t, transport))
+	transport.pushRead(successfulInitializeResponse(map[string]any{
+		"session_id": "session-from-control",
+	}))
+
+	userWrite := receiveWrite(t, transport)
+	if userWrite["type"] != "user" || userWrite["session_id"] != "session-from-control" {
+		t.Fatalf("user write = %#v, want session-from-control", userWrite)
+	}
+	if err := receiveDone(t, done); err != nil {
+		t.Fatalf("ConnectWithPrompt() error = %v", err)
+	}
+}
+
+func TestSendUsesExplicitSessionIDOption(t *testing.T) {
+	transport := &capturingTransport{}
+	core := newSessionCoreWithTransport(NewOptions().WithSessionID("explicit-session"), transport)
+	core.lifecycleState().setConnected(true)
+
+	if err := core.Send(context.Background(), "hello", nil, ""); err != nil {
+		t.Fatalf("Send() error = %v", err)
+	}
+	if got := transport.writes[0]["session_id"]; got != "explicit-session" {
+		t.Fatalf("session_id = %#v, want explicit-session", got)
+	}
+}
+
+type scriptedTransport struct {
+	reads  chan map[string]any
+	writes chan map[string]any
+	closed chan struct{}
+	once   sync.Once
+}
+
+func newScriptedTransport() *scriptedTransport {
+	return &scriptedTransport{
+		reads:  make(chan map[string]any, 8),
+		writes: make(chan map[string]any, 8),
+		closed: make(chan struct{}),
+	}
+}
+
+func (t *scriptedTransport) Start(context.Context) error {
+	return nil
+}
+
+func (t *scriptedTransport) ReadJSON() (map[string]any, error) {
+	select {
+	case payload, ok := <-t.reads:
+		if !ok {
+			return nil, io.EOF
+		}
+		return payload, nil
+	case <-t.closed:
+		return nil, io.EOF
+	}
+}
+
+func (t *scriptedTransport) WriteJSON(payload any) error {
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	var message map[string]any
+	if err := json.Unmarshal(raw, &message); err != nil {
+		return errors.New("payload cannot be decoded as a map")
+	}
+	t.writes <- message
+	return nil
+}
+
+func (t *scriptedTransport) EndInput() error {
+	return nil
+}
+
+func (t *scriptedTransport) Interrupt() error {
+	return nil
+}
+
+func (t *scriptedTransport) Wait() error {
+	return nil
+}
+
+func (t *scriptedTransport) Close() error {
+	t.once.Do(func() {
+		close(t.closed)
+	})
+	return nil
+}
+
+func (t *scriptedTransport) pushRead(payload map[string]any) {
+	t.reads <- payload
+}
+
+func successfulInitializeResponse(response map[string]any) map[string]any {
+	return map[string]any{
+		"type": "control_response",
+		"response": map[string]any{
+			"subtype":    "success",
+			"request_id": "req_1",
+			"response":   response,
+		},
+	}
+}
+
+func assertInitializeRequest(t *testing.T, payload map[string]any) {
+	t.Helper()
+	if payload["type"] != "control_request" || payload["request_id"] != "req_1" {
+		t.Fatalf("initialize request envelope = %#v", payload)
+	}
+	request, ok := payload["request"].(map[string]any)
+	if !ok || request["subtype"] != "initialize" {
+		t.Fatalf("initialize request = %#v", payload["request"])
+	}
+}
+
+func receiveWrite(t *testing.T, transport *scriptedTransport) map[string]any {
+	t.Helper()
+	select {
+	case payload := <-transport.writes:
+		return payload
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for transport write")
+	}
+	return nil
+}
+
+func receiveDone(t *testing.T, done <-chan error) error {
+	t.Helper()
+	select {
+	case err := <-done:
+		return err
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for ConnectWithPrompt")
+	}
+	return nil
+}

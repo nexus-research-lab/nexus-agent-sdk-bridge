@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/jsonvalue"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/runtimeinfo"
@@ -58,7 +59,16 @@ func (c *sessionCore) Connect(ctx context.Context) error {
 		return err
 	}
 
-	lifecycle.setInitializeResponse(runtimeinfo.DecodeInitializeResponse(response))
+	initializeResponse := runtimeinfo.DecodeInitializeResponse(response)
+	lifecycle.setInitializeResponse(initializeResponse)
+	if initializeResponse.SessionID != "" {
+		lifecycle.setSessionID(initializeResponse.SessionID)
+		c.signalInitialSessionReady()
+	}
+	if err := c.waitForInitialSessionReady(ctx, c.options.Runtime.InitializeTimeout); err != nil {
+		_ = c.Disconnect(ctx)
+		return err
+	}
 	return nil
 }
 
@@ -134,7 +144,48 @@ func (c *sessionCore) markTransportFailed(err error) {
 }
 
 func (c *sessionCore) currentSessionID() string {
-	return c.lifecycleState().currentSessionID(defaultSessionID, "", c.options.Session.ResumeID)
+	return c.lifecycleState().currentSessionID(defaultSessionID, c.options.Session.ID, c.options.Session.ResumeID)
+}
+
+func (c *sessionCore) waitForInitialSessionReady(ctx context.Context, timeout time.Duration) error {
+	if c.hasKnownInitialSessionID() {
+		return nil
+	}
+
+	streams := c.streamState()
+	waitContext := ctx
+	cancel := func() {}
+	if waitTimeout := initialSessionReadyTimeout(timeout); waitTimeout > 0 {
+		waitContext, cancel = context.WithTimeout(ctx, waitTimeout)
+	}
+	defer cancel()
+
+	select {
+	case <-streams.initialSessionReady:
+		return nil
+	case <-streams.readDone:
+		if err := c.getReadError(); err != nil {
+			return err
+		}
+		return errors.New("client: runtime exited before initial session was ready")
+	case <-waitContext.Done():
+		return fmt.Errorf("client: wait for initial runtime session failed: %w", waitContext.Err())
+	}
+}
+
+func (c *sessionCore) hasKnownInitialSessionID() bool {
+	if c.lifecycleState().sessionIDValue() != "" {
+		return true
+	}
+	return c.options.Session.ID != "" || c.options.Session.ResumeID != ""
+}
+
+func initialSessionReadyTimeout(timeout time.Duration) time.Duration {
+	const maxInitialSessionReadyWait = 5 * time.Second
+	if timeout <= 0 || timeout > maxInitialSessionReadyWait {
+		return maxInitialSessionReadyWait
+	}
+	return timeout
 }
 
 func (c *sessionCore) buildTransport(options Options) (Transport, error) {
@@ -432,6 +483,9 @@ func (c *sessionCore) readLoop() {
 			if message.SessionID != "" {
 				c.lifecycleState().setSessionID(message.SessionID)
 			}
+			if message.Type == protocol.MessageTypeSystem && message.Subtype == "init" {
+				c.signalInitialSessionReady()
+			}
 			c.trackLastErrorResult(message)
 			if message.Type == protocol.MessageTypeResult {
 				c.signalFirstResult()
@@ -481,6 +535,13 @@ func (c *sessionCore) signalFirstResult() {
 	streams := c.streamState()
 	c.lifecycleState().firstResultOnceDo(func() {
 		close(streams.firstResult)
+	})
+}
+
+func (c *sessionCore) signalInitialSessionReady() {
+	streams := c.streamState()
+	c.lifecycleState().sessionReadyOnceDo(func() {
+		close(streams.initialSessionReady)
 	})
 }
 

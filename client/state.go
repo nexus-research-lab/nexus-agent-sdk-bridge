@@ -15,9 +15,10 @@ type sessionLifecycle struct {
 	connectedMu sync.RWMutex
 	connected   bool
 
-	closeOnce       sync.Once
-	inputCloseOnce  sync.Once
-	firstResultOnce sync.Once
+	closeOnce        sync.Once
+	inputCloseOnce   sync.Once
+	firstResultOnce  sync.Once
+	sessionReadyOnce sync.Once
 
 	stateMu            sync.RWMutex
 	sessionID          string
@@ -73,10 +74,15 @@ func (l *sessionLifecycle) firstResultOnceDo(fn func()) {
 	l.firstResultOnce.Do(fn)
 }
 
+func (l *sessionLifecycle) sessionReadyOnceDo(fn func()) {
+	l.sessionReadyOnce.Do(fn)
+}
+
 func (l *sessionLifecycle) resetRuntimeState(sessionID string) {
 	l.closeOnce = sync.Once{}
 	l.inputCloseOnce = sync.Once{}
 	l.firstResultOnce = sync.Once{}
+	l.sessionReadyOnce = sync.Once{}
 	l.setInputStreamActive(false)
 	l.stateMu.Lock()
 	l.sessionID = sessionID
@@ -167,10 +173,11 @@ func (l *sessionLifecycle) inputStreamActiveValue() bool {
 type sessionStreams struct {
 	buffer int
 
-	messages    chan protocol.ReceivedMessage
-	readDone    chan struct{}
-	firstResult chan struct{}
-	inputClosed chan struct{}
+	messages            chan protocol.ReceivedMessage
+	readDone            chan struct{}
+	firstResult         chan struct{}
+	initialSessionReady chan struct{}
+	inputClosed         chan struct{}
 }
 
 func newSessionStreams(buffer int) *sessionStreams {
@@ -186,6 +193,7 @@ func (s *sessionStreams) reset() {
 	s.messages = make(chan protocol.ReceivedMessage, s.buffer)
 	s.readDone = make(chan struct{})
 	s.firstResult = make(chan struct{})
+	s.initialSessionReady = make(chan struct{})
 	s.inputClosed = make(chan struct{})
 }
 

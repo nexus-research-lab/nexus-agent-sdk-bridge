@@ -14,6 +14,7 @@ func TestDecodeInitializeResponse(t *testing.T) {
 			map[string]any{"id": "model-a", "display_name": "Model A"},
 		},
 		"account":                 map[string]any{"email_address": "dev@example.com"},
+		"session_id":              "session-1",
 		"output_style":            "concise",
 		"available_output_styles": []any{"concise", "full"},
 		"fast_mode_state":         "enabled",
@@ -34,7 +35,7 @@ func TestDecodeInitializeResponse(t *testing.T) {
 	if len(got.Models) != 1 || got.Models[0].ID != "model-a" {
 		t.Fatalf("models = %#v", got.Models)
 	}
-	if got.Account.EmailAddress != "dev@example.com" || got.OutputStyle != "concise" {
+	if got.Account.EmailAddress != "dev@example.com" || got.OutputStyle != "concise" || got.SessionID != "session-1" {
 		t.Fatalf("initialize response = %#v", got)
 	}
 }

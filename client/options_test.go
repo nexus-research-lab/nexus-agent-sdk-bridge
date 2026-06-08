@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
@@ -102,8 +103,69 @@ func TestOptionsWithRuntimeNXSUsesEnvOverride(t *testing.T) {
 func TestOptionsWithRuntimeNXSCanDisableRuntimeResolver(t *testing.T) {
 	t.Setenv("NEXUS_NXS_RUNTIME_RESOLVER_DISABLED", "1")
 	config := NewOptions().WithRuntime(RuntimeNXS).processConfig()
-	if config.CommandPath != "nxs" {
+	if config.CommandPath != nxsExecutableName(runtime.GOOS) {
 		t.Fatalf("nxs command path = %q, want PATH fallback", config.CommandPath)
+	}
+}
+
+func TestOptionsWithRuntimeNXSUsesPackagedAppRootRuntime(t *testing.T) {
+	root := t.TempDir()
+	commandPath := filepath.Join(root, "bin", nxsExecutableName(runtime.GOOS))
+	if err := os.MkdirAll(filepath.Dir(commandPath), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(commandPath, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+		t.Fatalf("write nxs: %v", err)
+	}
+	t.Setenv(nexusAppRootEnvName, root)
+
+	config := NewOptions().WithRuntime(RuntimeNXS).processConfig()
+	if config.CommandPath != commandPath {
+		t.Fatalf("nxs command path = %q, want packaged %q", config.CommandPath, commandPath)
+	}
+}
+
+func TestOptionsWithRuntimeNXSInjectsDefaultEnv(t *testing.T) {
+	t.Setenv("NEXUS_NXS_RUNTIME_RESOLVER_DISABLED", "1")
+	config := NewOptions().WithRuntime(RuntimeNXS).processConfig()
+	want := map[string]string{
+		nxsCachedMicrocompactEnvName:        "1",
+		nxsAPIClearToolResultsEnvName:       "1",
+		nxsAPIClearToolUsesEnvName:          "1",
+		nxsPromptCache1hEligibleEnvName:     "1",
+		nxsPromptCache1hAllowlistEnvName:    "sdk",
+		nxsAgentSDKDiagnosticsEnvName:       "",
+		nxsAgentSDKDebugEnvName:             "",
+		nxsAgentSDKProviderDebugBodyEnvName: "",
+	}
+	for key, value := range want {
+		if config.Env[key] != value {
+			t.Fatalf("%s = %q, want %q; env=%+v", key, config.Env[key], value, config.Env)
+		}
+	}
+}
+
+func TestOptionsWithRuntimeNXSAllowsDefaultEnvOverride(t *testing.T) {
+	t.Setenv("NEXUS_NXS_RUNTIME_RESOLVER_DISABLED", "1")
+	config := NewOptions().
+		WithRuntime(RuntimeNXS).
+		WithEnv(map[string]string{
+			nxsCachedMicrocompactEnvName:     "0",
+			nxsAPIClearToolResultsEnvName:    "",
+			nxsPromptCache1hEligibleEnvName:  "0",
+			nxsPromptCache1hAllowlistEnvName: "agent:*",
+			nxsAgentSDKDiagnosticsEnvName:    "stderr",
+		}).
+		processConfig()
+	if config.Env[nxsCachedMicrocompactEnvName] != "0" ||
+		config.Env[nxsAPIClearToolResultsEnvName] != "" ||
+		config.Env[nxsPromptCache1hEligibleEnvName] != "0" ||
+		config.Env[nxsPromptCache1hAllowlistEnvName] != "agent:*" ||
+		config.Env[nxsAgentSDKDiagnosticsEnvName] != "stderr" {
+		t.Fatalf("nxs default env override failed: %+v", config.Env)
+	}
+	if config.Env[nxsAPIClearToolUsesEnvName] != "1" {
+		t.Fatalf("nxs tool use clear default missing: %+v", config.Env)
 	}
 }
 

@@ -1,6 +1,7 @@
 package mcpwire
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"strings"
@@ -71,6 +72,21 @@ func SerializeServers(servers map[string]mcp.ServerConfig) (map[string]any, map[
 	}
 
 	return serialized, sdkServers, nil
+}
+
+// MarshalConfig 将公开 MCP 配置编码为 Claude/nxs CLI 可读取的 mcpServers JSON。
+func MarshalConfig(servers map[string]mcp.ServerConfig) ([]byte, map[string]mcp.SDKMCPServer, error) {
+	serialized, sdkServers, err := SerializeServers(servers)
+	if err != nil {
+		return nil, nil, err
+	}
+	data, err := json.Marshal(map[string]any{
+		"mcpServers": serialized,
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	return data, sdkServers, nil
 }
 
 // CloneServerConfigs 返回 MCP server 配置 map 的浅拷贝。

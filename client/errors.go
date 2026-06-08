@@ -19,9 +19,54 @@ var (
 	ErrAborted = errors.New("client: operation aborted")
 	// ErrBypassPermissionsNotAllowed 表示会话启动时没有允许运行期切换到 bypassPermissions。
 	ErrBypassPermissionsNotAllowed = errors.New("client: bypassPermissions requires allowDangerouslySkipPermissions at session launch")
+	// ErrRestartRequired 表示 Reconfigure 遇到必须重启 runtime 进程才能生效的配置变化。
+	ErrRestartRequired = errors.New("client: runtime restart required")
 	// ErrUnsupportedCapability 表示当前后端不支持请求的运行时能力。
 	ErrUnsupportedCapability = errors.New("client: unsupported runtime capability")
 )
+
+// RestartReason 表示运行时必须重启的配置差异原因。
+type RestartReason string
+
+const (
+	// RestartReasonProcessEnvChanged 表示进程环境变量变化。
+	RestartReasonProcessEnvChanged RestartReason = "process_env_changed"
+	// RestartReasonToolPolicyChanged 表示启动期工具策略变化。
+	RestartReasonToolPolicyChanged RestartReason = "tool_policy_changed"
+	// RestartReasonMCPControlUnsupported 表示当前 runtime 不支持 MCP 热更新控制面。
+	RestartReasonMCPControlUnsupported RestartReason = "mcp_control_unsupported"
+)
+
+// RestartRequiredError 携带 runtime 重启原因。
+type RestartRequiredError struct {
+	Reason RestartReason
+	Cause  error
+}
+
+func (e *RestartRequiredError) Error() string {
+	message := ErrRestartRequired.Error()
+	if e == nil {
+		return message
+	}
+	if e.Reason != "" {
+		message += ": " + string(e.Reason)
+	}
+	if e.Cause != nil {
+		message += ": " + e.Cause.Error()
+	}
+	return message
+}
+
+func (e *RestartRequiredError) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.Cause
+}
+
+func (e *RestartRequiredError) Is(target error) bool {
+	return target == ErrRestartRequired
+}
 
 // CLINotFoundError 表示本地 CLI 可执行文件未找到。
 type CLINotFoundError struct {
