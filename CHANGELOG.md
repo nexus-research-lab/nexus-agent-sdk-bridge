@@ -4,6 +4,17 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.1.9] - 2026-06-08
+
+### Added
+
+- Added runtime launch snapshots, option fingerprints, and hot reconfiguration support so hosts can inspect and update active runtime sessions without leaking secrets.
+- Added the `runtimes/nxs` runtime inspector API for checking packaged, environment-provided, and cached `nxs` executables before triggering downloads.
+
+### Changed
+
+- Moved process runtime command resolution, launch argument construction, and runtime restart decisions into the bridge client layer.
+
 ## [0.1.8] - 2026-06-06
 
 ### Changed
