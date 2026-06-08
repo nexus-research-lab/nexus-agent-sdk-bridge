@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.1.10] - 2026-06-09
+
 ### Fixed
 
 - Fixed Windows process launch options for `RuntimeNXS` sessions that use SDK-hosted MCP servers, preserving the in-memory SDK MCP registry after MCP config arg-file materialization.
