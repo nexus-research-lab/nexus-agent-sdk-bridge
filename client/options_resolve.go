@@ -174,16 +174,18 @@ func (o Options) normalized() (Options, error) {
 	if result.Agents == nil {
 		result.Agents = map[string]AgentDefinition{}
 	}
-	for name, server := range result.MCP.SDKServers {
-		if server == nil {
-			continue
-		}
-		if _, exists := result.MCP.Servers[name]; exists {
-			continue
-		}
-		result.MCP.Servers[name] = mcp.SDKServerConfig{
-			Name:     name,
-			Instance: server,
+	if strings.TrimSpace(result.MCP.Config) == "" {
+		for name, server := range result.MCP.SDKServers {
+			if server == nil {
+				continue
+			}
+			if _, exists := result.MCP.Servers[name]; exists {
+				continue
+			}
+			result.MCP.Servers[name] = mcp.SDKServerConfig{
+				Name:     name,
+				Instance: server,
+			}
 		}
 	}
 	if err := materializeProcessArgFiles(&result); err != nil {

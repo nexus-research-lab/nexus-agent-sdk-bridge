@@ -23,14 +23,23 @@ import (
 )
 
 const defaultCloseTimeout = 5 * time.Second
+const defaultStderrDrainTimeout = 100 * time.Millisecond
 const defaultMaxBufferSize = 1024 * 1024
 const diagnosticTextLimit = 2048
 const diagnosticTailLimit = 4096
 const minimumCommandVersion = "2.0.0"
+const claudeCommandPathEnvName = "NEXUS_CLAUDE_COMMAND_PATH"
 const skipVersionCheckEnv = "CLAUDE_AGENT_SDK_SKIP_VERSION_CHECK"
 const versionCheckTimeout = 2 * time.Second
 
 var commandVersionPattern = regexp.MustCompile(`^([0-9]+\.[0-9]+\.[0-9]+)`)
+
+type processCommandResolver struct {
+	goos       string
+	getenv     func(string) string
+	lookPath   func(string) (string, error)
+	fileExists func(string) bool
+}
 
 // ProcessDiagnosticEvent 表示 process bridge 产生的一条诊断事件。
 type ProcessDiagnosticEvent struct {
@@ -405,35 +414,84 @@ func setUnsignedStructField(value reflect.Value, name string, number uint64) boo
 }
 
 func resolveCommandPath(commandPath string) (string, error) {
+	return resolveCommandPathWith(commandPath, defaultProcessCommandResolver())
+}
+
+func defaultProcessCommandResolver() processCommandResolver {
+	return processCommandResolver{
+		goos:     runtime.GOOS,
+		getenv:   os.Getenv,
+		lookPath: exec.LookPath,
+		fileExists: func(path string) bool {
+			info, err := os.Stat(path)
+			return err == nil && !info.IsDir()
+		},
+	}
+}
+
+func resolveCommandPathWith(commandPath string, resolver processCommandResolver) (string, error) {
 	commandPath = strings.TrimSpace(commandPath)
 	if commandPath != "" {
 		return commandPath, nil
 	}
-	if path, err := exec.LookPath(defaultCommandName()); err == nil {
-		return path, nil
+
+	resolver = normalizeProcessCommandResolver(resolver)
+	if override := strings.TrimSpace(resolver.getenv(claudeCommandPathEnvName)); override != "" {
+		return override, nil
 	}
-	for _, candidate := range knownCommandPaths() {
-		info, err := os.Stat(candidate)
-		if err == nil && !info.IsDir() {
+	names := commandNames(resolver.goos)
+	for _, name := range names {
+		if path, err := resolver.lookPath(name); err == nil && strings.TrimSpace(path) != "" {
+			return path, nil
+		}
+	}
+	for _, candidate := range knownCommandPaths(resolver.goos, resolver.getenv) {
+		if resolver.fileExists(candidate) {
 			return candidate, nil
 		}
 	}
-	return "", fmt.Errorf("process: cli executable %q not found: %w", defaultCommandName(), exec.ErrNotFound)
+	return "", fmt.Errorf("process: cli executable %q not found: %w", strings.Join(names, "|"), exec.ErrNotFound)
 }
 
-func defaultCommandName() string {
-	if runtime.GOOS == "windows" {
-		return "claude.exe"
+func normalizeProcessCommandResolver(resolver processCommandResolver) processCommandResolver {
+	if strings.TrimSpace(resolver.goos) == "" {
+		resolver.goos = runtime.GOOS
 	}
-	return "claude"
+	if resolver.getenv == nil {
+		resolver.getenv = os.Getenv
+	}
+	if resolver.lookPath == nil {
+		resolver.lookPath = exec.LookPath
+	}
+	if resolver.fileExists == nil {
+		resolver.fileExists = func(path string) bool {
+			info, err := os.Stat(path)
+			return err == nil && !info.IsDir()
+		}
+	}
+	return resolver
 }
 
-func knownCommandPaths() []string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		home = ""
+func commandNames(goos string) []string {
+	if goos == "windows" {
+		// Windows 的 npm 全局安装通常只暴露 claude.cmd/claude.ps1。
+		return []string{"claude.exe", "claude.cmd", "claude.ps1", "claude"}
 	}
-	name := defaultCommandName()
+	return []string{"claude"}
+}
+
+func knownCommandPaths(goos string, getenv func(string) string) []string {
+	if goos == "windows" {
+		return knownWindowsCommandPaths(getenv)
+	}
+
+	home := strings.TrimSpace(getenv("HOME"))
+	if home == "" {
+		if homeDir, err := os.UserHomeDir(); err == nil {
+			home = homeDir
+		}
+	}
+	name := commandNames(goos)[0]
 	paths := make([]string, 0, 6)
 	if home != "" {
 		paths = append(paths, filepath.Join(home, ".npm-global", "bin", name))
@@ -449,7 +507,45 @@ func knownCommandPaths() []string {
 			filepath.Join(home, ".claude", "local", name),
 		)
 	}
+	return compactCommandPaths(paths)
+}
+
+func knownWindowsCommandPaths(getenv func(string) string) []string {
+	paths := []string{}
+	if appData := strings.TrimSpace(getenv("APPDATA")); appData != "" {
+		paths = appendCommandNames(paths, filepath.Join(appData, "npm"), "windows")
+	}
+	if userProfile := strings.TrimSpace(getenv("USERPROFILE")); userProfile != "" {
+		paths = appendCommandNames(paths, filepath.Join(userProfile, ".local", "bin"), "windows")
+		paths = appendCommandNames(paths, filepath.Join(userProfile, ".claude", "local"), "windows")
+		paths = appendCommandNames(paths, filepath.Join(userProfile, "node_modules", ".bin"), "windows")
+	}
+	return compactCommandPaths(paths)
+}
+
+func appendCommandNames(paths []string, dir string, goos string) []string {
+	for _, name := range commandNames(goos) {
+		paths = append(paths, filepath.Join(dir, name))
+	}
 	return paths
+}
+
+func compactCommandPaths(paths []string) []string {
+	seen := map[string]struct{}{}
+	result := make([]string, 0, len(paths))
+	for _, path := range paths {
+		normalized := strings.TrimSpace(path)
+		if normalized == "" {
+			continue
+		}
+		key := strings.ToLower(filepath.Clean(normalized))
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		result = append(result, normalized)
+	}
+	return result
 }
 
 func (m *ProcessManager) checkCommandVersion(parent context.Context, commandPath string) {
@@ -535,7 +631,7 @@ func (m *ProcessManager) Wait() error {
 
 	<-m.done
 	m.closeOutputPipes()
-	m.stderrWG.Wait()
+	m.waitForStderrReader()
 	return normalizeExitError(m.waitError())
 }
 
@@ -573,7 +669,7 @@ func (m *ProcessManager) Close() error {
 		}
 
 		m.closeOutputPipes()
-		m.stderrWG.Wait()
+		m.waitForStderrReader()
 		if !forcedExit {
 			closeErr = normalizeExitError(m.waitError())
 		}
@@ -587,8 +683,42 @@ func (m *ProcessManager) closeOutputPipes() {
 		m.stdout = nil
 	}
 	if m.stderr != nil {
-		_ = m.stderr.Close()
+		m.closeFileWithTimeout("stderr", m.stderr, defaultStderrDrainTimeout)
 		m.stderr = nil
+	}
+}
+
+func (m *ProcessManager) closeFileWithTimeout(name string, file io.Closer, timeout time.Duration) {
+	if file == nil {
+		return
+	}
+	done := make(chan struct{})
+	go func() {
+		_ = file.Close()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(timeout):
+		m.emitDiagnostic("pipe_close_timeout", map[string]any{
+			"name":       name,
+			"timeout_ms": timeout.Milliseconds(),
+		})
+	}
+}
+
+func (m *ProcessManager) waitForStderrReader() {
+	done := make(chan struct{})
+	go func() {
+		m.stderrWG.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+	case <-time.After(defaultStderrDrainTimeout):
+		m.emitDiagnostic("stderr_drain_timeout", map[string]any{
+			"timeout_ms": defaultStderrDrainTimeout.Milliseconds(),
+		})
 	}
 }
 

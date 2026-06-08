@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -159,6 +160,125 @@ func TestNXSRuntimeBundledEntryWithSDKMCPServerIntegration(t *testing.T) {
 	}
 	if result.Raw["pid"] == nil {
 		t.Fatalf("initialization result missing pid: %#v", result.Raw)
+	}
+}
+
+func TestNXSRuntimeEntryWithSDKMCPServerIntegration(t *testing.T) {
+	runtimePath := os.Getenv("NXS_RUNTIME_PATH")
+	if runtimePath == "" {
+		t.Skip("set NXS_RUNTIME_PATH to run the nxs runtime SDK MCP integration test")
+	}
+
+	var handled atomic.Int64
+	server := recordingSDKMCPServer{handled: &handled}
+	options := NewOptions().
+		WithRuntime(RuntimeNXS).
+		WithCLIPath(runtimePath).
+		WithCWD(t.TempDir()).
+		WithEnv(map[string]string{
+			"NEXUS_CONFIG_DIR": t.TempDir(),
+		}).
+		WithModel("test-model").
+		WithSDKMCPServer("test_tools", server)
+	normalizedOptions, err := options.normalized()
+	if err != nil {
+		t.Fatalf("normalized options error = %v", err)
+	}
+	if registry := normalizedOptions.sdkMCPServerRegistry(); len(registry) != 1 || registry["test_tools"] == nil {
+		t.Fatalf("normalized SDK MCP registry = %#v, want test_tools", registry)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	session, err := NewSession(ctx, options)
+	if err != nil {
+		t.Fatalf("NewSession() error = %v; handled MCP messages=%d", err, handled.Load())
+	}
+	defer func() {
+		if err := session.Close(context.Background()); err != nil {
+			t.Fatalf("Close() error = %v", err)
+		}
+	}()
+
+	result, err := session.Control().InitializationResult(ctx)
+	if err != nil {
+		t.Fatalf("InitializationResult() error = %v", err)
+	}
+	if result.Raw["pid"] == nil {
+		t.Fatalf("initialization result missing pid: %#v", result.Raw)
+	}
+
+	status, err := session.MCP().Status(ctx)
+	if err != nil {
+		t.Fatalf("MCP().Status() error = %v", err)
+	}
+	if len(status.MCPServers) == 0 {
+		t.Fatalf("MCP().Status() returned no servers: %#v", status.Raw)
+	}
+	if handled.Load() == 0 {
+		t.Fatalf("SDK MCP server was not called during initialization")
+	}
+}
+
+type recordingSDKMCPServer struct {
+	handled *atomic.Int64
+}
+
+func (s recordingSDKMCPServer) HandleMessage(_ context.Context, message map[string]any) (map[string]any, error) {
+	if s.handled != nil {
+		s.handled.Add(1)
+	}
+	method, _ := message["method"].(string)
+	messageID := message["id"]
+	switch method {
+	case "initialize":
+		return map[string]any{
+			"jsonrpc": "2.0",
+			"id":      messageID,
+			"result": map[string]any{
+				"protocolVersion": "2024-11-05",
+				"capabilities": map[string]any{
+					"tools": map[string]any{},
+				},
+				"serverInfo": map[string]any{
+					"name":    "test_tools",
+					"version": "1.0.0",
+				},
+			},
+		}, nil
+	case "notifications/initialized":
+		return map[string]any{
+			"jsonrpc": "2.0",
+			"id":      messageID,
+			"result":  map[string]any{},
+		}, nil
+	case "tools/list":
+		return map[string]any{
+			"jsonrpc": "2.0",
+			"id":      messageID,
+			"result": map[string]any{
+				"tools": []map[string]any{
+					{
+						"name":        "echo",
+						"description": "Echo input",
+						"inputSchema": map[string]any{
+							"type":       "object",
+							"properties": map[string]any{},
+						},
+					},
+				},
+			},
+		}, nil
+	default:
+		return map[string]any{
+			"jsonrpc": "2.0",
+			"id":      messageID,
+			"error": map[string]any{
+				"code":    -32601,
+				"message": "method not found",
+			},
+		}, nil
 	}
 }
 

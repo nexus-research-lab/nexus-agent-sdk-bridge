@@ -320,7 +320,7 @@ func (i *RuntimeInspector) isExecutable(path string) bool {
 	if err != nil || info == nil || info.IsDir() || info.Size() <= 0 {
 		return false
 	}
-	if i.goos == "windows" {
+	if runtime.GOOS == "windows" || i.goos == "windows" {
 		return true
 	}
 	return info.Mode().Perm()&0o111 != 0

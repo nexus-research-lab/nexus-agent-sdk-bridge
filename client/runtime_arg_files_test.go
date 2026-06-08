@@ -110,6 +110,42 @@ func TestMaterializeProcessArgFilesForWindowsUsesMCPConfigFile(t *testing.T) {
 	}
 }
 
+func TestNormalizedOptionsPreservesSDKMCPRegistryWithMaterializedMCPConfig(t *testing.T) {
+	restore := overrideRuntimeArgFilesRoot(t.TempDir())
+	defer restore()
+
+	options := NewOptions().
+		WithRuntime(RuntimeNXS).
+		WithCLIPath("nxs").
+		WithCWD("C:\\work").
+		WithModel("test-model").
+		WithSDKMCPServer("nexus_room", fakeRuntimeMCPServer{})
+	if err := materializeProcessArgFilesForOS("windows", &options); err != nil {
+		t.Fatalf("materializeProcessArgFilesForOS() error = %v", err)
+	}
+	if options.MCP.Config == "" {
+		t.Fatal("MCP config should be materialized before re-normalizing")
+	}
+
+	normalized, err := options.normalized()
+	if err != nil {
+		t.Fatalf("normalized() error = %v", err)
+	}
+	if registry := normalized.sdkMCPServerRegistry(); len(registry) != 1 || registry["nexus_room"] == nil {
+		t.Fatalf("normalized SDK MCP registry = %+v, want nexus_room", registry)
+	}
+	config := normalized.processConfig()
+	if config.CWD != "C:\\work" {
+		t.Fatalf("process config CWD = %q, want C:\\work", config.CWD)
+	}
+	if got := argValue(t, config.Args, "--model"); got != "test-model" {
+		t.Fatalf("--model = %q, want test-model", got)
+	}
+	if got := argValue(t, config.Args, "--mcp-config"); got != normalized.MCP.Config {
+		t.Fatalf("--mcp-config = %q, want %q", got, normalized.MCP.Config)
+	}
+}
+
 func TestMaterializeProcessArgFilesSkippedOutsideWindows(t *testing.T) {
 	restore := overrideRuntimeArgFilesRoot(t.TempDir())
 	defer restore()

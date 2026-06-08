@@ -65,11 +65,62 @@ func (c *sessionCore) Connect(ctx context.Context) error {
 		lifecycle.setSessionID(initializeResponse.SessionID)
 		c.signalInitialSessionReady()
 	}
-	if err := c.waitForInitialSessionReady(ctx, c.options.Runtime.InitializeTimeout); err != nil {
-		_ = c.Disconnect(ctx)
-		return err
+	if c.shouldWaitForInitialSessionReadyOnConnect() {
+		if err := c.waitForInitialSessionReady(ctx, c.options.Runtime.InitializeTimeout); err != nil {
+			_ = c.Disconnect(ctx)
+			return err
+		}
 	}
 	return nil
+}
+
+func (c *sessionCore) shouldWaitForInitialSessionReadyOnConnect() bool {
+	if c.hasKnownInitialSessionID() {
+		return false
+	}
+	// Claude Code 2.x 只会在首条 user 消息后发送 system init；这里先放行首条消息。
+	return normalizedRuntimeKind(c.options.Runtime.Kind) != RuntimeClaude
+}
+
+func (c *sessionCore) waitForInitialSessionReady(ctx context.Context, timeout time.Duration) error {
+	if c.hasKnownInitialSessionID() {
+		return nil
+	}
+
+	streams := c.streamState()
+	waitContext := ctx
+	cancel := func() {}
+	if waitTimeout := initialSessionReadyTimeout(timeout); waitTimeout > 0 {
+		waitContext, cancel = context.WithTimeout(ctx, waitTimeout)
+	}
+	defer cancel()
+
+	select {
+	case <-streams.initialSessionReady:
+		return nil
+	case <-streams.readDone:
+		if err := c.getReadError(); err != nil {
+			return err
+		}
+		return errors.New("client: runtime exited before initial session was ready")
+	case <-waitContext.Done():
+		return fmt.Errorf("client: wait for initial runtime session failed: %w", waitContext.Err())
+	}
+}
+
+func (c *sessionCore) hasKnownInitialSessionID() bool {
+	if c.lifecycleState().sessionIDValue() != "" {
+		return true
+	}
+	return c.options.Session.ID != "" || c.options.Session.ResumeID != ""
+}
+
+func initialSessionReadyTimeout(timeout time.Duration) time.Duration {
+	const maxInitialSessionReadyWait = 5 * time.Second
+	if timeout <= 0 || timeout > maxInitialSessionReadyWait {
+		return maxInitialSessionReadyWait
+	}
+	return timeout
 }
 
 // Wait 等待会话结束。
@@ -145,47 +196,6 @@ func (c *sessionCore) markTransportFailed(err error) {
 
 func (c *sessionCore) currentSessionID() string {
 	return c.lifecycleState().currentSessionID(defaultSessionID, c.options.Session.ID, c.options.Session.ResumeID)
-}
-
-func (c *sessionCore) waitForInitialSessionReady(ctx context.Context, timeout time.Duration) error {
-	if c.hasKnownInitialSessionID() {
-		return nil
-	}
-
-	streams := c.streamState()
-	waitContext := ctx
-	cancel := func() {}
-	if waitTimeout := initialSessionReadyTimeout(timeout); waitTimeout > 0 {
-		waitContext, cancel = context.WithTimeout(ctx, waitTimeout)
-	}
-	defer cancel()
-
-	select {
-	case <-streams.initialSessionReady:
-		return nil
-	case <-streams.readDone:
-		if err := c.getReadError(); err != nil {
-			return err
-		}
-		return errors.New("client: runtime exited before initial session was ready")
-	case <-waitContext.Done():
-		return fmt.Errorf("client: wait for initial runtime session failed: %w", waitContext.Err())
-	}
-}
-
-func (c *sessionCore) hasKnownInitialSessionID() bool {
-	if c.lifecycleState().sessionIDValue() != "" {
-		return true
-	}
-	return c.options.Session.ID != "" || c.options.Session.ResumeID != ""
-}
-
-func initialSessionReadyTimeout(timeout time.Duration) time.Duration {
-	const maxInitialSessionReadyWait = 5 * time.Second
-	if timeout <= 0 || timeout > maxInitialSessionReadyWait {
-		return maxInitialSessionReadyWait
-	}
-	return timeout
 }
 
 func (c *sessionCore) buildTransport(options Options) (Transport, error) {

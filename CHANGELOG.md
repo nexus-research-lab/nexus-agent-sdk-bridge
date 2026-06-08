@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed Windows process launch options for `RuntimeNXS` sessions that use SDK-hosted MCP servers, preserving the in-memory SDK MCP registry after MCP config arg-file materialization.
+- Fixed Windows process command discovery for npm-installed Claude Code shims such as `claude.cmd`.
+- Fixed Claude Code 2.x session startup by allowing the first user message to trigger `system init` when the initialize control response does not include a session id.
+- Fixed process close/wait teardown so inherited stderr pipes cannot block session cleanup.
+- Fixed `nxs` runtime inspector executability checks when tests override the target platform on Windows hosts.
+
 ## [0.1.9] - 2026-06-08
 
 ### Added

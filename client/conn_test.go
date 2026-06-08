@@ -10,12 +10,52 @@ import (
 	"time"
 )
 
-func TestConnectWithPromptWaitsForSystemInitSession(t *testing.T) {
+func TestConnectWithPromptAllowsClaudePromptBeforeSystemInit(t *testing.T) {
 	transport := newScriptedTransport()
 	core := newSessionCoreWithTransport(
 		Options{Runtime: RuntimeOptions{InitializeTimeout: time.Second}},
 		transport,
 	)
+
+	done := make(chan error, 1)
+	go func() {
+		done <- core.ConnectWithPrompt(context.Background(), "hello")
+	}()
+	defer func() {
+		_ = core.Disconnect(context.Background())
+	}()
+
+	assertInitializeRequest(t, receiveWrite(t, transport))
+	transport.pushRead(successfulInitializeResponse(map[string]any{}))
+
+	userWrite := receiveWrite(t, transport)
+	if userWrite["type"] != "user" || userWrite["session_id"] != "default" {
+		t.Fatalf("user write = %#v, want default session before system init", userWrite)
+	}
+	if err := receiveDone(t, done); err != nil {
+		t.Fatalf("ConnectWithPrompt() error = %v", err)
+	}
+
+	transport.pushRead(map[string]any{
+		"type":       "system",
+		"subtype":    "init",
+		"session_id": "session-from-init",
+	})
+	if got := waitForSessionID(t, core, "session-from-init"); got != "session-from-init" {
+		t.Fatalf("session ID after system init = %q, want session-from-init", got)
+	}
+}
+
+func TestConnectWithPromptWaitsForNXSSystemInitSession(t *testing.T) {
+	transport := newScriptedTransport()
+	options := Options{
+		Transport: transport,
+		Runtime: RuntimeOptions{
+			Kind:              RuntimeNXS,
+			InitializeTimeout: time.Second,
+		},
+	}
+	core := newSessionCoreWithTransport(options, transport)
 
 	done := make(chan error, 1)
 	go func() {
@@ -202,4 +242,16 @@ func receiveDone(t *testing.T, done <-chan error) error {
 		t.Fatal("timed out waiting for ConnectWithPrompt")
 	}
 	return nil
+}
+
+func waitForSessionID(t *testing.T, core *sessionCore, want string) string {
+	t.Helper()
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		if got := core.SessionID(); got == want {
+			return got
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	return core.SessionID()
 }
