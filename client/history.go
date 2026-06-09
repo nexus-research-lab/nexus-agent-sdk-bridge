@@ -11,7 +11,6 @@ import (
 	"sort"
 	"strings"
 	"time"
-	"unicode"
 )
 
 // ListSessionsOptions 表示会话列表查询选项。
@@ -428,13 +427,17 @@ func exactProjectDir(projectsRoot string, directory string) (string, error) {
 func encodeProjectDirectory(directory string) string {
 	var builder strings.Builder
 	for _, value := range directory {
-		if value == '_' || value == '-' || unicode.IsLetter(value) || unicode.IsDigit(value) {
+		if (value >= 'a' && value <= 'z') || (value >= 'A' && value <= 'Z') || (value >= '0' && value <= '9') {
 			builder.WriteRune(value)
 			continue
 		}
 		builder.WriteByte('-')
 	}
-	return builder.String()
+	sanitized := builder.String()
+	if len(sanitized) <= maxProjectDirectoryNameLength {
+		return sanitized
+	}
+	return sanitized[:maxProjectDirectoryNameLength] + "-" + projectPathHashSuffix(directory)
 }
 
 func sessionMatchesDirectory(record sessionRecord, directory string, includeWorktrees bool) bool {

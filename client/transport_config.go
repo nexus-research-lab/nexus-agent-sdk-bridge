@@ -426,7 +426,13 @@ func resolveConfigDir(env map[string]string) string {
 	if value := strings.TrimSpace(env[nexusConfigDirEnv]); value != "" {
 		return value
 	}
+	if value := strings.TrimSpace(env[processConfigDirEnv]); value != "" {
+		return value
+	}
 	if value := strings.TrimSpace(os.Getenv(nexusConfigDirEnv)); value != "" {
+		return value
+	}
+	if value := strings.TrimSpace(os.Getenv(processConfigDirEnv)); value != "" {
 		return value
 	}
 	homeDir, err := os.UserHomeDir()

@@ -3,6 +3,7 @@ package client
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -80,5 +81,53 @@ func TestSessionCatalogReturnsNilForMissingInfo(t *testing.T) {
 	}
 	if info != nil {
 		t.Fatalf("info = %#v, want nil", info)
+	}
+}
+
+func TestEncodeProjectDirectoryMatchesClaudeCode(t *testing.T) {
+	if got := encodeProjectDirectory("/Users/foo/my_project-测试"); got != "-Users-foo-my-project---" {
+		t.Fatalf("encodeProjectDirectory() = %q, want Claude Code ASCII replacement", got)
+	}
+
+	longPath := strings.Repeat("a", maxProjectDirectoryNameLength+1)
+	expected := strings.Repeat("a", maxProjectDirectoryNameLength) + "-2lljc4d1ph1qx"
+	if got := encodeProjectDirectory(longPath); got != expected {
+		t.Fatalf("encodeProjectDirectory() = %q, want %q", got, expected)
+	}
+}
+
+func TestProjectPathHashSuffixMatchesBunHashFixtures(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{name: "empty", input: "", expected: "27k1wwwhf13t"},
+		{name: "ascii", input: "abc", expected: "1g45uqqks6lu"},
+		{name: "unicode", input: "/Users/foo/my_project-测试", expected: "2a16ot6asyzsy"},
+		{name: "emoji", input: strings.Repeat("😀", 101), expected: "1wlro20j1vo13"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := projectPathHashSuffix(test.input); got != test.expected {
+				t.Fatalf("projectPathHashSuffix() = %q, want %q", got, test.expected)
+			}
+		})
+	}
+}
+
+func TestBuildProcessTransportEnvUnifiesClaudeAndNexusConfigRoot(t *testing.T) {
+	processEnv := buildProcessTransportEnv(resolvedOptions{
+		Env: map[string]string{
+			processConfigDirEnv: "/tmp/from-claude",
+		},
+	})
+
+	if processEnv[nexusConfigDirEnv] != "/tmp/from-claude" {
+		t.Fatalf("%s = %q, want /tmp/from-claude", nexusConfigDirEnv, processEnv[nexusConfigDirEnv])
+	}
+	if processEnv[processConfigDirEnv] != "/tmp/from-claude" {
+		t.Fatalf("%s = %q, want /tmp/from-claude", processConfigDirEnv, processEnv[processConfigDirEnv])
 	}
 }
