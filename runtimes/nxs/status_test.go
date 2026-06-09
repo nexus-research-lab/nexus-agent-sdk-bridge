@@ -1,7 +1,6 @@
 package nxs
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -10,7 +9,6 @@ import (
 func TestRuntimeInspectorStatusUsesEnvCommandPath(t *testing.T) {
 	runtimePath := writeRuntimeExecutableForTest(t, t.TempDir(), "nxs")
 	t.Setenv(commandPathEnvName, runtimePath)
-	t.Setenv(appRootEnvName, "")
 
 	status := NewRuntimeInspector(WithPlatform("linux", "amd64")).Status()
 	if !status.Available || status.Path != runtimePath || status.Source != RuntimeSourceEnv {
@@ -21,7 +19,6 @@ func TestRuntimeInspectorStatusUsesEnvCommandPath(t *testing.T) {
 func TestRuntimeInspectorStatusRejectsBrokenEnvCommandPath(t *testing.T) {
 	brokenPath := filepath.Join(t.TempDir(), "nxs")
 	t.Setenv(commandPathEnvName, brokenPath)
-	t.Setenv(appRootEnvName, "")
 
 	status := NewRuntimeInspector(WithPlatform("linux", "amd64")).Status()
 	if status.Available || status.CanDownload || status.Source != RuntimeSourceEnv ||
@@ -30,92 +27,24 @@ func TestRuntimeInspectorStatusRejectsBrokenEnvCommandPath(t *testing.T) {
 	}
 }
 
-func TestRuntimeInspectorStatusPrefersEnvOverAppRootRuntime(t *testing.T) {
-	root := t.TempDir()
-	_ = writeRuntimeExecutableForTest(t, filepath.Join(root, "bin"), "nxs")
-	brokenPath := filepath.Join(t.TempDir(), "nxs")
-	t.Setenv(commandPathEnvName, brokenPath)
-
-	status := NewRuntimeInspector(
-		WithPlatform("linux", "amd64"),
-		WithAppRoot(root),
-	).Status()
-	if status.Available || status.Source != RuntimeSourceEnv ||
-		status.Error != StatusErrorEnvNotExecutable {
-		t.Fatalf("Status() = %+v, want env override to win", status)
-	}
-}
-
-func TestRuntimeInspectorStatusUsesAppRootRuntime(t *testing.T) {
-	root := t.TempDir()
-	runtimePath := writeRuntimeExecutableForTest(t, filepath.Join(root, "bin"), "nxs")
+func TestRuntimeInspectorStatusRequiresEnvCommandPath(t *testing.T) {
 	t.Setenv(commandPathEnvName, "")
-	t.Setenv(appRootEnvName, "")
-
-	status := NewRuntimeInspector(
-		WithPlatform("linux", "amd64"),
-		WithAppRoot(root),
-	).Status()
-	if !status.Available || status.Path != runtimePath || status.Source != RuntimeSourceAppRoot {
-		t.Fatalf("Status() = %+v, want app root runtime", status)
-	}
-}
-
-func TestRuntimeInspectorStatusUsesCachedRuntime(t *testing.T) {
-	cacheDir := t.TempDir()
-	runtimePath := writeRuntimeExecutableForTest(
-		t,
-		filepath.Join(cacheDir, cacheDirName, "runtimes", "nxs", "0.1.2", "linux-amd64", "digest"),
-		"nxs",
-	)
-	t.Setenv(commandPathEnvName, "")
-	t.Setenv(appRootEnvName, "")
-	t.Setenv(runtimeCacheDirEnvName, cacheDir)
 
 	status := NewRuntimeInspector(WithPlatform("linux", "amd64")).Status()
-	if !status.Available || status.Path != runtimePath || status.Source != RuntimeSourceCache {
-		t.Fatalf("Status() = %+v, want cached runtime", status)
+	if status.Available || status.CanDownload || status.Error != StatusErrorNotFound {
+		t.Fatalf("Status() = %+v, want missing env without download", status)
 	}
 }
 
-func TestRuntimeInspectorEnsureUsesRuntimeResolver(t *testing.T) {
-	runtimePath := writeRuntimeExecutableForTest(t, t.TempDir(), "nxs")
+func TestRuntimeInspectorEnsureRequiresEnvCommandPath(t *testing.T) {
 	t.Setenv(commandPathEnvName, "")
-	t.Setenv(appRootEnvName, "")
-	t.Setenv(runtimeCacheDirEnvName, t.TempDir())
 
-	status, err := NewRuntimeInspector(
-		WithPlatform("linux", "amd64"),
-		WithRuntimePathFor(func(goos string, goarch string) (string, error) {
-			if goos != "linux" || goarch != "amd64" {
-				t.Fatalf("runtimePathFor(%q, %q), want linux/amd64", goos, goarch)
-			}
-			return runtimePath, nil
-		}),
-	).Ensure()
-	if err != nil {
-		t.Fatalf("Ensure() error = %v", err)
-	}
-	if !status.Available || status.Path != runtimePath || status.Source != RuntimeSourceCache {
-		t.Fatalf("Ensure() = %+v, want downloaded runtime", status)
-	}
-}
-
-func TestRuntimeInspectorEnsureBlocksBrokenEnvCommandPath(t *testing.T) {
-	brokenPath := filepath.Join(t.TempDir(), "nxs")
-	t.Setenv(commandPathEnvName, brokenPath)
-
-	status, err := NewRuntimeInspector(
-		WithPlatform("linux", "amd64"),
-		WithRuntimePathFor(func(string, string) (string, error) {
-			return "", errors.New("should not download")
-		}),
-	).Ensure()
+	status, err := NewRuntimeInspector(WithPlatform("linux", "amd64")).Ensure()
 	if err == nil {
-		t.Fatal("Ensure() succeeded for broken env command")
+		t.Fatal("Ensure() succeeded without env command")
 	}
-	if status.Available || status.CanDownload || status.Error != StatusErrorEnvNotExecutable {
-		t.Fatalf("Ensure() = %+v, want broken env status", status)
+	if status.Available || status.CanDownload || status.Error != StatusErrorNotFound {
+		t.Fatalf("Ensure() = %+v, want missing env status", status)
 	}
 }
 

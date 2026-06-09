@@ -83,20 +83,6 @@ func TestRuntimeCommandResolverFallsBackToClaudeCommandName(t *testing.T) {
 	}
 }
 
-func TestRuntimeCommandResolverUsesAppRootNXSRuntime(t *testing.T) {
-	expected := filepath.Join(`C:\Nexus\Resources`, "bin", "nxs.exe")
-	resolver := runtimeCommandResolver{
-		goos:       "windows",
-		getenv:     fakeCommandEnv(map[string]string{nexusAppRootEnvName: `C:\Nexus\Resources`}),
-		lookPath:   func(string) (string, error) { return "", os.ErrNotExist },
-		fileExists: func(path string) bool { return path == expected },
-		globPaths:  fakeCommandGlob(nil),
-	}
-	if got := resolver.resolvePackagedNXSCommandPath(); got != expected {
-		t.Fatalf("packaged nxs path = %q, want %q", got, expected)
-	}
-}
-
 func fakeCommandEnv(values map[string]string) func(string) string {
 	return func(key string) string {
 		return values[key]

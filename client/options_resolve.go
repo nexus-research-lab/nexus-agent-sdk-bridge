@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -17,13 +16,10 @@ import (
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/transport"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/mcp"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/permission"
-	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/runtimes/nxs"
 )
 
 const (
-	nxsCommandPathEnvName             = "NEXUS_NXS_COMMAND_PATH"
-	nxsRuntimeResolverDisabledEnvName = "NEXUS_NXS_RUNTIME_RESOLVER_DISABLED"
-	legacyBundledNXSDisabledEnvName   = "NEXUS_BUNDLED_NXS_DISABLED"
+	nxsCommandPathEnvName = "NEXUS_NXS_COMMAND_PATH"
 )
 
 func defaultInitializeTimeoutFromEnv() time.Duration {
@@ -284,23 +280,7 @@ func (o *Options) resolveRuntimeCommand() error {
 			o.CLIPath = override
 			return nil
 		}
-		if packaged := resolver.resolvePackagedNXSCommandPath(); packaged != "" {
-			o.CLIPath = packaged
-			return nil
-		}
-		if !nxsRuntimeResolverDisabled() {
-			runtimePath, err := nxs.RuntimePath()
-			if err != nil {
-				return fmt.Errorf("client: resolve nxs runtime failed: %w", err)
-			}
-			if strings.TrimSpace(runtimePath) == "" {
-				return fmt.Errorf("client: resolve nxs runtime failed: empty runtime path")
-			}
-			o.CLIPath = runtimePath
-			return nil
-		}
-		o.CLIPath = nxsExecutableName(runtime.GOOS)
-		return nil
+		return fmt.Errorf("client: nxs runtime command path is required; set %s or WithCLIPath", nxsCommandPathEnvName)
 	default:
 		return fmt.Errorf("client: unsupported runtime kind %q", o.Runtime.Kind)
 	}
@@ -323,22 +303,6 @@ func hasExplicitRuntimeCommand(o Options) bool {
 	return strings.TrimSpace(o.CLIPath) != "" ||
 		strings.TrimSpace(o.Executable) != "" ||
 		strings.TrimSpace(o.PathToExecutable) != ""
-}
-
-func nxsRuntimeResolverDisabled() bool {
-	if envTruthy(os.Getenv(nxsRuntimeResolverDisabledEnvName)) {
-		return true
-	}
-	return envTruthy(os.Getenv(legacyBundledNXSDisabledEnvName))
-}
-
-func envTruthy(value string) bool {
-	switch strings.ToLower(strings.TrimSpace(value)) {
-	case "1", "true", "yes", "on":
-		return true
-	default:
-		return false
-	}
 }
 
 func (s SkillOptions) normalized() (SkillOptions, error) {

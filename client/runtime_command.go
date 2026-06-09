@@ -10,7 +10,6 @@ import (
 
 const (
 	claudeCommandPathEnvName = "NEXUS_CLAUDE_COMMAND_PATH"
-	nexusAppRootEnvName      = "NEXUS_APP_ROOT"
 )
 
 type runtimeCommandResolver struct {
@@ -56,18 +55,6 @@ func (r runtimeCommandResolver) resolveClaudeCommandPath() string {
 	return claudeDefaultCommandName(r.goos)
 }
 
-func (r runtimeCommandResolver) resolvePackagedNXSCommandPath() string {
-	appRoot := strings.TrimSpace(r.getenv(nexusAppRootEnvName))
-	if appRoot == "" {
-		return ""
-	}
-	candidate := filepath.Join(appRoot, "bin", nxsExecutableName(r.goos))
-	if r.fileExists(candidate) {
-		return candidate
-	}
-	return ""
-}
-
 func claudeCommandNames(goos string) []string {
 	if goos == "windows" {
 		// Windows 的 npm 全局安装通常只提供 claude.cmd/claude.ps1。
@@ -81,13 +68,6 @@ func claudeDefaultCommandName(goos string) string {
 		return "claude.exe"
 	}
 	return "claude"
-}
-
-func nxsExecutableName(goos string) string {
-	if goos == "windows" {
-		return "nxs.exe"
-	}
-	return "nxs"
 }
 
 func knownClaudeCommandPaths(goos string, getenv func(string) string) []string {

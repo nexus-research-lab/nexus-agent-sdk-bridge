@@ -170,29 +170,27 @@ themselves.
 
 | Mode | Configuration |
 |------|---------------|
-| Nexus native runtime (default) | No extra option; the SDK starts the bundled/resolved `nxs` process |
+| Nexus native runtime (default) | `NEXUS_NXS_COMMAND_PATH=/path/to/nxs`, or `client.NewOptions().WithCLIPath("/path/to/nxs")` |
 | Claude Code runtime | `client.NewOptions().WithRuntime(client.RuntimeClaude)` |
 | Explicit CLI path | `client.NewOptions().WithCLIPath("/path/to/nxs")` |
 | JavaScript runtime wrapper | `client.NewOptions().WithPathToClaudeCodeExecutable("/path/to/cli.js").WithExecutable("node")` |
 | Direct connect | `client.NewOptions().WithDirectConnect(client.DirectConnectOptions{...})` |
 | Host-managed transport | `client.NewOptions().WithTransport(transport)` |
 
-By default the SDK uses the release-backed Nexus native runtime resolver:
+By default the SDK starts the Nexus native runtime. The runtime path must be
+explicit: packaged Nexus hosts set `NEXUS_NXS_COMMAND_PATH` before launching the
+bridge, and development environments should set the same variable or pass
+`WithCLIPath`.
 
 ```go
 options := client.NewOptions().
+    WithCLIPath("/path/to/nxs").
     WithCWD(".")
 ```
 
-The resolver downloads the current platform binary from the public
-`nxs-stable` runtime channel, chooses the newest runtime whose
-`min_bridge_version` is compatible with the linked bridge module, verifies its
-SHA-256 digest, and caches the executable locally. Set
-`NEXUS_NXS_RUNTIME_RELEASE` to pin a runtime release tag such as
-`nxs-v0.1.2`, or `NEXUS_NXS_RUNTIME_MANIFEST_URL` to point at an explicit
-manifest. Explicit pins still validate `min_bridge_version` when the manifest
-declares it. Set `NEXUS_NXS_RUNTIME_RESOLVER_DISABLED=1` to skip the download
-resolver and fall back to `nxs` on `PATH`.
+The bridge does not download `nxs`, scan app roots, inspect caches, or fall back
+to `PATH` at runtime. Missing or broken `NEXUS_NXS_COMMAND_PATH` is reported as
+a launch configuration error.
 
 Claude Code remains available as an explicit compatibility runtime:
 

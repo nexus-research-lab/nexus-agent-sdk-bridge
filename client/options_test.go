@@ -2,15 +2,8 @@ package client
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"net/http"
-	"net/http/httptest"
-	"os"
-	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -38,53 +31,6 @@ func TestOptionsTransportConfiguration(t *testing.T) {
 	}
 }
 
-func TestOptionsWithRuntimeNXSUsesDownloadedRuntime(t *testing.T) {
-	cacheDir := t.TempDir()
-	t.Setenv("NEXUS_NXS_RUNTIME_CACHE_DIR", cacheDir)
-	runtimeBytes := []byte("#!/bin/sh\nexit 0\n")
-	digest := sha256.Sum256(runtimeBytes)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/manifest":
-			_, _ = w.Write([]byte(`{"schema_version":1,"version":"0.9.0","assets":[{"goos":"` + runtime.GOOS + `","goarch":"` + runtime.GOARCH + `","filename":"nxs","url":"/nxs","sha256":"` + hex.EncodeToString(digest[:]) + `","archive":"raw"}]}`))
-		case "/nxs":
-			_, _ = w.Write(runtimeBytes)
-		default:
-			http.NotFound(w, r)
-		}
-	}))
-	defer server.Close()
-	t.Setenv("NEXUS_NXS_RUNTIME_MANIFEST_URL", server.URL+"/manifest")
-
-	config := NewOptions().WithRuntime(RuntimeNXS).processConfig()
-	if !strings.HasPrefix(config.CommandPath, cacheDir) {
-		t.Fatalf("nxs command path = %q, want under %q", config.CommandPath, cacheDir)
-	}
-	info, err := os.Stat(config.CommandPath)
-	if err != nil || info.IsDir() {
-		t.Fatalf("nxs command path is not executable: info=%v err=%v", info, err)
-	}
-	if runtime.GOOS != "windows" && info.Mode().Perm()&0111 == 0 {
-		t.Fatalf("nxs command path is not executable: info=%v err=%v", info, err)
-	}
-	if config.ControlWireDialect != transport.ControlWireDialectSnake {
-		t.Fatalf("control wire dialect = %q, want snake", config.ControlWireDialect)
-	}
-}
-
-func TestOptionsWithRuntimeNXSReportsRuntimeResolverError(t *testing.T) {
-	server := httptest.NewServer(http.NotFoundHandler())
-	defer server.Close()
-	t.Setenv("NEXUS_NXS_RUNTIME_MANIFEST_URL", server.URL+"/missing")
-
-	_, err := NewOptions().WithRuntime(RuntimeNXS).normalized()
-	if err == nil ||
-		!strings.Contains(err.Error(), "resolve nxs runtime failed") ||
-		!strings.Contains(err.Error(), "download nxs runtime manifest") {
-		t.Fatalf("normalized() error = %v, want nxs runtime resolver error", err)
-	}
-}
-
 func TestOptionsDefaultRuntimeUsesNXSControlWire(t *testing.T) {
 	config := NewOptions().WithCLIPath("nxs").processConfig()
 	if config.ControlWireDialect != transport.ControlWireDialectSnake {
@@ -99,6 +45,14 @@ func TestOptionsWithRuntimeClaudeUsesClaudeControlWire(t *testing.T) {
 	}
 }
 
+func TestOptionsWithRuntimeNXSRequiresExplicitCommandPath(t *testing.T) {
+	t.Setenv("NEXUS_NXS_COMMAND_PATH", "")
+	_, err := NewOptions().WithRuntime(RuntimeNXS).normalized()
+	if err == nil || !strings.Contains(err.Error(), "NEXUS_NXS_COMMAND_PATH") {
+		t.Fatalf("normalized() error = %v, want explicit nxs command path error", err)
+	}
+}
+
 func TestOptionsWithRuntimeNXSUsesEnvOverride(t *testing.T) {
 	t.Setenv("NEXUS_NXS_COMMAND_PATH", "/tmp/custom-nxs")
 	config := NewOptions().WithRuntime(RuntimeNXS).processConfig()
@@ -107,34 +61,8 @@ func TestOptionsWithRuntimeNXSUsesEnvOverride(t *testing.T) {
 	}
 }
 
-func TestOptionsWithRuntimeNXSCanDisableRuntimeResolver(t *testing.T) {
-	t.Setenv("NEXUS_NXS_RUNTIME_RESOLVER_DISABLED", "1")
-	config := NewOptions().WithRuntime(RuntimeNXS).processConfig()
-	if config.CommandPath != nxsExecutableName(runtime.GOOS) {
-		t.Fatalf("nxs command path = %q, want PATH fallback", config.CommandPath)
-	}
-}
-
-func TestOptionsWithRuntimeNXSUsesPackagedAppRootRuntime(t *testing.T) {
-	root := t.TempDir()
-	commandPath := filepath.Join(root, "bin", nxsExecutableName(runtime.GOOS))
-	if err := os.MkdirAll(filepath.Dir(commandPath), 0o755); err != nil {
-		t.Fatalf("mkdir: %v", err)
-	}
-	if err := os.WriteFile(commandPath, []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
-		t.Fatalf("write nxs: %v", err)
-	}
-	t.Setenv(nexusAppRootEnvName, root)
-
-	config := NewOptions().WithRuntime(RuntimeNXS).processConfig()
-	if config.CommandPath != commandPath {
-		t.Fatalf("nxs command path = %q, want packaged %q", config.CommandPath, commandPath)
-	}
-}
-
 func TestOptionsWithRuntimeNXSInjectsDefaultEnv(t *testing.T) {
-	t.Setenv("NEXUS_NXS_RUNTIME_RESOLVER_DISABLED", "1")
-	config := NewOptions().WithRuntime(RuntimeNXS).processConfig()
+	config := NewOptions().WithRuntime(RuntimeNXS).WithCLIPath("nxs").processConfig()
 	want := map[string]string{
 		nxsCachedMicrocompactEnvName:        "1",
 		nxsAPIClearToolResultsEnvName:       "1",
@@ -154,9 +82,9 @@ func TestOptionsWithRuntimeNXSInjectsDefaultEnv(t *testing.T) {
 }
 
 func TestOptionsWithRuntimeNXSAllowsDefaultEnvOverride(t *testing.T) {
-	t.Setenv("NEXUS_NXS_RUNTIME_RESOLVER_DISABLED", "1")
 	config := NewOptions().
 		WithRuntime(RuntimeNXS).
+		WithCLIPath("nxs").
 		WithEnv(map[string]string{
 			nxsCachedMicrocompactEnvName:       "0",
 			nxsAPIClearToolResultsEnvName:      "",
