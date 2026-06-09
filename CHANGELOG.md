@@ -4,6 +4,17 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.1.11] - 2026-06-10
+
+### Changed
+
+- Changed the default runtime to `RuntimeNXS` while keeping Claude Code available through explicit `RuntimeClaude` configuration.
+- Unified Claude-compatible transcript project hashing and config root propagation for Nexus native runtime sessions.
+
+### Fixed
+
+- Fixed `RuntimeNXS` command resolution so hosts must provide an explicit `NEXUS_NXS_COMMAND_PATH` or `WithCLIPath` value instead of relying on runtime downloads, app-root scans, or `PATH` fallback.
+
 ## [0.1.10] - 2026-06-09
 
 ### Fixed
