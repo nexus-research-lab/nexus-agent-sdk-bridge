@@ -248,9 +248,9 @@ type SessionOptions struct {
 type RuntimeKind string
 
 const (
-	// RuntimeClaude 表示兼容 Claude Code CLI 的默认 runtime。
+	// RuntimeClaude 表示兼容 Claude Code CLI 的显式 runtime。
 	RuntimeClaude RuntimeKind = "claude"
-	// RuntimeNXS 表示 bridge 内置的 Nexus 原生 nxs runtime。
+	// RuntimeNXS 表示 bridge 默认的 Nexus 原生 nxs runtime。
 	RuntimeNXS RuntimeKind = "nxs"
 )
 

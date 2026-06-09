@@ -549,7 +549,7 @@ func compactCommandPaths(paths []string) []string {
 }
 
 func (m *ProcessManager) checkCommandVersion(parent context.Context, commandPath string) {
-	if versionCheckSkipped() {
+	if !m.shouldCheckCommandVersion() {
 		return
 	}
 	ctx, cancel := context.WithTimeout(parent, versionCheckTimeout)
@@ -560,6 +560,16 @@ func (m *ProcessManager) checkCommandVersion(parent context.Context, commandPath
 		return
 	}
 	m.emitUnsupportedCommandVersionDiagnostic(commandPath, string(output))
+}
+
+func (m *ProcessManager) shouldCheckCommandVersion() bool {
+	if versionCheckSkipped() {
+		return false
+	}
+	if m != nil && m.config.ControlWireDialect == ControlWireDialectSnake {
+		return false
+	}
+	return true
 }
 
 func (m *ProcessManager) emitUnsupportedCommandVersionDiagnostic(commandPath, output string) {

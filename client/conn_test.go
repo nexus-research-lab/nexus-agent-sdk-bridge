@@ -13,7 +13,10 @@ import (
 func TestConnectWithPromptAllowsClaudePromptBeforeSystemInit(t *testing.T) {
 	transport := newScriptedTransport()
 	core := newSessionCoreWithTransport(
-		Options{Runtime: RuntimeOptions{InitializeTimeout: time.Second}},
+		Options{
+			Transport: transport,
+			Runtime:   RuntimeOptions{Kind: RuntimeClaude, InitializeTimeout: time.Second},
+		},
 		transport,
 	)
 
@@ -46,12 +49,11 @@ func TestConnectWithPromptAllowsClaudePromptBeforeSystemInit(t *testing.T) {
 	}
 }
 
-func TestConnectWithPromptWaitsForNXSSystemInitSession(t *testing.T) {
+func TestConnectWithPromptDefaultRuntimeWaitsForNXSSystemInitSession(t *testing.T) {
 	transport := newScriptedTransport()
 	options := Options{
 		Transport: transport,
 		Runtime: RuntimeOptions{
-			Kind:              RuntimeNXS,
 			InitializeTimeout: time.Second,
 		},
 	}
@@ -94,7 +96,10 @@ func TestConnectWithPromptWaitsForNXSSystemInitSession(t *testing.T) {
 func TestConnectWithPromptUsesInitializeResponseSession(t *testing.T) {
 	transport := newScriptedTransport()
 	core := newSessionCoreWithTransport(
-		Options{Runtime: RuntimeOptions{InitializeTimeout: time.Second}},
+		Options{
+			Transport: transport,
+			Runtime:   RuntimeOptions{InitializeTimeout: time.Second},
+		},
 		transport,
 	)
 

@@ -11,14 +11,14 @@ import (
 )
 
 func TestRestartReasonForReconfigureDetectsProcessEnvChange(t *testing.T) {
-	currentOptions, err := NewOptions().WithEnv(map[string]string{
+	currentOptions, err := NewOptions().WithCLIPath("nxs").WithEnv(map[string]string{
 		"ANTHROPIC_AUTH_TOKEN": "old-token",
 		"ANTHROPIC_API_KEY":    "",
 	}).normalized()
 	if err != nil {
 		t.Fatalf("normalize current options: %v", err)
 	}
-	nextOptions, err := NewOptions().WithEnv(map[string]string{
+	nextOptions, err := NewOptions().WithCLIPath("nxs").WithEnv(map[string]string{
 		"ANTHROPIC_AUTH_TOKEN": "new-token",
 		"ANTHROPIC_API_KEY":    "",
 	}).normalized()
@@ -33,11 +33,11 @@ func TestRestartReasonForReconfigureDetectsProcessEnvChange(t *testing.T) {
 	if _, ok := restartReasonForReconfigure(nextOptions, nextOptions); ok {
 		t.Fatal("unchanged options should not require restart")
 	}
-	emptyKeyOptions, err := NewOptions().WithEnv(map[string]string{"ANTHROPIC_API_KEY": ""}).normalized()
+	emptyKeyOptions, err := NewOptions().WithCLIPath("nxs").WithEnv(map[string]string{"ANTHROPIC_API_KEY": ""}).normalized()
 	if err != nil {
 		t.Fatalf("normalize empty key options: %v", err)
 	}
-	emptyTokenOptions, err := NewOptions().WithEnv(map[string]string{"ANTHROPIC_AUTH_TOKEN": ""}).normalized()
+	emptyTokenOptions, err := NewOptions().WithCLIPath("nxs").WithEnv(map[string]string{"ANTHROPIC_AUTH_TOKEN": ""}).normalized()
 	if err != nil {
 		t.Fatalf("normalize empty token options: %v", err)
 	}
@@ -48,11 +48,11 @@ func TestRestartReasonForReconfigureDetectsProcessEnvChange(t *testing.T) {
 }
 
 func TestRestartReasonForReconfigureDetectsToolPolicyChange(t *testing.T) {
-	currentOptions, err := NewOptions().WithAllowedTools("Read", "create_goal").normalized()
+	currentOptions, err := NewOptions().WithCLIPath("nxs").WithAllowedTools("Read", "create_goal").normalized()
 	if err != nil {
 		t.Fatalf("normalize current options: %v", err)
 	}
-	nextOptions, err := NewOptions().WithAllowedTools("Read", "create_goal", "mcp__nexus_goal__update_goal").normalized()
+	nextOptions, err := NewOptions().WithCLIPath("nxs").WithAllowedTools("Read", "create_goal", "mcp__nexus_goal__update_goal").normalized()
 	if err != nil {
 		t.Fatalf("normalize next options: %v", err)
 	}
@@ -66,7 +66,10 @@ func TestRestartReasonForReconfigureDetectsToolPolicyChange(t *testing.T) {
 func TestReconfigureAppliesRuntimeControls(t *testing.T) {
 	transport := newScriptedTransport()
 	core := newSessionCoreWithTransport(
-		Options{Runtime: RuntimeOptions{InitializeTimeout: time.Second}},
+		Options{
+			Transport: transport,
+			Runtime:   RuntimeOptions{InitializeTimeout: time.Second},
+		},
 		transport,
 	)
 
@@ -88,6 +91,7 @@ func TestReconfigureAppliesRuntimeControls(t *testing.T) {
 	reconfigureDone := make(chan error, 1)
 	go func() {
 		reconfigureDone <- core.reconfigure(context.Background(), NewOptions().
+			WithTransport(transport).
 			WithPermissionMode(permission.ModeAcceptEdits).
 			WithModel("runtime-model").
 			WithMaxThinkingTokens(512).

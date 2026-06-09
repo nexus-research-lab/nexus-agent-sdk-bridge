@@ -85,8 +85,15 @@ func TestOptionsWithRuntimeNXSReportsRuntimeResolverError(t *testing.T) {
 	}
 }
 
-func TestOptionsDefaultRuntimeUsesClaudeControlWire(t *testing.T) {
-	config := NewOptions().WithCLIPath("claude").processConfig()
+func TestOptionsDefaultRuntimeUsesNXSControlWire(t *testing.T) {
+	config := NewOptions().WithCLIPath("nxs").processConfig()
+	if config.ControlWireDialect != transport.ControlWireDialectSnake {
+		t.Fatalf("control wire dialect = %q, want snake", config.ControlWireDialect)
+	}
+}
+
+func TestOptionsWithRuntimeClaudeUsesClaudeControlWire(t *testing.T) {
+	config := NewOptions().WithRuntime(RuntimeClaude).WithCLIPath("claude").processConfig()
 	if config.ControlWireDialect != transport.ControlWireDialectClaude {
 		t.Fatalf("control wire dialect = %q, want claude", config.ControlWireDialect)
 	}
@@ -132,6 +139,7 @@ func TestOptionsWithRuntimeNXSInjectsDefaultEnv(t *testing.T) {
 		nxsCachedMicrocompactEnvName:        "1",
 		nxsAPIClearToolResultsEnvName:       "1",
 		nxsAPIClearToolUsesEnvName:          "1",
+		nxsAPILocalClearToolHistoryEnvName:  "1",
 		nxsPromptCache1hEligibleEnvName:     "1",
 		nxsPromptCache1hAllowlistEnvName:    "sdk",
 		nxsAgentSDKDiagnosticsEnvName:       "",
@@ -150,15 +158,17 @@ func TestOptionsWithRuntimeNXSAllowsDefaultEnvOverride(t *testing.T) {
 	config := NewOptions().
 		WithRuntime(RuntimeNXS).
 		WithEnv(map[string]string{
-			nxsCachedMicrocompactEnvName:     "0",
-			nxsAPIClearToolResultsEnvName:    "",
-			nxsPromptCache1hEligibleEnvName:  "0",
-			nxsPromptCache1hAllowlistEnvName: "agent:*",
-			nxsAgentSDKDiagnosticsEnvName:    "stderr",
+			nxsCachedMicrocompactEnvName:       "0",
+			nxsAPIClearToolResultsEnvName:      "",
+			nxsAPILocalClearToolHistoryEnvName: "0",
+			nxsPromptCache1hEligibleEnvName:    "0",
+			nxsPromptCache1hAllowlistEnvName:   "agent:*",
+			nxsAgentSDKDiagnosticsEnvName:      "stderr",
 		}).
 		processConfig()
 	if config.Env[nxsCachedMicrocompactEnvName] != "0" ||
 		config.Env[nxsAPIClearToolResultsEnvName] != "" ||
+		config.Env[nxsAPILocalClearToolHistoryEnvName] != "0" ||
 		config.Env[nxsPromptCache1hEligibleEnvName] != "0" ||
 		config.Env[nxsPromptCache1hAllowlistEnvName] != "agent:*" ||
 		config.Env[nxsAgentSDKDiagnosticsEnvName] != "stderr" {
@@ -220,6 +230,7 @@ func TestSettingsObjectAndSandboxBecomeInlineSettings(t *testing.T) {
 	enabled := true
 	allowLocalBinding := true
 	options := NewOptions().
+		WithCLIPath("nxs").
 		WithSettingsObject(map[string]any{
 			"model": "sonnet",
 		}).
@@ -258,6 +269,7 @@ func TestSettingsObjectAndSandboxBecomeInlineSettings(t *testing.T) {
 func TestInlineSettingsMergeSandbox(t *testing.T) {
 	enabled := true
 	options := NewOptions().
+		WithCLIPath("nxs").
 		WithSettings(`{"model":"sonnet","permissions":{"allow":["Read(*)"]}}`).
 		WithSandbox(SandboxSettings{Enabled: &enabled})
 
@@ -277,6 +289,7 @@ func TestInlineSettingsMergeSandbox(t *testing.T) {
 func TestOptionsRejectSettingsPathWithStructuredSettings(t *testing.T) {
 	enabled := true
 	_, err := NewOptions().
+		WithCLIPath("nxs").
 		WithSettings("/tmp/settings.json").
 		WithSandbox(SandboxSettings{Enabled: &enabled}).
 		normalized()
@@ -287,6 +300,7 @@ func TestOptionsRejectSettingsPathWithStructuredSettings(t *testing.T) {
 
 func TestOptionsRejectInvalidToolConfigPreview(t *testing.T) {
 	_, err := NewOptions().
+		WithCLIPath("nxs").
 		WithToolConfig(ToolConfig{
 			AskUserQuestion: &AskUserQuestionToolConfig{
 				PreviewFormat: QuestionPreviewFormat("pdf"),
@@ -299,7 +313,7 @@ func TestOptionsRejectInvalidToolConfigPreview(t *testing.T) {
 }
 
 func TestOptionsRejectExecutableArgsWithoutExecutable(t *testing.T) {
-	_, err := NewOptions().WithExecutableArgs("--loader", "tsx").normalized()
+	_, err := NewOptions().WithCLIPath("nxs").WithExecutableArgs("--loader", "tsx").normalized()
 	if err == nil {
 		t.Fatal("normalized succeeded, want executable args conflict")
 	}

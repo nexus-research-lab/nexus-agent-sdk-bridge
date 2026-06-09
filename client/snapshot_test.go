@@ -10,6 +10,7 @@ import (
 
 func TestRuntimeLaunchSnapshotRedactsSensitiveValues(t *testing.T) {
 	options := NewOptions().
+		WithRuntime(RuntimeClaude).
 		WithCLIPath("claude").
 		WithCWD("/work").
 		WithSystemPrompt("secret prompt").
@@ -59,6 +60,7 @@ func TestRuntimeLaunchSnapshotRedactsSensitiveValues(t *testing.T) {
 
 func TestOptionsFingerprintChangesWhenRestartSensitiveOptionsChange(t *testing.T) {
 	current, err := NewOptions().
+		WithCLIPath("nxs").
 		WithAllowedTools("Read").
 		WithEnv(map[string]string{"ANTHROPIC_AUTH_TOKEN": "old-token"}).
 		OptionsFingerprint()
@@ -66,6 +68,7 @@ func TestOptionsFingerprintChangesWhenRestartSensitiveOptionsChange(t *testing.T
 		t.Fatalf("current fingerprint: %v", err)
 	}
 	next, err := NewOptions().
+		WithCLIPath("nxs").
 		WithAllowedTools("Read", "Write").
 		WithEnv(map[string]string{"ANTHROPIC_AUTH_TOKEN": "new-token"}).
 		OptionsFingerprint()

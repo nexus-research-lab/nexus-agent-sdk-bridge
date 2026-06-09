@@ -308,7 +308,9 @@ func (o *Options) resolveRuntimeCommand() error {
 
 func normalizedRuntimeKind(kind RuntimeKind) RuntimeKind {
 	switch strings.ToLower(strings.TrimSpace(string(kind))) {
-	case "", string(RuntimeClaude), "claude-code", "claudecode":
+	case "":
+		return RuntimeNXS
+	case string(RuntimeClaude), "claude-code", "claudecode":
 		return RuntimeClaude
 	case string(RuntimeNXS), "go", "go-native", "gonative":
 		return RuntimeNXS

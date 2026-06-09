@@ -110,6 +110,13 @@ func TestProcessWaitUnblocksWhenDescendantKeepsStderrOpen(t *testing.T) {
 	}
 }
 
+func TestProcessCommandVersionCheckSkipsSnakeWireRuntime(t *testing.T) {
+	manager := NewProcessManager(ProcessConfig{ControlWireDialect: ControlWireDialectSnake})
+	if manager.shouldCheckCommandVersion() {
+		t.Fatal("shouldCheckCommandVersion() = true, want false for nxs snake wire runtime")
+	}
+}
+
 func newExitedProcessManagerWithOpenStderr(t *testing.T) (*ProcessManager, func()) {
 	t.Helper()
 	stdoutReader, stdoutWriter, err := os.Pipe()
