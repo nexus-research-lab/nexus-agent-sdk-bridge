@@ -21,9 +21,7 @@ type Transport interface {
 	Close() error
 }
 
-// TransportFactory 表示延迟构造传输的工厂。
-type TransportFactory[C any] func(C) (Transport, error)
-
+// IsTransportWriteFailure 判断 err 是否表示 runtime 输入流已不可写。
 func IsTransportWriteFailure(err error) bool {
 	if err == nil {
 		return false
@@ -40,6 +38,7 @@ func IsTransportWriteFailure(err error) bool {
 		strings.Contains(message, "closed pipe")
 }
 
+// ChannelClosed 判断 signal 是否已经关闭；nil channel 按未关闭处理。
 func ChannelClosed(signal <-chan struct{}) bool {
 	if signal == nil {
 		return false

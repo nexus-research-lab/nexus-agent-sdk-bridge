@@ -3,6 +3,7 @@ package client
 // Capability 表示当前会话后端公开的运行时能力。
 type Capability string
 
+// 支持的会话后端能力。
 const (
 	CapabilitySendOptions      Capability = "send_options"
 	CapabilityInternalContext  Capability = "internal_context"
