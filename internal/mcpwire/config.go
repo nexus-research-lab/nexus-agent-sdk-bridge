@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/jsonvalue"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/mcp"
 )
 
@@ -62,7 +63,7 @@ func SerializeServers(servers map[string]mcp.ServerConfig) (map[string]any, map[
 		if err != nil {
 			return nil, nil, err
 		}
-		if strings.TrimSpace(stringValue(payload["scope"])) == "" {
+		if strings.TrimSpace(jsonvalue.StringValue(payload["scope"])) == "" {
 			payload["scope"] = "dynamic"
 		}
 		serialized[name] = payload
@@ -213,11 +214,4 @@ func serializeOAuthConfig(alias string, config mcp.OAuthConfig) (map[string]any,
 		payload["xaa"] = *config.XAA
 	}
 	return payload, nil
-}
-
-func stringValue(value any) string {
-	if typed, ok := value.(string); ok {
-		return typed
-	}
-	return ""
 }

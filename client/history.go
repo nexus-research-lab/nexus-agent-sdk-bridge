@@ -11,6 +11,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/jsonvalue"
 )
 
 // ListSessionsOptions 表示会话列表查询选项。
@@ -107,13 +109,13 @@ func GetSessionMessages(sessionID string, options GetSessionMessagesOptions) ([]
 
 	messages := []SessionMessage{}
 	if err := readSessionJSONL(record.path, func(payload map[string]any) error {
-		messageType := stringValue(payload["type"])
+		messageType := jsonvalue.TrimmedStringValue(payload["type"])
 		if messageType != "user" && messageType != "assistant" {
 			return nil
 		}
 		messages = append(messages, SessionMessage{
 			Type:            messageType,
-			UUID:            stringValue(payload["uuid"]),
+			UUID:            jsonvalue.TrimmedStringValue(payload["uuid"]),
 			SessionID:       firstString(payload["session_id"], payload["sessionId"], record.info.SessionID),
 			Message:         payload["message"],
 			ParentToolUseID: stringPointer(payload["parent_tool_use_id"]),
@@ -319,7 +321,7 @@ func parseSessionFile(path string) (sessionRecord, error) {
 		if sessionID != "" {
 			record.info.SessionID = sessionID
 		}
-		if cwd := stringValue(payload["cwd"]); cwd != "" {
+		if cwd := jsonvalue.TrimmedStringValue(payload["cwd"]); cwd != "" {
 			record.info.CWD = &cwd
 		}
 		if branch := firstString(payload["git_branch"], payload["gitBranch"]); branch != "" {
@@ -329,7 +331,7 @@ func parseSessionFile(path string) (sessionRecord, error) {
 			record.info.CreatedAt = createdAt
 		}
 
-		switch stringValue(payload["type"]) {
+		switch jsonvalue.TrimmedStringValue(payload["type"]) {
 		case "ai-title":
 			aiTitle = firstString(payload["aiTitle"], payload["ai_title"], payload["title"])
 		case "custom-title":
@@ -339,12 +341,12 @@ func parseSessionFile(path string) (sessionRecord, error) {
 		case "session-tag":
 			if payload["tag"] == nil {
 				record.info.Tag = nil
-			} else if tag := stringValue(payload["tag"]); tag != "" {
+			} else if tag := jsonvalue.TrimmedStringValue(payload["tag"]); tag != "" {
 				record.info.Tag = &tag
 			}
 		case "user", "assistant":
 			messageCount++
-			if record.info.FirstPrompt == nil && stringValue(payload["type"]) == "user" {
+			if record.info.FirstPrompt == nil && jsonvalue.TrimmedStringValue(payload["type"]) == "user" {
 				if prompt := firstPromptText(payload["message"]); prompt != "" {
 					record.info.FirstPrompt = &prompt
 				}
@@ -505,10 +507,10 @@ func firstPromptText(message any) string {
 	case []any:
 		for _, item := range content {
 			block, ok := item.(map[string]any)
-			if !ok || stringValue(block["type"]) != "text" {
+			if !ok || jsonvalue.TrimmedStringValue(block["type"]) != "text" {
 				continue
 			}
-			if text := strings.TrimSpace(stringValue(block["text"])); text != "" {
+			if text := jsonvalue.TrimmedStringValue(block["text"]); text != "" {
 				return text
 			}
 		}
@@ -517,7 +519,7 @@ func firstPromptText(message any) string {
 }
 
 func parseTimestampMillis(value any) *int64 {
-	raw := stringValue(value)
+	raw := jsonvalue.TrimmedStringValue(value)
 	if raw == "" {
 		return nil
 	}
@@ -531,7 +533,7 @@ func parseTimestampMillis(value any) *int64 {
 
 func firstString(values ...any) string {
 	for _, value := range values {
-		if text := stringValue(value); text != "" {
+		if text := jsonvalue.TrimmedStringValue(value); text != "" {
 			return text
 		}
 	}
@@ -539,17 +541,9 @@ func firstString(values ...any) string {
 }
 
 func stringPointer(value any) *string {
-	text := stringValue(value)
+	text := jsonvalue.TrimmedStringValue(value)
 	if text == "" {
 		return nil
 	}
 	return &text
-}
-
-func stringValue(value any) string {
-	text, ok := value.(string)
-	if !ok {
-		return ""
-	}
-	return strings.TrimSpace(text)
 }

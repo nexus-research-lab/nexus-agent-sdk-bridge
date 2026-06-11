@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/jsonvalue"
 )
 
 // Server is an in-process MCP server hosted by the SDK.
@@ -107,7 +109,7 @@ func CreateServerWithResources(name string, version string, tools []Tool, resour
 
 // HandleMessage handles one MCP JSON-RPC message.
 func (s *SimpleServer) HandleMessage(ctx context.Context, message map[string]any) (map[string]any, error) {
-	method := stringValue(message["method"])
+	method := jsonvalue.StringValue(message["method"])
 	messageID := message["id"]
 
 	switch method {
@@ -162,7 +164,7 @@ func (s *SimpleServer) HandleMessage(ctx context.Context, message map[string]any
 		}, nil
 	case "tools/call":
 		params := mapValue(message["params"])
-		name := stringValue(params["name"])
+		name := jsonvalue.StringValue(params["name"])
 		tool, ok := s.tools[name]
 		if !ok {
 			return jsonRPCError(messageID, -32601, fmt.Sprintf("tool %q not found", name)), nil
@@ -215,7 +217,7 @@ func (s *SimpleServer) HandleMessage(ctx context.Context, message map[string]any
 		}, nil
 	case "resources/read":
 		params := mapValue(message["params"])
-		uri := stringValue(params["uri"])
+		uri := jsonvalue.StringValue(params["uri"])
 		resource, ok := s.resources[uri]
 		if !ok {
 			return jsonRPCError(messageID, -32602, fmt.Sprintf("resource %q not found", uri)), nil
@@ -286,15 +288,8 @@ func jsonRPCError(messageID any, code int, message string) map[string]any {
 	}
 }
 
-func stringValue(raw any) string {
-	if value, ok := raw.(string); ok {
-		return value
-	}
-	return ""
-}
-
 func mapValue(raw any) map[string]any {
-	if value, ok := raw.(map[string]any); ok {
+	if value, ok := jsonvalue.AnyMap(raw); ok {
 		return value
 	}
 	return nil
