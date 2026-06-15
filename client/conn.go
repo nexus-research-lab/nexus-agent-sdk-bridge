@@ -465,6 +465,8 @@ func (c *sessionCore) readLoop() {
 	defer close(streams.readDone)
 	defer close(streams.messages)
 
+	messagesSeen := 0
+	streamDiagnostics := streamDiagnosticsTracker{}
 	for {
 		payload, err := c.transport.ReadJSON()
 		if err != nil {
@@ -493,6 +495,8 @@ func (c *sessionCore) readLoop() {
 			if message.SessionID != "" {
 				c.lifecycleState().setSessionID(message.SessionID)
 			}
+			messagesSeen++
+			streamStop := streamDiagnostics.observe(message, messagesSeen)
 			if message.Type == protocol.MessageTypeSystem && message.Subtype == "init" {
 				c.signalInitialSessionReady()
 			}
@@ -500,9 +504,24 @@ func (c *sessionCore) readLoop() {
 			if message.Type == protocol.MessageTypeResult {
 				c.signalFirstResult()
 			}
+			c.emitStreamDiagnostic(streamStop)
 			c.emitMessage(message)
 		}
 	}
+}
+
+func (c *sessionCore) emitStreamDiagnostic(streamStop StreamStopDiagnostics) {
+	if c.options.Callbacks.Diagnostics == nil {
+		return
+	}
+	if !streamStop.Observed {
+		return
+	}
+	c.options.Callbacks.Diagnostics(DiagnosticEvent{
+		Component:  "bridge.stream",
+		Event:      "message_stop",
+		Attributes: streamStop.attributes(),
+	})
 }
 
 func (c *sessionCore) sendInternalRawMessage(message map[string]any, sessionID string) error {

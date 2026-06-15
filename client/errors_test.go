@@ -3,7 +3,11 @@ package client
 import (
 	"context"
 	"errors"
+	"io"
+	"strings"
 	"testing"
+
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/protocol"
 )
 
 func TestErrAbortedWrapsContextCancellation(t *testing.T) {
@@ -46,5 +50,74 @@ func TestSessionWaitReturnsErrAbortedForCancelledRead(t *testing.T) {
 	}
 	if !errors.Is(err, context.Canceled) {
 		t.Fatalf("Wait() error = %v, want context.Canceled", err)
+	}
+}
+
+func TestStreamResultReturnsLastStreamStopDiagnostics(t *testing.T) {
+	core := newSessionCore(Options{})
+	streams := core.streamState()
+	streams.messages <- protocol.ReceivedMessage{
+		Type:      protocol.MessageTypeStreamEvent,
+		SessionID: "session-1",
+		Stream: &protocol.StreamEvent{
+			Event: map[string]any{
+				"type": "message_start",
+				"message": map[string]any{
+					"id":    "assistant-1",
+					"model": "kimi-k2.6",
+				},
+			},
+		},
+	}
+	streams.messages <- protocol.ReceivedMessage{
+		Type:      protocol.MessageTypeStreamEvent,
+		SessionID: "session-1",
+		Stream: &protocol.StreamEvent{
+			Event: map[string]any{
+				"type": "message_delta",
+				"delta": map[string]any{
+					"stop_reason": "tool_use",
+				},
+			},
+		},
+	}
+	streams.messages <- protocol.ReceivedMessage{
+		Type:      protocol.MessageTypeStreamEvent,
+		SessionID: "session-1",
+		Stream: &protocol.StreamEvent{
+			Event: map[string]any{"type": "message_stop"},
+		},
+	}
+	streams.messages <- protocol.ReceivedMessage{
+		Type:      protocol.MessageTypeTaskProgress,
+		SessionID: "session-1",
+	}
+	close(streams.messages)
+	close(streams.readDone)
+
+	stream := &Stream{core: core}
+	_, err := stream.Result(context.Background())
+	if !errors.Is(err, ErrNoResult) {
+		t.Fatalf("Result() error = %v, want ErrNoResult", err)
+	}
+	if errors.Is(err, io.EOF) {
+		t.Fatalf("Result() should wrap EOF as StreamClosedBeforeTerminalError: %v", err)
+	}
+	var streamErr *StreamClosedBeforeTerminalError
+	if !errors.As(err, &streamErr) {
+		t.Fatalf("Result() error = %T %[1]v, want StreamClosedBeforeTerminalError", err)
+	}
+	stop := streamErr.LastStreamStop
+	if !stop.Observed ||
+		stop.MessageIndex != 3 ||
+		stop.MessagesAfter != 1 ||
+		stop.StopReason != "tool_use" ||
+		stop.SessionID != "session-1" ||
+		stop.MessageID != "assistant-1" ||
+		stop.Model != "kimi-k2.6" {
+		t.Fatalf("LastStreamStop = %+v, want populated message_stop diagnostics", stop)
+	}
+	if !strings.Contains(err.Error(), "messages_after_last_stream_stop=1") {
+		t.Fatalf("error string missing stream stop diagnostics: %v", err)
 	}
 }

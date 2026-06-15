@@ -181,6 +181,7 @@ func (e *UnsupportedCapabilityError) Is(target error) bool {
 type StreamClosedBeforeTerminalError struct {
 	LastMessageID   string
 	LastMessageType string
+	LastStreamStop  StreamStopDiagnostics
 	SessionID       string
 	Cause           error
 }
@@ -199,6 +200,7 @@ func (e *StreamClosedBeforeTerminalError) Error() string {
 	if e.SessionID != "" {
 		message += "; session_id=" + e.SessionID
 	}
+	message = appendStreamStopErrorDetail(message, e.LastStreamStop)
 	if e.Cause != nil {
 		message += ": " + e.Cause.Error()
 	}

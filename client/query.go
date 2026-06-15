@@ -88,6 +88,8 @@ func (s *Stream) Recv(ctx context.Context) (protocol.ReceivedMessage, error) {
 // Result 读取消息直到首个 result，并返回 result payload。
 func (s *Stream) Result(ctx context.Context) (protocol.ResultMessage, error) {
 	var lastMessage protocol.ReceivedMessage
+	messagesSeen := 0
+	diagnostics := streamDiagnosticsTracker{}
 	for {
 		message, err := s.Recv(ctx)
 		if err != nil {
@@ -98,12 +100,15 @@ func (s *Stream) Result(ctx context.Context) (protocol.ResultMessage, error) {
 				return protocol.ResultMessage{}, &StreamClosedBeforeTerminalError{
 					LastMessageID:   lastMessage.UUID,
 					LastMessageType: string(lastMessage.Type),
+					LastStreamStop:  diagnostics.snapshot(messagesSeen),
 					SessionID:       lastMessage.SessionID,
 				}
 			}
 			return protocol.ResultMessage{}, err
 		}
 		lastMessage = message
+		messagesSeen++
+		diagnostics.observe(message, messagesSeen)
 		if message.Type == protocol.MessageTypeResult {
 			if message.Result == nil {
 				return protocol.ResultMessage{}, ErrNoResult

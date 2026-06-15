@@ -138,6 +138,81 @@ func TestSendUsesExplicitSessionIDOption(t *testing.T) {
 	}
 }
 
+func TestReadLoopEmitsMessageStopDiagnostics(t *testing.T) {
+	transport := newScriptedTransport()
+	events := make(chan DiagnosticEvent, 4)
+	core := newSessionCoreWithTransport(
+		Options{
+			Transport: transport,
+			Runtime:   RuntimeOptions{InitializeTimeout: time.Second},
+			Callbacks: CallbackOptions{
+				Diagnostics: func(event DiagnosticEvent) {
+					events <- event
+				},
+			},
+		},
+		transport,
+	)
+
+	done := make(chan error, 1)
+	go func() {
+		done <- core.Connect(context.Background())
+	}()
+	defer func() {
+		_ = core.Disconnect(context.Background())
+	}()
+
+	assertInitializeRequest(t, receiveWrite(t, transport))
+	transport.pushRead(successfulInitializeResponse(map[string]any{"session_id": "session-1"}))
+	if err := receiveDone(t, done); err != nil {
+		t.Fatalf("Connect() error = %v", err)
+	}
+
+	transport.pushRead(map[string]any{
+		"type":       "stream_event",
+		"session_id": "session-1",
+		"event": map[string]any{
+			"type": "message_start",
+			"message": map[string]any{
+				"id":    "assistant-1",
+				"model": "kimi-k2.6",
+			},
+		},
+	})
+	transport.pushRead(map[string]any{
+		"type":       "stream_event",
+		"session_id": "session-1",
+		"event": map[string]any{
+			"type": "message_delta",
+			"delta": map[string]any{
+				"stop_reason": "tool_use",
+			},
+		},
+	})
+	transport.pushRead(map[string]any{
+		"type":       "stream_event",
+		"session_id": "session-1",
+		"event": map[string]any{
+			"type": "message_stop",
+		},
+	})
+
+	select {
+	case event := <-events:
+		if event.Component != "bridge.stream" || event.Event != "message_stop" {
+			t.Fatalf("diagnostic event = %+v, want bridge.stream/message_stop", event)
+		}
+		if event.Attributes["stop_reason"] != "tool_use" ||
+			event.Attributes["session_id"] != "session-1" ||
+			event.Attributes["message_id"] != "assistant-1" ||
+			event.Attributes["model"] != "kimi-k2.6" {
+			t.Fatalf("diagnostic attrs = %+v, want stream stop context", event.Attributes)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for bridge.stream message_stop diagnostic")
+	}
+}
+
 type scriptedTransport struct {
 	reads  chan map[string]any
 	writes chan map[string]any
