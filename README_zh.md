@@ -120,6 +120,26 @@ Task 事件使用强类型消息：`protocol.MessageTypeTaskStarted`、
 `msg.TaskStarted`、`msg.TaskProgress` 或 `msg.TaskNotification`。
 task progress 和 notification 共用 `protocol.TaskUsage`。
 
+### 宿主定时任务
+
+宿主 daemon 可以观察 `.nexus/scheduled_tasks.json`，不用把 polling loop 放回 SDK core：
+
+```go
+handle, err := client.WatchScheduledTasks(ctx, client.WatchScheduledTasksOptions{
+    Dir: ".",
+})
+if err != nil {
+    return err
+}
+
+for event := range handle.Events() {
+    if event.Type == client.ScheduledTaskMissed {
+        prompt := client.BuildMissedTaskNotification(event.Tasks)
+        _ = prompt
+    }
+}
+```
+
 ### 流式输入
 
 通过 `QueryRequest.Messages` 或 `PromptRequest.Messages` 传入消息 channel，支持在会话过程中持续发送消息：

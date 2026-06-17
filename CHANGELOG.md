@@ -7,6 +7,7 @@ All notable changes to this project are documented in this file.
 ### Added
 
 - Added `tools.NewHostCommandTool` so bridge-owned MCP servers can expose explicit host command tools for capabilities removed from SDK-core env-command fallbacks.
+- Added bridge-owned scheduled task observer helpers: `client.WatchScheduledTasks` and `client.BuildMissedTaskNotification`.
 
 ## [0.1.11] - 2026-06-10
 

@@ -99,6 +99,27 @@ top-level task events use `msg.TaskStarted`, `msg.TaskProgress`, or
 `msg.TaskNotification`. Task progress and notification messages share
 `protocol.TaskUsage`.
 
+### Host Scheduled Tasks
+
+Host daemons can observe `.nexus/scheduled_tasks.json` without putting that
+polling loop inside SDK core:
+
+```go
+handle, err := client.WatchScheduledTasks(ctx, client.WatchScheduledTasksOptions{
+    Dir: ".",
+})
+if err != nil {
+    return err
+}
+
+for event := range handle.Events() {
+    if event.Type == client.ScheduledTaskMissed {
+        prompt := client.BuildMissedTaskNotification(event.Tasks)
+        _ = prompt
+    }
+}
+```
+
 ### Streaming Input
 
 Pass a message channel via `QueryRequest.Messages` or `PromptRequest.Messages` to send messages continuously during a session:
