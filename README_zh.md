@@ -269,6 +269,28 @@ searchTool, _ := tools.NewTyped[SearchInput](
 client.NewOptions().WithCustomTools("my-server", searchTool)
 ```
 
+原来依赖 SDK core env-command fallback 的宿主能力，应放在 bridge 侧，并显式暴露成 MCP 工具：
+
+```go
+sendMessage, _ := tools.NewHostCommandTool(tools.HostCommandOptions{
+    Name:        "host_send_user_message",
+    Description: "通过宿主 bridge 发送可见消息",
+    Command:     "/opt/nexus/bin/send-user-message",
+    InputSchema: map[string]any{
+        "type": "object",
+        "properties": map[string]any{
+            "message": map[string]any{"type": "string"},
+        },
+        "required": []any{"message"},
+    },
+})
+
+client.NewOptions().WithCustomTools("host", sendMessage)
+```
+
+命令通过 stdin 接收工具参数 JSON；stdout 可以返回完整 MCP tool result JSON、作为
+`structuredContent` 的普通 JSON 对象，或纯文本。
+
 ### MCP 服务器
 
 支持外部 MCP 服务器（stdio / SSE / HTTP）和进程内 SDK Server：

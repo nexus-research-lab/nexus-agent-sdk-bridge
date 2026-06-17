@@ -257,6 +257,30 @@ searchTool, _ := tools.NewTyped[SearchInput](
 client.NewOptions().WithCustomTools("my-server", searchTool)
 ```
 
+For host capabilities that used to live behind SDK-core env-command fallbacks,
+keep the shell boundary in the bridge and expose it as an explicit MCP tool:
+
+```go
+sendMessage, _ := tools.NewHostCommandTool(tools.HostCommandOptions{
+    Name:        "host_send_user_message",
+    Description: "Send a visible message through the host bridge",
+    Command:     "/opt/nexus/bin/send-user-message",
+    InputSchema: map[string]any{
+        "type": "object",
+        "properties": map[string]any{
+            "message": map[string]any{"type": "string"},
+        },
+        "required": []any{"message"},
+    },
+})
+
+client.NewOptions().WithCustomTools("host", sendMessage)
+```
+
+The command receives the tool arguments as JSON on stdin. It may print a full
+MCP tool result JSON object, a plain JSON object for `structuredContent`, or
+plain text.
+
 ### MCP Servers
 
 Supports external MCP servers (stdio / SSE / HTTP) and in-process SDK servers:
