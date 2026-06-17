@@ -84,7 +84,10 @@ func runHostCommandTool(ctx context.Context, options hostCommandRunOptions) (Res
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
 		message := strings.TrimSpace(stderr.String())
-		if message == "" {
+		switch {
+		case ctx.Err() == context.DeadlineExceeded:
+			message = fmt.Sprintf("host command timed out after %s", options.Timeout)
+		case message == "":
 			message = err.Error()
 		}
 		return Error(message), nil

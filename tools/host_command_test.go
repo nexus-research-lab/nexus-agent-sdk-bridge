@@ -5,7 +5,9 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
+	"time"
 )
 
 func TestHostCommandToolListsAndCallsThroughMCP(t *testing.T) {
@@ -104,6 +106,45 @@ exit 2
 	content := result["content"].([]map[string]any)
 	if content[0]["text"] != "host failed" {
 		t.Fatalf("content = %#v, want host failed", content)
+	}
+}
+
+func TestHostCommandToolTimeoutReturnsMCPErrorResult(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("shell script test")
+	}
+	script := writeHostCommandScript(t, `#!/bin/sh
+sleep 1
+`)
+	tool, err := NewHostCommandTool(HostCommandOptions{
+		Name:    "host_timeout",
+		Command: script,
+		Timeout: 10 * time.Millisecond,
+	})
+	if err != nil {
+		t.Fatalf("NewHostCommandTool() error = %v", err)
+	}
+	server := CreateSDKMCPServer(SDKMCPServerOptions{Name: "host", Tools: []Tool{tool}})
+
+	response, err := server.HandleMessage(context.Background(), map[string]any{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"method":  "tools/call",
+		"params": map[string]any{
+			"name":      "host_timeout",
+			"arguments": map[string]any{},
+		},
+	})
+	if err != nil {
+		t.Fatalf("tools/call error = %v", err)
+	}
+	result := response["result"].(map[string]any)
+	if result["isError"] != true {
+		t.Fatalf("result = %#v, want MCP isError", result)
+	}
+	content := result["content"].([]map[string]any)
+	if !strings.Contains(content[0]["text"].(string), "timed out") {
+		t.Fatalf("content = %#v, want timeout message", content)
 	}
 }
 
