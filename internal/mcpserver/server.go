@@ -186,6 +186,9 @@ func (s *SimpleServer) HandleMessage(ctx context.Context, message map[string]any
 		if !ok {
 			return jsonRPCError(messageID, -32601, fmt.Sprintf("tool %q not found", name)), nil
 		}
+		if tool.Handler == nil {
+			return jsonRPCError(messageID, -32603, fmt.Sprintf("tool %q handler is nil", name)), nil
+		}
 
 		result, err := tool.Handler(ctx, mapValue(params["arguments"]))
 		if err != nil {
