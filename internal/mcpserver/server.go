@@ -59,10 +59,12 @@ type Resource struct {
 
 // SimpleServer is a minimal in-process MCP server with tools and resources.
 type SimpleServer struct {
-	name      string
-	resources map[string]Resource
-	version   string
-	tools     map[string]Tool
+	name          string
+	resourceOrder []string
+	resources     map[string]Resource
+	version       string
+	toolOrder     []string
+	tools         map[string]Tool
 }
 
 // NewSimpleServer creates an in-process MCP server.
@@ -72,15 +74,21 @@ func NewSimpleServer(name string, version string, tools []Tool) *SimpleServer {
 	}
 
 	toolMap := make(map[string]Tool, len(tools))
+	toolOrder := make([]string, 0, len(tools))
 	for _, tool := range tools {
+		if _, exists := toolMap[tool.Name]; !exists {
+			toolOrder = append(toolOrder, tool.Name)
+		}
 		toolMap[tool.Name] = tool
 	}
 
 	return &SimpleServer{
-		name:      name,
-		resources: map[string]Resource{},
-		version:   version,
-		tools:     toolMap,
+		name:          name,
+		resourceOrder: []string{},
+		resources:     map[string]Resource{},
+		version:       version,
+		toolOrder:     toolOrder,
+		tools:         toolMap,
 	}
 }
 
@@ -92,12 +100,17 @@ func CreateServer(name string, version string, tools []Tool) *SimpleServer {
 // WithResources attaches resources to the current SDK MCP server.
 func (s *SimpleServer) WithResources(resources []Resource) *SimpleServer {
 	resourceMap := make(map[string]Resource, len(resources))
+	resourceOrder := make([]string, 0, len(resources))
 	for _, resource := range resources {
 		if resource.URI == "" {
 			continue
 		}
+		if _, exists := resourceMap[resource.URI]; !exists {
+			resourceOrder = append(resourceOrder, resource.URI)
+		}
 		resourceMap[resource.URI] = resource
 	}
+	s.resourceOrder = resourceOrder
 	s.resources = resourceMap
 	return s
 }
@@ -134,7 +147,11 @@ func (s *SimpleServer) HandleMessage(ctx context.Context, message map[string]any
 		}, nil
 	case "tools/list":
 		tools := make([]map[string]any, 0, len(s.tools))
-		for _, tool := range s.tools {
+		for _, name := range s.toolOrder {
+			tool, ok := s.tools[name]
+			if !ok {
+				continue
+			}
 			schema := tool.InputSchema
 			if schema == nil {
 				schema = map[string]any{
@@ -200,7 +217,11 @@ func (s *SimpleServer) HandleMessage(ctx context.Context, message map[string]any
 		}, nil
 	case "resources/list":
 		resources := make([]map[string]any, 0, len(s.resources))
-		for _, resource := range s.resources {
+		for _, uri := range s.resourceOrder {
+			resource, ok := s.resources[uri]
+			if !ok {
+				continue
+			}
 			resources = append(resources, map[string]any{
 				"uri":         resource.URI,
 				"name":        resource.Name,
