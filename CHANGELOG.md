@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.1.12] - 2026-06-18
+
 ### Added
 
 - Added `tools.NewHostCommandTool` so bridge-owned MCP servers can expose explicit host command tools for capabilities removed from SDK-core env-command fallbacks.
