@@ -28,7 +28,7 @@ func (c *sessionCore) Connect(ctx context.Context) error {
 		lifecycle.unlockConnection()
 		return err
 	}
-	c.options = normalizedOptions
+	c.options = c.withAPIRetryStderrMessages(normalizedOptions)
 	c.replaceSDKMCPServers(c.options.sdkMCPServerRegistry())
 
 	if c.transport == nil {
@@ -44,7 +44,7 @@ func (c *sessionCore) Connect(ctx context.Context) error {
 
 	if err := c.transport.Start(ctx); err != nil {
 		lifecycle.setConnected(false)
-		return classifyTransportStartError(c.options, err)
+		return c.runtimeStartupError(classifyTransportStartError(c.options, err))
 	}
 
 	go c.readLoop()
@@ -55,6 +55,7 @@ func (c *sessionCore) Connect(ctx context.Context) error {
 		c.options.Runtime.InitializeTimeout,
 	)
 	if err != nil {
+		err = c.runtimeStartupError(err)
 		_ = c.Disconnect(ctx)
 		return err
 	}
@@ -67,6 +68,7 @@ func (c *sessionCore) Connect(ctx context.Context) error {
 	}
 	if c.shouldWaitForInitialSessionReadyOnConnect() {
 		if err := c.waitForInitialSessionReady(ctx, c.options.Runtime.InitializeTimeout); err != nil {
+			err = c.runtimeStartupError(err)
 			_ = c.Disconnect(ctx)
 			return err
 		}
@@ -121,6 +123,17 @@ func initialSessionReadyTimeout(timeout time.Duration) time.Duration {
 		return maxInitialSessionReadyWait
 	}
 	return timeout
+}
+
+func (c *sessionCore) runtimeStartupError(err error) error {
+	if err == nil || c.transport == nil {
+		return err
+	}
+	provider, ok := c.transport.(interface{ StderrTail() string })
+	if !ok {
+		return err
+	}
+	return withRuntimeStartupDiagnostics(err, provider.StderrTail())
 }
 
 // Wait 等待会话结束。
@@ -491,6 +504,7 @@ func (c *sessionCore) readLoop() {
 				c.failPendingRequests(decodeErr)
 				return
 			}
+			message = normalizeAPIRetrySystemMessage(message)
 
 			if message.SessionID != "" {
 				c.lifecycleState().setSessionID(message.SessionID)
@@ -558,6 +572,33 @@ func (c *sessionCore) emitMessage(message protocol.ReceivedMessage) {
 		c.signalFirstResult()
 	}
 	streams.messages <- message
+}
+
+func (c *sessionCore) withAPIRetryStderrMessages(options Options) Options {
+	previous := options.Callbacks.Stderr
+	options.Callbacks.Stderr = func(line string) {
+		if previous != nil {
+			previous(line)
+		}
+		message, ok := apiRetryMessageFromStderr(line, c.currentSessionID())
+		if !ok {
+			return
+		}
+		c.tryEmitMessage(message)
+	}
+	return options
+}
+
+func (c *sessionCore) tryEmitMessage(message protocol.ReceivedMessage) {
+	streams := c.streamState()
+	defer func() {
+		_ = recover()
+	}()
+	select {
+	case streams.messages <- message:
+	case <-streams.readDone:
+	default:
+	}
 }
 
 func (c *sessionCore) signalFirstResult() {

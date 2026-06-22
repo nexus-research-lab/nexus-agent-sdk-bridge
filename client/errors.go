@@ -121,6 +121,38 @@ func (e *CLIConnectionError) Is(target error) bool {
 	return ok
 }
 
+// RuntimeStartupError 表示 runtime 启动握手失败，并携带底层 CLI/provider 诊断。
+type RuntimeStartupError struct {
+	Diagnostic string
+	Cause      error
+}
+
+func (e *RuntimeStartupError) Error() string {
+	message := "client: runtime startup failed"
+	if e == nil {
+		return message
+	}
+	if diagnostic := strings.TrimSpace(e.Diagnostic); diagnostic != "" {
+		message += ": " + diagnostic
+	}
+	if e.Cause != nil {
+		message += ": " + e.Cause.Error()
+	}
+	return message
+}
+
+func (e *RuntimeStartupError) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.Cause
+}
+
+func (e *RuntimeStartupError) Is(target error) bool {
+	_, ok := target.(*RuntimeStartupError)
+	return ok
+}
+
 // ProcessError 表示底层 CLI 进程异常退出。
 type ProcessError struct {
 	Message  string
@@ -216,6 +248,62 @@ func (e *StreamClosedBeforeTerminalError) Unwrap() error {
 
 func (e *StreamClosedBeforeTerminalError) Is(target error) bool {
 	return target == ErrNoResult
+}
+
+func withRuntimeStartupDiagnostics(err error, stderrTail string) error {
+	if err == nil {
+		return nil
+	}
+	diagnostic := runtimeStartupDiagnostic(stderrTail)
+	if diagnostic == "" {
+		return err
+	}
+	return &RuntimeStartupError{
+		Diagnostic: diagnostic,
+		Cause:      err,
+	}
+}
+
+func runtimeStartupDiagnostic(stderrTail string) string {
+	line := lastRuntimeStartupErrorLine(stderrTail)
+	if line == "" {
+		return ""
+	}
+	switch {
+	case strings.Contains(line, "overloaded_error") || strings.Contains(line, "529"):
+		return "provider_error=server_overload stderr=" + quoteRuntimeDiagnostic(line)
+	case strings.Contains(strings.ToLower(line), "rate limit") || strings.Contains(line, "429"):
+		return "provider_error=rate_limit stderr=" + quoteRuntimeDiagnostic(line)
+	default:
+		return "stderr=" + quoteRuntimeDiagnostic(line)
+	}
+}
+
+func lastRuntimeStartupErrorLine(stderrTail string) string {
+	lines := strings.Split(stderrTail, "\n")
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := strings.TrimSpace(lines[i])
+		if line == "" {
+			continue
+		}
+		if strings.Contains(line, "API error") ||
+			strings.Contains(line, "overloaded_error") ||
+			strings.Contains(line, "Error streaming") ||
+			strings.Contains(line, "529") ||
+			strings.Contains(line, "429") {
+			return line
+		}
+	}
+	return ""
+}
+
+func quoteRuntimeDiagnostic(line string) string {
+	const maxRuntimeDiagnosticBytes = 1024
+	line = strings.TrimSpace(line)
+	if len(line) > maxRuntimeDiagnosticBytes {
+		line = line[:maxRuntimeDiagnosticBytes] + "..."
+	}
+	return fmt.Sprintf("%q", line)
 }
 
 // NewCLIJSONDecodeError 创建 CLI JSON 解析错误。

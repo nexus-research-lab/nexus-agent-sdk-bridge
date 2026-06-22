@@ -61,6 +61,14 @@ func (t *controlCodecTransport) Close() error {
 	return t.inner.Close()
 }
 
+func (t *controlCodecTransport) StderrTail() string {
+	provider, ok := t.inner.(interface{ StderrTail() string })
+	if !ok {
+		return ""
+	}
+	return provider.StderrTail()
+}
+
 func (t *controlCodecTransport) normalizeInboundControlRequest(payload map[string]any) map[string]any {
 	if jsonvalue.StringValue(payload["type"]) != "control_request" {
 		return payload

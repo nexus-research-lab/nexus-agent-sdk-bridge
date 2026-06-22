@@ -4,6 +4,11 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Included recent runtime stderr diagnostics in startup timeout errors so hosts can surface provider overloads instead of bare context deadlines.
+- Forwarded runtime API retry attempts as structured `system/api_retry` messages.
+
 ## [0.1.12] - 2026-06-18
 
 ### Added

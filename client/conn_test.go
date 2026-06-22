@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -90,6 +91,43 @@ func TestConnectWithPromptDefaultRuntimeWaitsForNXSSystemInitSession(t *testing.
 	}
 	if err := receiveDone(t, done); err != nil {
 		t.Fatalf("ConnectWithPrompt() error = %v", err)
+	}
+}
+
+func TestConnectIncludesRuntimeStartupDiagnosticsOnInitialSessionTimeout(t *testing.T) {
+	transport := newScriptedTransport()
+	transport.stderrTail = `API error (attempt 1/11): 529 {"type":"overloaded_error","message":"[1305] 当前访问量过大，请稍后再试"}`
+	core := newSessionCoreWithTransport(
+		Options{
+			Transport: transport,
+			Runtime:   RuntimeOptions{InitializeTimeout: 20 * time.Millisecond},
+		},
+		transport,
+	)
+
+	done := make(chan error, 1)
+	go func() {
+		done <- core.Connect(context.Background())
+	}()
+	defer func() {
+		_ = core.Disconnect(context.Background())
+	}()
+
+	assertInitializeRequest(t, receiveWrite(t, transport))
+	transport.pushRead(successfulInitializeResponse(map[string]any{}))
+
+	err := receiveDone(t, done)
+	if err == nil {
+		t.Fatal("Connect() error = nil, want timeout")
+	}
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("Connect() error = %v, want context deadline exceeded", err)
+	}
+	message := err.Error()
+	for _, want := range []string{"provider_error=server_overload", "overloaded_error", "context deadline exceeded"} {
+		if !strings.Contains(message, want) {
+			t.Fatalf("Connect() error = %q, want %q", message, want)
+		}
 	}
 }
 
@@ -214,10 +252,11 @@ func TestReadLoopEmitsMessageStopDiagnostics(t *testing.T) {
 }
 
 type scriptedTransport struct {
-	reads  chan map[string]any
-	writes chan map[string]any
-	closed chan struct{}
-	once   sync.Once
+	reads      chan map[string]any
+	writes     chan map[string]any
+	closed     chan struct{}
+	once       sync.Once
+	stderrTail string
 }
 
 func newScriptedTransport() *scriptedTransport {
@@ -274,6 +313,10 @@ func (t *scriptedTransport) Close() error {
 		close(t.closed)
 	})
 	return nil
+}
+
+func (t *scriptedTransport) StderrTail() string {
+	return t.stderrTail
 }
 
 func (t *scriptedTransport) pushRead(payload map[string]any) {

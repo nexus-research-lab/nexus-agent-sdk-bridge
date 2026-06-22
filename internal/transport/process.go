@@ -131,6 +131,14 @@ func NewProcessManager(config ProcessConfig) *ProcessManager {
 	}
 }
 
+// StderrTail 返回最近的 stderr 诊断尾部。
+func (m *ProcessManager) StderrTail() string {
+	if m == nil {
+		return ""
+	}
+	return m.stderrTail.String()
+}
+
 // Start 启动子进程。
 func (m *ProcessManager) Start(ctx context.Context) error {
 	if m.cmd != nil {
