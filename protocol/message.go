@@ -934,9 +934,13 @@ type InformationalSystemMessage struct {
 type TaskStartedMessage struct {
 	TaskID       string         `json:"task_id,omitempty"`
 	ToolUseID    string         `json:"tool_use_id,omitempty"`
+	AgentID      string         `json:"agent_id,omitempty"`
+	AgentType    string         `json:"agent_type,omitempty"`
 	Description  string         `json:"description,omitempty"`
 	TaskType     string         `json:"task_type,omitempty"`
 	WorkflowName string         `json:"workflow_name,omitempty"`
+	OutputFile   string         `json:"output_file,omitempty"`
+	ParentTaskID string         `json:"parent_task_id,omitempty"`
 	Prompt       string         `json:"prompt,omitempty"`
 	Additional   map[string]any `json:"additional,omitempty"`
 }
@@ -952,8 +956,11 @@ type TaskUsage struct {
 type TaskProgressMessage struct {
 	TaskID       string         `json:"task_id,omitempty"`
 	ToolUseID    string         `json:"tool_use_id,omitempty"`
+	AgentID      string         `json:"agent_id,omitempty"`
+	AgentType    string         `json:"agent_type,omitempty"`
 	Description  string         `json:"description,omitempty"`
 	LastToolName string         `json:"last_tool_name,omitempty"`
+	ParentTaskID string         `json:"parent_task_id,omitempty"`
 	Summary      string         `json:"summary,omitempty"`
 	Usage        TaskUsage      `json:"usage,omitempty"`
 	Additional   map[string]any `json:"additional,omitempty"`
@@ -961,13 +968,17 @@ type TaskProgressMessage struct {
 
 // TaskNotificationMessage 表示任务通知消息。
 type TaskNotificationMessage struct {
-	TaskID     string         `json:"task_id,omitempty"`
-	ToolUseID  string         `json:"tool_use_id,omitempty"`
-	Status     string         `json:"status,omitempty"`
-	OutputFile string         `json:"output_file,omitempty"`
-	Summary    string         `json:"summary,omitempty"`
-	Usage      TaskUsage      `json:"usage,omitempty"`
-	Additional map[string]any `json:"additional,omitempty"`
+	TaskID         string         `json:"task_id,omitempty"`
+	ToolUseID      string         `json:"tool_use_id,omitempty"`
+	AgentID        string         `json:"agent_id,omitempty"`
+	AgentType      string         `json:"agent_type,omitempty"`
+	ParentTaskID   string         `json:"parent_task_id,omitempty"`
+	Status         string         `json:"status,omitempty"`
+	OutputFile     string         `json:"output_file,omitempty"`
+	Summary        string         `json:"summary,omitempty"`
+	TranscriptPath string         `json:"transcript_path,omitempty"`
+	Usage          TaskUsage      `json:"usage,omitempty"`
+	Additional     map[string]any `json:"additional,omitempty"`
 }
 
 // SystemMessage 表示统一系统消息。
@@ -1109,9 +1120,13 @@ func decodeTaskStartedMessage(payload map[string]any) *TaskStartedMessage {
 	return &TaskStartedMessage{
 		TaskID:       jsonvalue.StringValue(payload["task_id"]),
 		ToolUseID:    jsonvalue.StringValue(payload["tool_use_id"]),
+		AgentID:      jsonvalue.StringValue(payload["agent_id"]),
+		AgentType:    jsonvalue.StringValue(payload["agent_type"]),
 		Description:  jsonvalue.StringValue(payload["description"]),
 		TaskType:     jsonvalue.StringValue(payload["task_type"]),
 		WorkflowName: jsonvalue.StringValue(payload["workflow_name"]),
+		OutputFile:   jsonvalue.StringValue(payload["output_file"]),
+		ParentTaskID: jsonvalue.StringValue(payload["parent_task_id"]),
 		Prompt:       jsonvalue.StringValue(payload["prompt"]),
 		Additional:   payload,
 	}
@@ -1121,8 +1136,11 @@ func decodeTaskProgressMessage(payload map[string]any) *TaskProgressMessage {
 	return &TaskProgressMessage{
 		TaskID:       jsonvalue.StringValue(payload["task_id"]),
 		ToolUseID:    jsonvalue.StringValue(payload["tool_use_id"]),
+		AgentID:      jsonvalue.StringValue(payload["agent_id"]),
+		AgentType:    jsonvalue.StringValue(payload["agent_type"]),
 		Description:  jsonvalue.StringValue(payload["description"]),
 		LastToolName: jsonvalue.StringValue(payload["last_tool_name"]),
+		ParentTaskID: jsonvalue.StringValue(payload["parent_task_id"]),
 		Summary:      jsonvalue.StringValue(payload["summary"]),
 		Usage:        decodeTaskUsage(payload["usage"]),
 		Additional:   payload,
@@ -1131,13 +1149,17 @@ func decodeTaskProgressMessage(payload map[string]any) *TaskProgressMessage {
 
 func decodeTaskNotificationMessage(payload map[string]any) *TaskNotificationMessage {
 	return &TaskNotificationMessage{
-		TaskID:     jsonvalue.StringValue(payload["task_id"]),
-		ToolUseID:  jsonvalue.StringValue(payload["tool_use_id"]),
-		Status:     jsonvalue.StringValue(payload["status"]),
-		OutputFile: jsonvalue.StringValue(payload["output_file"]),
-		Summary:    jsonvalue.StringValue(payload["summary"]),
-		Usage:      decodeTaskUsage(payload["usage"]),
-		Additional: payload,
+		TaskID:         jsonvalue.StringValue(payload["task_id"]),
+		ToolUseID:      jsonvalue.StringValue(payload["tool_use_id"]),
+		AgentID:        jsonvalue.StringValue(payload["agent_id"]),
+		AgentType:      jsonvalue.StringValue(payload["agent_type"]),
+		ParentTaskID:   jsonvalue.StringValue(payload["parent_task_id"]),
+		Status:         jsonvalue.StringValue(payload["status"]),
+		OutputFile:     jsonvalue.StringValue(payload["output_file"]),
+		Summary:        jsonvalue.StringValue(payload["summary"]),
+		TranscriptPath: jsonvalue.StringValue(payload["transcript_path"]),
+		Usage:          decodeTaskUsage(payload["usage"]),
+		Additional:     payload,
 	}
 }
 

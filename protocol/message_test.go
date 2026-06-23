@@ -142,8 +142,11 @@ func TestParseTaskProgressMessage(t *testing.T) {
 		"session_id":"session-1",
 		"task_id":"task-1",
 		"tool_use_id":"tool-1",
+		"agent_id":"agent-1",
+		"agent_type":"worker",
 		"description":"运行子任务",
 		"last_tool_name":"Read",
+		"parent_task_id":"parent-1",
 		"summary":"已读取文件",
 		"usage":{"total_tokens":123,"tool_uses":2,"duration_ms":456}
 	}`))
@@ -159,8 +162,44 @@ func TestParseTaskProgressMessage(t *testing.T) {
 	if message.TaskProgress.TaskID != "task-1" {
 		t.Fatalf("TaskID = %q, want task-1", message.TaskProgress.TaskID)
 	}
+	if message.TaskProgress.AgentID != "agent-1" || message.TaskProgress.AgentType != "worker" {
+		t.Fatalf("Agent fields = %#v, want agent-1/worker", message.TaskProgress)
+	}
+	if message.TaskProgress.ParentTaskID != "parent-1" {
+		t.Fatalf("ParentTaskID = %q, want parent-1", message.TaskProgress.ParentTaskID)
+	}
 	if message.TaskProgress.Usage.TotalTokens != 123 {
 		t.Fatalf("TotalTokens = %d, want 123", message.TaskProgress.Usage.TotalTokens)
+	}
+}
+
+func TestParseTaskStartedMessage(t *testing.T) {
+	message, err := ParseMessage([]byte(`{
+		"type":"task_started",
+		"session_id":"session-1",
+		"task_id":"task-1",
+		"tool_use_id":"tool-1",
+		"agent_id":"agent-1",
+		"agent_type":"worker",
+		"description":"运行子任务",
+		"output_file":"/tmp/task.out",
+		"parent_task_id":"parent-1",
+		"prompt":"inspect code"
+	}`))
+	if err != nil {
+		t.Fatalf("ParseMessage(task_started) error = %v", err)
+	}
+	if message.Type != MessageTypeTaskStarted {
+		t.Fatalf("Type = %q, want task_started", message.Type)
+	}
+	if message.TaskStarted == nil {
+		t.Fatal("TaskStarted = nil")
+	}
+	if message.TaskStarted.AgentID != "agent-1" || message.TaskStarted.AgentType != "worker" {
+		t.Fatalf("Agent fields = %#v, want agent-1/worker", message.TaskStarted)
+	}
+	if message.TaskStarted.OutputFile != "/tmp/task.out" || message.TaskStarted.ParentTaskID != "parent-1" {
+		t.Fatalf("TaskStarted = %#v, want output file and parent task id", message.TaskStarted)
 	}
 }
 
@@ -171,7 +210,13 @@ func TestParseSystemTaskNotificationMessage(t *testing.T) {
 		"session_id":"session-1",
 		"task_id":"task-1",
 		"tool_use_id":"tool-1",
+		"agent_id":"agent-1",
+		"agent_type":"worker",
+		"parent_task_id":"parent-1",
 		"status":"completed",
+		"output_file":"/tmp/task.out",
+		"transcript_path":"/tmp/subagent.jsonl",
+		"usage":{"total_tokens":123,"tool_uses":2,"duration_ms":456},
 		"summary":"完成"
 	}`))
 	if err != nil {
@@ -182,6 +227,47 @@ func TestParseSystemTaskNotificationMessage(t *testing.T) {
 	}
 	if message.System.TaskNotification.Status != "completed" {
 		t.Fatalf("Status = %q, want completed", message.System.TaskNotification.Status)
+	}
+	if message.System.TaskNotification.AgentID != "agent-1" || message.System.TaskNotification.AgentType != "worker" {
+		t.Fatalf("Agent fields = %#v, want agent-1/worker", message.System.TaskNotification)
+	}
+	if message.System.TaskNotification.ParentTaskID != "parent-1" {
+		t.Fatalf("ParentTaskID = %q, want parent-1", message.System.TaskNotification.ParentTaskID)
+	}
+	if message.System.TaskNotification.TranscriptPath != "/tmp/subagent.jsonl" {
+		t.Fatalf("TranscriptPath = %q, want transcript path", message.System.TaskNotification.TranscriptPath)
+	}
+	if message.System.TaskNotification.Usage.ToolUses != 2 {
+		t.Fatalf("Usage = %#v, want tool uses", message.System.TaskNotification.Usage)
+	}
+}
+
+func TestParseTopLevelTaskNotificationMessage(t *testing.T) {
+	message, err := ParseMessage([]byte(`{
+		"type":"task_notification",
+		"session_id":"session-1",
+		"task_id":"task-1",
+		"agent_id":"agent-1",
+		"agent_type":"worker",
+		"status":"failed",
+		"output_file":"/tmp/task.out",
+		"transcript_path":"/tmp/subagent.jsonl",
+		"summary":"失败"
+	}`))
+	if err != nil {
+		t.Fatalf("ParseMessage(task_notification) error = %v", err)
+	}
+	if message.Type != MessageTypeTaskNotification {
+		t.Fatalf("Type = %q, want task_notification", message.Type)
+	}
+	if message.TaskNotification == nil {
+		t.Fatal("TaskNotification = nil")
+	}
+	if message.TaskNotification.AgentID != "agent-1" || message.TaskNotification.AgentType != "worker" {
+		t.Fatalf("Agent fields = %#v, want agent-1/worker", message.TaskNotification)
+	}
+	if message.TaskNotification.TranscriptPath != "/tmp/subagent.jsonl" {
+		t.Fatalf("TranscriptPath = %q, want transcript path", message.TaskNotification.TranscriptPath)
 	}
 }
 

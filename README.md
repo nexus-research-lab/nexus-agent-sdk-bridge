@@ -97,7 +97,10 @@ Task events are strongly typed as `protocol.MessageTypeTaskStarted`,
 Official system-subtype task events remain available under `msg.System.Task*`;
 top-level task events use `msg.TaskStarted`, `msg.TaskProgress`, or
 `msg.TaskNotification`. Task progress and notification messages share
-`protocol.TaskUsage`.
+`protocol.TaskUsage`. Subagent metadata fields such as `agent_id`,
+`agent_type`, `parent_task_id`, `output_file`, and `transcript_path` are exposed
+as typed fields where they apply, while the full wire payload remains available
+in `Additional`.
 
 ### Host Scheduled Tasks
 
