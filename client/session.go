@@ -326,6 +326,15 @@ func (c *SessionControl) StopTask(ctx context.Context, taskID string) error {
 	return core.stopTask(ctx, taskID)
 }
 
+// SendTaskMessage 向后台 subagent task 排队一条后续消息。
+func (c *SessionControl) SendTaskMessage(ctx context.Context, taskID string, message string, summary string) error {
+	core, err := c.activeCore()
+	if err != nil {
+		return err
+	}
+	return core.sendTaskMessage(ctx, taskID, message, summary)
+}
+
 // ApplyFlagSettings 合并当前会话的运行时 flag settings。
 func (c *SessionControl) ApplyFlagSettings(ctx context.Context, settings map[string]any) error {
 	core, err := c.activeCore()

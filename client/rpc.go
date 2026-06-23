@@ -184,6 +184,34 @@ func (c *sessionCore) stopTask(ctx context.Context, taskID string) error {
 	return err
 }
 
+func (c *sessionCore) sendTaskMessage(ctx context.Context, taskID string, message string, summary string) error {
+	if !c.isConnected() {
+		return ErrNotConnected
+	}
+	taskID = strings.TrimSpace(taskID)
+	if taskID == "" {
+		return errors.New("client: task id is required")
+	}
+	message = strings.TrimSpace(message)
+	if message == "" {
+		return errors.New("client: message is required")
+	}
+
+	_, err := c.sendControlRequest(
+		ctx,
+		protocol.ControlRequest{
+			Subtype: "send_task_message",
+			TaskID:  taskID,
+			Payload: map[string]any{
+				"message": message,
+				"summary": strings.TrimSpace(summary),
+			},
+		},
+		c.options.Runtime.InitializeTimeout,
+	)
+	return err
+}
+
 func (c *sessionCore) applyFlagSettings(ctx context.Context, settings map[string]any) error {
 	if !c.isConnected() {
 		return ErrNotConnected

@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Added `Session.Control().SendTaskMessage` for queueing follow-up messages to running native subagent tasks.
+
 ### Fixed
 
 - Included recent runtime stderr diagnostics in startup timeout errors so hosts can surface provider overloads instead of bare context deadlines.

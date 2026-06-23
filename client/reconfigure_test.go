@@ -121,6 +121,49 @@ func TestReconfigureAppliesRuntimeControls(t *testing.T) {
 	}
 }
 
+func TestSendTaskMessageSendsControlRequest(t *testing.T) {
+	transport := newScriptedTransport()
+	core := newSessionCoreWithTransport(
+		Options{
+			Transport: transport,
+			Runtime:   RuntimeOptions{InitializeTimeout: time.Second},
+		},
+		transport,
+	)
+
+	connectDone := make(chan error, 1)
+	go func() {
+		connectDone <- core.Connect(context.Background())
+	}()
+	assertInitializeRequest(t, receiveWrite(t, transport))
+	transport.pushRead(successfulInitializeResponse(map[string]any{"session_id": "session-1"}))
+	if err := receiveDone(t, connectDone); err != nil {
+		t.Fatalf("Connect() error = %v", err)
+	}
+	defer func() {
+		_ = core.Disconnect(context.Background())
+	}()
+
+	sendDone := make(chan error, 1)
+	go func() {
+		sendDone <- core.sendTaskMessage(context.Background(), "task-1", "please continue", "continue")
+	}()
+	payload := receiveWrite(t, transport)
+	assertControlRequest(t, payload, "send_task_message")
+	request := payload["request"].(map[string]any)
+	if request["task_id"] != "task-1" {
+		t.Fatalf("task_id = %#v, want task-1", request["task_id"])
+	}
+	requestPayload, ok := request["payload"].(map[string]any)
+	if !ok || requestPayload["message"] != "please continue" || requestPayload["summary"] != "continue" {
+		t.Fatalf("payload = %#v, want message and summary", request["payload"])
+	}
+	transport.pushRead(successfulControlResponse("req_2", map[string]any{}))
+	if err := receiveDone(t, sendDone); err != nil {
+		t.Fatalf("sendTaskMessage() error = %v", err)
+	}
+}
+
 func TestReconfigureReturnsRestartRequiredWhenMCPControlUnsupported(t *testing.T) {
 	err := errors.New("unsupported control request subtype: mcp_set_servers")
 	if !isMCPSetServersUnsupported(err) {
