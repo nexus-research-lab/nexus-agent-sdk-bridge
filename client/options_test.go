@@ -64,7 +64,6 @@ func TestOptionsWithRuntimeNXSUsesEnvOverride(t *testing.T) {
 func TestOptionsWithRuntimeNXSInjectsDefaultEnv(t *testing.T) {
 	config := NewOptions().WithRuntime(RuntimeNXS).WithCLIPath("nxs").processConfig()
 	want := map[string]string{
-		nxsCachedMicrocompactEnvName:                "1",
 		nxsAPIClearToolResultsEnvName:               "1",
 		nxsAPIClearToolUsesEnvName:                  "1",
 		nxsAPILocalClearToolHistoryEnvName:          "1",
@@ -79,12 +78,31 @@ func TestOptionsWithRuntimeNXSInjectsDefaultEnv(t *testing.T) {
 			t.Fatalf("%s = %q, want %q; env=%+v", key, config.Env[key], value, config.Env)
 		}
 	}
+	if _, ok := config.Env[nxsCachedMicrocompactEnvName]; ok {
+		t.Fatalf("%s should require explicit cache-editing opt-in: env=%+v", nxsCachedMicrocompactEnvName, config.Env)
+	}
 	if _, ok := config.Env[nxsPromptCache1hEligibleEnvName]; ok {
 		t.Fatalf("%s should require explicit host/user eligibility: env=%+v", nxsPromptCache1hEligibleEnvName, config.Env)
 	}
 }
 
-func TestOptionsWithRuntimeNXSKeepsCachedMicrocompactForCustomAnthropicBaseURL(t *testing.T) {
+func TestRuntimeNXSCacheOptInDefaultsMatchClaude(t *testing.T) {
+	claudeConfig := NewOptions().WithRuntime(RuntimeClaude).WithCLIPath("claude").processConfig()
+	nxsConfig := NewOptions().WithRuntime(RuntimeNXS).WithCLIPath("nxs").processConfig()
+	for _, key := range []string{
+		nxsCachedMicrocompactEnvName,
+		nxsPromptCache1hEligibleEnvName,
+	} {
+		if _, ok := claudeConfig.Env[key]; ok {
+			t.Fatalf("RuntimeClaude %s should be unset by default: env=%+v", key, claudeConfig.Env)
+		}
+		if _, ok := nxsConfig.Env[key]; ok {
+			t.Fatalf("RuntimeNXS %s should match RuntimeClaude opt-in default: env=%+v", key, nxsConfig.Env)
+		}
+	}
+}
+
+func TestOptionsWithRuntimeNXSDoesNotEnableCachedMicrocompactForCustomAnthropicBaseURL(t *testing.T) {
 	config := NewOptions().
 		WithRuntime(RuntimeNXS).
 		WithCLIPath("nxs").
@@ -92,11 +110,8 @@ func TestOptionsWithRuntimeNXSKeepsCachedMicrocompactForCustomAnthropicBaseURL(t
 			anthropicBaseURLEnvName: "https://open.bigmodel.cn/api/anthropic/v1/messages",
 		}).
 		processConfig()
-	if config.Env[nxsCachedMicrocompactEnvName] != "1" {
-		t.Fatalf("%s = %q, want 1 for custom Anthropic base URL; env=%+v",
-			nxsCachedMicrocompactEnvName,
-			config.Env[nxsCachedMicrocompactEnvName],
-			config.Env)
+	if _, ok := config.Env[nxsCachedMicrocompactEnvName]; ok {
+		t.Fatalf("%s should require explicit cache-editing opt-in for custom Anthropic base URL; env=%+v", nxsCachedMicrocompactEnvName, config.Env)
 	}
 
 	config = NewOptions().
@@ -109,6 +124,21 @@ func TestOptionsWithRuntimeNXSKeepsCachedMicrocompactForCustomAnthropicBaseURL(t
 		processConfig()
 	if config.Env[nxsCachedMicrocompactEnvName] != "0" {
 		t.Fatalf("%s explicit override = %q, want preserved 0; env=%+v",
+			nxsCachedMicrocompactEnvName,
+			config.Env[nxsCachedMicrocompactEnvName],
+			config.Env)
+	}
+
+	config = NewOptions().
+		WithRuntime(RuntimeNXS).
+		WithCLIPath("nxs").
+		WithEnv(map[string]string{
+			anthropicBaseURLEnvName:      "https://api.anthropic.com",
+			nxsCachedMicrocompactEnvName: "1",
+		}).
+		processConfig()
+	if config.Env[nxsCachedMicrocompactEnvName] != "1" {
+		t.Fatalf("%s explicit override = %q, want preserved 1; env=%+v",
 			nxsCachedMicrocompactEnvName,
 			config.Env[nxsCachedMicrocompactEnvName],
 			config.Env)

@@ -401,7 +401,6 @@ func applyNXSRuntimeDefaultEnv(env map[string]string, o resolvedOptions) {
 	if normalizedRuntimeKind(o.RuntimeKind) != RuntimeNXS {
 		return
 	}
-	setDefaultProcessEnv(env, nxsCachedMicrocompactEnvName, "1")
 	setDefaultProcessEnv(env, nxsAPIClearToolResultsEnvName, "1")
 	setDefaultProcessEnv(env, nxsAPIClearToolUsesEnvName, "1")
 	setDefaultProcessEnv(env, nxsAPILocalClearToolHistoryEnvName, "1")
