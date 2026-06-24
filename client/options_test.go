@@ -69,7 +69,7 @@ func TestOptionsWithRuntimeNXSInjectsDefaultEnv(t *testing.T) {
 		nxsAPIClearToolUsesEnvName:                  "1",
 		nxsAPILocalClearToolHistoryEnvName:          "1",
 		nxsPromptCache1hEligibleEnvName:             "1",
-		nxsPromptCache1hAllowlistEnvName:            "sdk",
+		nxsPromptCache1hAllowlistEnvName:            "repl_main_thread*,agent:*,sdk",
 		nxsAgentSDKDiagnosticsEnvName:               "",
 		nxsAgentSDKDiagnosticsStreamProgressEnvName: "0",
 		nxsAgentSDKDebugEnvName:                     "",
