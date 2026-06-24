@@ -746,8 +746,12 @@ const (
 	MessageTypeResult MessageType = "result"
 	// MessageTypeStreamEvent 表示流式事件。
 	MessageTypeStreamEvent MessageType = "stream_event"
+	// MessageTypeStreamRequestStart 表示一次模型流式请求即将开始。
+	MessageTypeStreamRequestStart MessageType = "stream_request_start"
 	// MessageTypeToolProgress 表示工具进度消息。
 	MessageTypeToolProgress MessageType = "tool_progress"
+	// MessageTypeToolUseSummary 表示工具摘要消息。
+	MessageTypeToolUseSummary MessageType = "tool_use_summary"
 	// MessageTypeRateLimitEvent 表示限流消息。
 	MessageTypeRateLimitEvent MessageType = "rate_limit_event"
 	// MessageTypeTaskStarted 表示任务开始消息。
@@ -756,6 +760,10 @@ const (
 	MessageTypeTaskProgress MessageType = "task_progress"
 	// MessageTypeTaskNotification 表示任务通知消息。
 	MessageTypeTaskNotification MessageType = "task_notification"
+	// MessageTypePromptSuggestion 表示提示建议消息。
+	MessageTypePromptSuggestion MessageType = "prompt_suggestion"
+	// MessageTypeAuthStatus 表示鉴权状态消息。
+	MessageTypeAuthStatus MessageType = "auth_status"
 	// MessageTypeUnknown 表示未知消息。
 	MessageTypeUnknown MessageType = "unknown"
 )
@@ -809,9 +817,29 @@ type ToolProgressMessage struct {
 	Additional         map[string]any `json:"additional,omitempty"`
 }
 
+// ToolUseSummaryMessage 表示工具摘要。
+type ToolUseSummaryMessage struct {
+	Summary             string         `json:"summary,omitempty"`
+	PrecedingToolUseIDs []string       `json:"preceding_tool_use_ids,omitempty"`
+	Additional          map[string]any `json:"additional,omitempty"`
+}
+
 // RateLimitEvent 表示限流信息。
 type RateLimitEvent struct {
 	RateLimitInfo map[string]any `json:"rate_limit_info,omitempty"`
+}
+
+// PromptSuggestionMessage 表示提示建议。
+type PromptSuggestionMessage struct {
+	Suggestion string `json:"suggestion,omitempty"`
+}
+
+// AuthStatusMessage 表示认证状态消息。
+type AuthStatusMessage struct {
+	IsAuthenticating bool           `json:"is_authenticating,omitempty"`
+	Output           []string       `json:"output,omitempty"`
+	Error            string         `json:"error,omitempty"`
+	Additional       map[string]any `json:"additional,omitempty"`
 }
 
 // ReceivedMessage 表示统一接收消息。
@@ -827,10 +855,13 @@ type ReceivedMessage struct {
 	Result           *ResultMessage           `json:"result,omitempty"`
 	Stream           *StreamEvent             `json:"stream,omitempty"`
 	ToolProgress     *ToolProgressMessage     `json:"tool_progress,omitempty"`
+	ToolUseSummary   *ToolUseSummaryMessage   `json:"tool_use_summary,omitempty"`
 	RateLimit        *RateLimitEvent          `json:"rate_limit,omitempty"`
 	TaskStarted      *TaskStartedMessage      `json:"task_started,omitempty"`
 	TaskProgress     *TaskProgressMessage     `json:"task_progress,omitempty"`
 	TaskNotification *TaskNotificationMessage `json:"task_notification,omitempty"`
+	PromptSuggestion *PromptSuggestionMessage `json:"prompt_suggestion,omitempty"`
+	AuthStatus       *AuthStatusMessage       `json:"auth_status,omitempty"`
 	Raw              map[string]any           `json:"raw,omitempty"`
 }
 
@@ -1250,6 +1281,7 @@ func DecodeMessage(payload map[string]any) (ReceivedMessage, error) {
 			Event: payload["event"],
 			Data:  payload,
 		}
+	case MessageTypeStreamRequestStart:
 	case MessageTypeToolProgress:
 		message.ToolProgress = &ToolProgressMessage{
 			ToolUseID:          jsonvalue.StringValue(payload["tool_use_id"]),
@@ -1258,6 +1290,12 @@ func DecodeMessage(payload map[string]any) (ReceivedMessage, error) {
 			ElapsedTimeSeconds: jsonvalue.FloatValue(payload["elapsed_time_seconds"]),
 			TaskID:             jsonvalue.StringValue(payload["task_id"]),
 			Additional:         payload,
+		}
+	case MessageTypeToolUseSummary:
+		message.ToolUseSummary = &ToolUseSummaryMessage{
+			Summary:             jsonvalue.StringValue(payload["summary"]),
+			PrecedingToolUseIDs: jsonvalue.StringSliceValue(payload["preceding_tool_use_ids"]),
+			Additional:          payload,
 		}
 	case MessageTypeRateLimitEvent:
 		message.RateLimit = &RateLimitEvent{
@@ -1269,6 +1307,17 @@ func DecodeMessage(payload map[string]any) (ReceivedMessage, error) {
 		message.TaskProgress = decodeTaskProgressMessage(payload)
 	case MessageTypeTaskNotification:
 		message.TaskNotification = decodeTaskNotificationMessage(payload)
+	case MessageTypePromptSuggestion:
+		message.PromptSuggestion = &PromptSuggestionMessage{
+			Suggestion: jsonvalue.StringValue(payload["suggestion"]),
+		}
+	case MessageTypeAuthStatus:
+		message.AuthStatus = &AuthStatusMessage{
+			IsAuthenticating: jsonvalue.BoolValue(payload["is_authenticating"]) || jsonvalue.BoolValue(payload["isAuthenticating"]),
+			Output:           jsonvalue.StringSliceValue(payload["output"]),
+			Error:            jsonvalue.StringValue(payload["error"]),
+			Additional:       payload,
+		}
 	default:
 		message.Type = MessageTypeUnknown
 	}
@@ -1283,11 +1332,15 @@ func normalizeMessageType(messageType MessageType) MessageType {
 		MessageTypeAssistant,
 		MessageTypeResult,
 		MessageTypeStreamEvent,
+		MessageTypeStreamRequestStart,
 		MessageTypeToolProgress,
+		MessageTypeToolUseSummary,
 		MessageTypeRateLimitEvent,
 		MessageTypeTaskStarted,
 		MessageTypeTaskProgress,
-		MessageTypeTaskNotification:
+		MessageTypeTaskNotification,
+		MessageTypePromptSuggestion,
+		MessageTypeAuthStatus:
 		return messageType
 	default:
 		return MessageTypeUnknown

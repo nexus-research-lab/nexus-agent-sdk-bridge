@@ -305,7 +305,50 @@ func TestParseToolProgressMessage(t *testing.T) {
 	}
 }
 
-func TestParseInternalBridgeMessageKeepsRawPayload(t *testing.T) {
+func TestParsePassiveSDKMessages(t *testing.T) {
+	tests := []struct {
+		name string
+		raw  string
+		want MessageType
+	}{
+		{
+			name: "stream request start",
+			raw:  `{"type":"stream_request_start","session_id":"session-1"}`,
+			want: MessageTypeStreamRequestStart,
+		},
+		{
+			name: "tool use summary",
+			raw:  `{"type":"tool_use_summary","session_id":"session-1","summary":"Read x2","preceding_tool_use_ids":["tool-1","tool-2"]}`,
+			want: MessageTypeToolUseSummary,
+		},
+		{
+			name: "prompt suggestion",
+			raw:  `{"type":"prompt_suggestion","session_id":"session-1","suggestion":"继续检查测试"}`,
+			want: MessageTypePromptSuggestion,
+		},
+		{
+			name: "auth status",
+			raw:  `{"type":"auth_status","session_id":"session-1","isAuthenticating":true,"output":["登录中"],"error":"需要授权"}`,
+			want: MessageTypeAuthStatus,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			message, err := ParseMessage([]byte(tt.raw))
+			if err != nil {
+				t.Fatalf("ParseMessage() error = %v", err)
+			}
+			if message.Type != tt.want {
+				t.Fatalf("Type = %q, want %q", message.Type, tt.want)
+			}
+			if message.Type == MessageTypeUnknown {
+				t.Fatalf("message 被错误降级成 unknown: %+v", message)
+			}
+		})
+	}
+}
+
+func TestParseKnownPassiveMessageKeepsRawPayload(t *testing.T) {
 	message, err := ParseMessage([]byte(`{
 		"type":"stream_request_start",
 		"session_id":"session-1"
@@ -313,8 +356,8 @@ func TestParseInternalBridgeMessageKeepsRawPayload(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseMessage(stream_request_start) error = %v", err)
 	}
-	if message.Type != MessageTypeUnknown {
-		t.Fatalf("Type = %q, want unknown", message.Type)
+	if message.Type != MessageTypeStreamRequestStart {
+		t.Fatalf("Type = %q, want stream_request_start", message.Type)
 	}
 	if message.SessionID != "session-1" {
 		t.Fatalf("SessionID = %q, want session-1", message.SessionID)
