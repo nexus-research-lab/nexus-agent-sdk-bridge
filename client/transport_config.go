@@ -329,6 +329,7 @@ const (
 	processFileCheckpointingEnv = "CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING"
 	processOAuthRefreshEnv      = "CLAUDE_CODE_SDK_HAS_OAUTH_REFRESH"
 
+	anthropicBaseURLEnvName             = "ANTHROPIC_BASE_URL"
 	nxsCachedMicrocompactEnvName        = "NEXUS_CACHED_MICROCOMPACT"
 	nxsAPIClearToolResultsEnvName       = "NEXUS_API_CLEAR_TOOL_RESULTS"
 	nxsAPIClearToolUsesEnvName          = "NEXUS_API_CLEAR_TOOL_USES"
@@ -399,7 +400,7 @@ func applyNXSRuntimeDefaultEnv(env map[string]string, o resolvedOptions) {
 	if normalizedRuntimeKind(o.RuntimeKind) != RuntimeNXS {
 		return
 	}
-	setDefaultProcessEnv(env, nxsCachedMicrocompactEnvName, "1")
+	setDefaultProcessEnv(env, nxsCachedMicrocompactEnvName, defaultNXSCachedMicrocompact(env))
 	setDefaultProcessEnv(env, nxsAPIClearToolResultsEnvName, "1")
 	setDefaultProcessEnv(env, nxsAPIClearToolUsesEnvName, "1")
 	setDefaultProcessEnv(env, nxsAPILocalClearToolHistoryEnvName, "1")
@@ -408,6 +409,14 @@ func applyNXSRuntimeDefaultEnv(env map[string]string, o resolvedOptions) {
 	setDefaultProcessEnv(env, nxsAgentSDKDiagnosticsEnvName, "")
 	setDefaultProcessEnv(env, nxsAgentSDKDebugEnvName, "")
 	setDefaultProcessEnv(env, nxsAgentSDKProviderDebugBodyEnvName, "")
+}
+
+func defaultNXSCachedMicrocompact(env map[string]string) string {
+	baseURL := strings.TrimSpace(env[anthropicBaseURLEnvName])
+	if baseURL == "" || strings.Contains(baseURL, "api.anthropic.com") {
+		return "1"
+	}
+	return "0"
 }
 
 func setDefaultProcessEnv(env map[string]string, key string, value string) {
