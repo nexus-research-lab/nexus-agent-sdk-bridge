@@ -94,7 +94,9 @@ for {
 
 Task events are strongly typed as `protocol.MessageTypeTaskStarted`,
 `protocol.MessageTypeTaskProgress`, and `protocol.MessageTypeTaskNotification`.
-Official system-subtype task events remain available under `msg.System.Task*`;
+Official system-subtype task events remain available under `msg.System.Task*`,
+including `system/task_updated` lifecycle patches. `task_updated` does not have
+a top-level `MessageType`.
 top-level task events use `msg.TaskStarted`, `msg.TaskProgress`, or
 `msg.TaskNotification`. Task progress and notification messages share
 `protocol.TaskUsage`. Subagent metadata fields such as `agent_id`,

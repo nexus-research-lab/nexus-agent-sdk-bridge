@@ -116,7 +116,9 @@ for {
 
 Task 事件使用强类型消息：`protocol.MessageTypeTaskStarted`、
 `protocol.MessageTypeTaskProgress` 和 `protocol.MessageTypeTaskNotification`。
-官方 system subtype 形态仍可从 `msg.System.Task*` 读取；顶层 task 事件使用
+官方 system subtype 形态仍可从 `msg.System.Task*` 读取，包括
+`system/task_updated` 生命周期补丁；`task_updated` 不提供顶层 `MessageType`。
+顶层 task 事件使用
 `msg.TaskStarted`、`msg.TaskProgress` 或 `msg.TaskNotification`。
 task progress 和 notification 共用 `protocol.TaskUsage`。`agent_id`、
 `agent_type`、`parent_task_id`、`output_file` 和 `transcript_path` 这类
