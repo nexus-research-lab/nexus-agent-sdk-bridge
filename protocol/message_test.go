@@ -271,6 +271,40 @@ func TestParseTopLevelTaskNotificationMessage(t *testing.T) {
 	}
 }
 
+func TestParseToolProgressMessage(t *testing.T) {
+	message, err := ParseMessage([]byte(`{
+		"type":"tool_progress",
+		"session_id":"session-1",
+		"tool_use_id":"agent-msg-1",
+		"parent_tool_use_id":"call-agent",
+		"tool_name":"Agent",
+		"elapsed_time_seconds":3.5,
+		"task_id":"agent-1",
+		"data":{"type":"agent_progress","agent_id":"agent-1"}
+	}`))
+	if err != nil {
+		t.Fatalf("ParseMessage(tool_progress) error = %v", err)
+	}
+	if message.Type != MessageTypeToolProgress {
+		t.Fatalf("Type = %q, want tool_progress", message.Type)
+	}
+	if message.ToolProgress == nil {
+		t.Fatal("ToolProgress = nil")
+	}
+	if message.ToolProgress.ToolUseID != "agent-msg-1" || message.ToolProgress.ToolName != "Agent" {
+		t.Fatalf("ToolProgress = %#v, want tool id/name", message.ToolProgress)
+	}
+	if message.ToolProgress.ParentToolUseID == nil || *message.ToolProgress.ParentToolUseID != "call-agent" {
+		t.Fatalf("ParentToolUseID = %#v, want call-agent", message.ToolProgress.ParentToolUseID)
+	}
+	if message.ToolProgress.TaskID != "agent-1" || message.ToolProgress.ElapsedTimeSeconds != 3.5 {
+		t.Fatalf("ToolProgress = %#v, want task id and elapsed", message.ToolProgress)
+	}
+	if message.ToolProgress.Additional["data"] == nil {
+		t.Fatalf("Additional = %#v, want raw data", message.ToolProgress.Additional)
+	}
+}
+
 func TestParseInternalBridgeMessageKeepsRawPayload(t *testing.T) {
 	message, err := ParseMessage([]byte(`{
 		"type":"stream_request_start",

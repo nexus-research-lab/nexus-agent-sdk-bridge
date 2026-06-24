@@ -746,6 +746,8 @@ const (
 	MessageTypeResult MessageType = "result"
 	// MessageTypeStreamEvent 表示流式事件。
 	MessageTypeStreamEvent MessageType = "stream_event"
+	// MessageTypeToolProgress 表示工具进度消息。
+	MessageTypeToolProgress MessageType = "tool_progress"
 	// MessageTypeRateLimitEvent 表示限流消息。
 	MessageTypeRateLimitEvent MessageType = "rate_limit_event"
 	// MessageTypeTaskStarted 表示任务开始消息。
@@ -797,6 +799,16 @@ type StreamEvent struct {
 	Data  map[string]any `json:"data,omitempty"`
 }
 
+// ToolProgressMessage 表示工具运行进度。
+type ToolProgressMessage struct {
+	ToolUseID          string         `json:"tool_use_id,omitempty"`
+	ToolName           string         `json:"tool_name,omitempty"`
+	ParentToolUseID    *string        `json:"parent_tool_use_id,omitempty"`
+	ElapsedTimeSeconds float64        `json:"elapsed_time_seconds,omitempty"`
+	TaskID             string         `json:"task_id,omitempty"`
+	Additional         map[string]any `json:"additional,omitempty"`
+}
+
 // RateLimitEvent 表示限流信息。
 type RateLimitEvent struct {
 	RateLimitInfo map[string]any `json:"rate_limit_info,omitempty"`
@@ -814,6 +826,7 @@ type ReceivedMessage struct {
 	System           *SystemMessage           `json:"system,omitempty"`
 	Result           *ResultMessage           `json:"result,omitempty"`
 	Stream           *StreamEvent             `json:"stream,omitempty"`
+	ToolProgress     *ToolProgressMessage     `json:"tool_progress,omitempty"`
 	RateLimit        *RateLimitEvent          `json:"rate_limit,omitempty"`
 	TaskStarted      *TaskStartedMessage      `json:"task_started,omitempty"`
 	TaskProgress     *TaskProgressMessage     `json:"task_progress,omitempty"`
@@ -1237,6 +1250,15 @@ func DecodeMessage(payload map[string]any) (ReceivedMessage, error) {
 			Event: payload["event"],
 			Data:  payload,
 		}
+	case MessageTypeToolProgress:
+		message.ToolProgress = &ToolProgressMessage{
+			ToolUseID:          jsonvalue.StringValue(payload["tool_use_id"]),
+			ToolName:           jsonvalue.StringValue(payload["tool_name"]),
+			ParentToolUseID:    jsonvalue.StringPointer(payload["parent_tool_use_id"]),
+			ElapsedTimeSeconds: jsonvalue.FloatValue(payload["elapsed_time_seconds"]),
+			TaskID:             jsonvalue.StringValue(payload["task_id"]),
+			Additional:         payload,
+		}
 	case MessageTypeRateLimitEvent:
 		message.RateLimit = &RateLimitEvent{
 			RateLimitInfo: jsonvalue.MapValue(payload["rate_limit_info"]),
@@ -1261,6 +1283,7 @@ func normalizeMessageType(messageType MessageType) MessageType {
 		MessageTypeAssistant,
 		MessageTypeResult,
 		MessageTypeStreamEvent,
+		MessageTypeToolProgress,
 		MessageTypeRateLimitEvent,
 		MessageTypeTaskStarted,
 		MessageTypeTaskProgress,
