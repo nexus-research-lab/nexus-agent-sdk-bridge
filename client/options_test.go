@@ -82,7 +82,7 @@ func TestOptionsWithRuntimeNXSInjectsDefaultEnv(t *testing.T) {
 	}
 }
 
-func TestOptionsWithRuntimeNXSDisablesCachedMicrocompactForCustomAnthropicBaseURL(t *testing.T) {
+func TestOptionsWithRuntimeNXSKeepsCachedMicrocompactForCustomAnthropicBaseURL(t *testing.T) {
 	config := NewOptions().
 		WithRuntime(RuntimeNXS).
 		WithCLIPath("nxs").
@@ -90,8 +90,8 @@ func TestOptionsWithRuntimeNXSDisablesCachedMicrocompactForCustomAnthropicBaseUR
 			anthropicBaseURLEnvName: "https://open.bigmodel.cn/api/anthropic/v1/messages",
 		}).
 		processConfig()
-	if config.Env[nxsCachedMicrocompactEnvName] != "0" {
-		t.Fatalf("%s = %q, want 0 for custom Anthropic base URL; env=%+v",
+	if config.Env[nxsCachedMicrocompactEnvName] != "1" {
+		t.Fatalf("%s = %q, want 1 for custom Anthropic base URL; env=%+v",
 			nxsCachedMicrocompactEnvName,
 			config.Env[nxsCachedMicrocompactEnvName],
 			config.Env)
@@ -101,7 +101,7 @@ func TestOptionsWithRuntimeNXSDisablesCachedMicrocompactForCustomAnthropicBaseUR
 		WithRuntime(RuntimeNXS).
 		WithCLIPath("nxs").
 		WithEnv(map[string]string{
-			anthropicBaseURLEnvName:      "https://api.anthropic.com",
+			anthropicBaseURLEnvName:      "https://open.bigmodel.cn/api/anthropic/v1/messages",
 			nxsCachedMicrocompactEnvName: "0",
 		}).
 		processConfig()

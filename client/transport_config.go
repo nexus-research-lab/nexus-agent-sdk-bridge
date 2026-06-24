@@ -401,7 +401,7 @@ func applyNXSRuntimeDefaultEnv(env map[string]string, o resolvedOptions) {
 	if normalizedRuntimeKind(o.RuntimeKind) != RuntimeNXS {
 		return
 	}
-	setDefaultProcessEnv(env, nxsCachedMicrocompactEnvName, defaultNXSCachedMicrocompact(env))
+	setDefaultProcessEnv(env, nxsCachedMicrocompactEnvName, "1")
 	setDefaultProcessEnv(env, nxsAPIClearToolResultsEnvName, "1")
 	setDefaultProcessEnv(env, nxsAPIClearToolUsesEnvName, "1")
 	setDefaultProcessEnv(env, nxsAPILocalClearToolHistoryEnvName, "1")
@@ -411,14 +411,6 @@ func applyNXSRuntimeDefaultEnv(env map[string]string, o resolvedOptions) {
 	setDefaultProcessEnv(env, nxsAgentSDKDiagnosticsStreamProgressEnvName, "0")
 	setDefaultProcessEnv(env, nxsAgentSDKDebugEnvName, "")
 	setDefaultProcessEnv(env, nxsAgentSDKProviderDebugBodyEnvName, "")
-}
-
-func defaultNXSCachedMicrocompact(env map[string]string) string {
-	baseURL := strings.TrimSpace(env[anthropicBaseURLEnvName])
-	if baseURL == "" || strings.Contains(baseURL, "api.anthropic.com") {
-		return "1"
-	}
-	return "0"
 }
 
 func setDefaultProcessEnv(env map[string]string, key string, value string) {
