@@ -309,30 +309,6 @@ func TestParseSystemTaskUpdatedMessage(t *testing.T) {
 	}
 }
 
-func TestParseTopLevelTaskUpdatedMessage(t *testing.T) {
-	message, err := ParseMessage([]byte(`{
-		"type":"task_updated",
-		"session_id":"session-1",
-		"task_id":"task-1",
-		"patch":{"status":"completed","description":"完成子任务"}
-	}`))
-	if err != nil {
-		t.Fatalf("ParseMessage(task_updated) error = %v", err)
-	}
-	if message.Type != MessageTypeTaskUpdated {
-		t.Fatalf("Type = %q, want task_updated", message.Type)
-	}
-	if message.TaskUpdated == nil {
-		t.Fatal("TaskUpdated = nil")
-	}
-	if message.TaskUpdated.Status != "completed" {
-		t.Fatalf("Status = %q, want completed", message.TaskUpdated.Status)
-	}
-	if message.TaskUpdated.Patch.Description != "完成子任务" {
-		t.Fatalf("Description = %q, want 完成子任务", message.TaskUpdated.Patch.Description)
-	}
-}
-
 func TestParseUnknownMessagePreservesWireType(t *testing.T) {
 	message, err := ParseMessage([]byte(`{
 		"type":"thinking_tokens",

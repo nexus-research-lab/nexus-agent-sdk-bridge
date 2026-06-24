@@ -760,8 +760,6 @@ const (
 	MessageTypeTaskProgress MessageType = "task_progress"
 	// MessageTypeTaskNotification 表示任务通知消息。
 	MessageTypeTaskNotification MessageType = "task_notification"
-	// MessageTypeTaskUpdated 表示任务状态更新消息。
-	MessageTypeTaskUpdated MessageType = "task_updated"
 	// MessageTypePromptSuggestion 表示提示建议消息。
 	MessageTypePromptSuggestion MessageType = "prompt_suggestion"
 	// MessageTypeAuthStatus 表示鉴权状态消息。
@@ -1355,8 +1353,6 @@ func DecodeMessage(payload map[string]any) (ReceivedMessage, error) {
 		message.TaskProgress = decodeTaskProgressMessage(payload)
 	case MessageTypeTaskNotification:
 		message.TaskNotification = decodeTaskNotificationMessage(payload)
-	case MessageTypeTaskUpdated:
-		message.TaskUpdated = decodeTaskUpdatedMessage(payload)
 	case MessageTypePromptSuggestion:
 		message.PromptSuggestion = &PromptSuggestionMessage{
 			Suggestion: jsonvalue.StringValue(payload["suggestion"]),
@@ -1388,7 +1384,6 @@ func normalizeMessageType(messageType MessageType) MessageType {
 		MessageTypeTaskStarted,
 		MessageTypeTaskProgress,
 		MessageTypeTaskNotification,
-		MessageTypeTaskUpdated,
 		MessageTypePromptSuggestion,
 		MessageTypeAuthStatus:
 		return messageType
