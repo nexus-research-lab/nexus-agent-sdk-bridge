@@ -68,7 +68,6 @@ func TestOptionsWithRuntimeNXSInjectsDefaultEnv(t *testing.T) {
 		nxsAPIClearToolResultsEnvName:               "1",
 		nxsAPIClearToolUsesEnvName:                  "1",
 		nxsAPILocalClearToolHistoryEnvName:          "1",
-		nxsPromptCache1hEligibleEnvName:             "1",
 		nxsPromptCache1hAllowlistEnvName:            "repl_main_thread*,agent:*,sdk",
 		nxsAgentSDKDiagnosticsEnvName:               "",
 		nxsAgentSDKDiagnosticsStreamProgressEnvName: "0",
@@ -79,6 +78,9 @@ func TestOptionsWithRuntimeNXSInjectsDefaultEnv(t *testing.T) {
 		if config.Env[key] != value {
 			t.Fatalf("%s = %q, want %q; env=%+v", key, config.Env[key], value, config.Env)
 		}
+	}
+	if _, ok := config.Env[nxsPromptCache1hEligibleEnvName]; ok {
+		t.Fatalf("%s should require explicit host/user eligibility: env=%+v", nxsPromptCache1hEligibleEnvName, config.Env)
 	}
 }
 

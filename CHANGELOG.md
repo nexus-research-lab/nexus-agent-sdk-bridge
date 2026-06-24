@@ -13,6 +13,7 @@ All notable changes to this project are documented in this file.
 
 - Included recent runtime stderr diagnostics in startup timeout errors so hosts can surface provider overloads instead of bare context deadlines.
 - Forwarded runtime API retry attempts as structured `system/api_retry` messages.
+- Stopped defaulting `RuntimeNXS` launches to `NEXUS_PROMPT_CACHE_1H_ELIGIBLE=1`; hosts must now pass explicit prompt-cache eligibility to enable 1h TTL writes.
 
 ## [0.1.12] - 2026-06-18
 

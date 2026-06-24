@@ -405,7 +405,6 @@ func applyNXSRuntimeDefaultEnv(env map[string]string, o resolvedOptions) {
 	setDefaultProcessEnv(env, nxsAPIClearToolResultsEnvName, "1")
 	setDefaultProcessEnv(env, nxsAPIClearToolUsesEnvName, "1")
 	setDefaultProcessEnv(env, nxsAPILocalClearToolHistoryEnvName, "1")
-	setDefaultProcessEnv(env, nxsPromptCache1hEligibleEnvName, "1")
 	setDefaultProcessEnv(env, nxsPromptCache1hAllowlistEnvName, "repl_main_thread*,agent:*,sdk")
 	setDefaultProcessEnv(env, nxsAgentSDKDiagnosticsEnvName, "")
 	setDefaultProcessEnv(env, nxsAgentSDKDiagnosticsStreamProgressEnvName, "0")
