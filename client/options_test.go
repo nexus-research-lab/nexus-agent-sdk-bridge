@@ -64,15 +64,16 @@ func TestOptionsWithRuntimeNXSUsesEnvOverride(t *testing.T) {
 func TestOptionsWithRuntimeNXSInjectsDefaultEnv(t *testing.T) {
 	config := NewOptions().WithRuntime(RuntimeNXS).WithCLIPath("nxs").processConfig()
 	want := map[string]string{
-		nxsCachedMicrocompactEnvName:        "1",
-		nxsAPIClearToolResultsEnvName:       "1",
-		nxsAPIClearToolUsesEnvName:          "1",
-		nxsAPILocalClearToolHistoryEnvName:  "1",
-		nxsPromptCache1hEligibleEnvName:     "1",
-		nxsPromptCache1hAllowlistEnvName:    "sdk",
-		nxsAgentSDKDiagnosticsEnvName:       "",
-		nxsAgentSDKDebugEnvName:             "",
-		nxsAgentSDKProviderDebugBodyEnvName: "",
+		nxsCachedMicrocompactEnvName:                "1",
+		nxsAPIClearToolResultsEnvName:               "1",
+		nxsAPIClearToolUsesEnvName:                  "1",
+		nxsAPILocalClearToolHistoryEnvName:          "1",
+		nxsPromptCache1hEligibleEnvName:             "1",
+		nxsPromptCache1hAllowlistEnvName:            "sdk",
+		nxsAgentSDKDiagnosticsEnvName:               "",
+		nxsAgentSDKDiagnosticsStreamProgressEnvName: "0",
+		nxsAgentSDKDebugEnvName:                     "",
+		nxsAgentSDKProviderDebugBodyEnvName:         "",
 	}
 	for key, value := range want {
 		if config.Env[key] != value {
@@ -117,12 +118,13 @@ func TestOptionsWithRuntimeNXSAllowsDefaultEnvOverride(t *testing.T) {
 		WithRuntime(RuntimeNXS).
 		WithCLIPath("nxs").
 		WithEnv(map[string]string{
-			nxsCachedMicrocompactEnvName:       "0",
-			nxsAPIClearToolResultsEnvName:      "",
-			nxsAPILocalClearToolHistoryEnvName: "0",
-			nxsPromptCache1hEligibleEnvName:    "0",
-			nxsPromptCache1hAllowlistEnvName:   "agent:*",
-			nxsAgentSDKDiagnosticsEnvName:      "stderr",
+			nxsCachedMicrocompactEnvName:                "0",
+			nxsAPIClearToolResultsEnvName:               "",
+			nxsAPILocalClearToolHistoryEnvName:          "0",
+			nxsPromptCache1hEligibleEnvName:             "0",
+			nxsPromptCache1hAllowlistEnvName:            "agent:*",
+			nxsAgentSDKDiagnosticsEnvName:               "stderr",
+			nxsAgentSDKDiagnosticsStreamProgressEnvName: "1",
 		}).
 		processConfig()
 	if config.Env[nxsCachedMicrocompactEnvName] != "0" ||
@@ -130,7 +132,8 @@ func TestOptionsWithRuntimeNXSAllowsDefaultEnvOverride(t *testing.T) {
 		config.Env[nxsAPILocalClearToolHistoryEnvName] != "0" ||
 		config.Env[nxsPromptCache1hEligibleEnvName] != "0" ||
 		config.Env[nxsPromptCache1hAllowlistEnvName] != "agent:*" ||
-		config.Env[nxsAgentSDKDiagnosticsEnvName] != "stderr" {
+		config.Env[nxsAgentSDKDiagnosticsEnvName] != "stderr" ||
+		config.Env[nxsAgentSDKDiagnosticsStreamProgressEnvName] != "1" {
 		t.Fatalf("nxs default env override failed: %+v", config.Env)
 	}
 	if config.Env[nxsAPIClearToolUsesEnvName] != "1" {

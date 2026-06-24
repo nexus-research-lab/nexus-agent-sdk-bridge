@@ -329,16 +329,17 @@ const (
 	processFileCheckpointingEnv = "CLAUDE_CODE_ENABLE_SDK_FILE_CHECKPOINTING"
 	processOAuthRefreshEnv      = "CLAUDE_CODE_SDK_HAS_OAUTH_REFRESH"
 
-	anthropicBaseURLEnvName             = "ANTHROPIC_BASE_URL"
-	nxsCachedMicrocompactEnvName        = "NEXUS_CACHED_MICROCOMPACT"
-	nxsAPIClearToolResultsEnvName       = "NEXUS_API_CLEAR_TOOL_RESULTS"
-	nxsAPIClearToolUsesEnvName          = "NEXUS_API_CLEAR_TOOL_USES"
-	nxsAPILocalClearToolHistoryEnvName  = "NEXUS_API_LOCAL_CLEAR_TOOL_HISTORY"
-	nxsPromptCache1hEligibleEnvName     = "NEXUS_PROMPT_CACHE_1H_ELIGIBLE"
-	nxsPromptCache1hAllowlistEnvName    = "NEXUS_PROMPT_CACHE_1H_ALLOWLIST"
-	nxsAgentSDKDiagnosticsEnvName       = "NEXUS_AGENT_SDK_DIAGNOSTICS"
-	nxsAgentSDKDebugEnvName             = "NEXUS_AGENT_SDK_DEBUG"
-	nxsAgentSDKProviderDebugBodyEnvName = "NEXUS_AGENT_SDK_PROVIDER_DEBUG_BODY"
+	anthropicBaseURLEnvName                     = "ANTHROPIC_BASE_URL"
+	nxsCachedMicrocompactEnvName                = "NEXUS_CACHED_MICROCOMPACT"
+	nxsAPIClearToolResultsEnvName               = "NEXUS_API_CLEAR_TOOL_RESULTS"
+	nxsAPIClearToolUsesEnvName                  = "NEXUS_API_CLEAR_TOOL_USES"
+	nxsAPILocalClearToolHistoryEnvName          = "NEXUS_API_LOCAL_CLEAR_TOOL_HISTORY"
+	nxsPromptCache1hEligibleEnvName             = "NEXUS_PROMPT_CACHE_1H_ELIGIBLE"
+	nxsPromptCache1hAllowlistEnvName            = "NEXUS_PROMPT_CACHE_1H_ALLOWLIST"
+	nxsAgentSDKDiagnosticsEnvName               = "NEXUS_AGENT_SDK_DIAGNOSTICS"
+	nxsAgentSDKDiagnosticsStreamProgressEnvName = "NEXUS_AGENT_SDK_DIAGNOSTICS_STREAM_PROGRESS"
+	nxsAgentSDKDebugEnvName                     = "NEXUS_AGENT_SDK_DEBUG"
+	nxsAgentSDKProviderDebugBodyEnvName         = "NEXUS_AGENT_SDK_PROVIDER_DEBUG_BODY"
 )
 
 func buildDirectConnectTransportConfig(o resolvedOptions) (transport.DirectConnectConfig, error) {
@@ -407,6 +408,7 @@ func applyNXSRuntimeDefaultEnv(env map[string]string, o resolvedOptions) {
 	setDefaultProcessEnv(env, nxsPromptCache1hEligibleEnvName, "1")
 	setDefaultProcessEnv(env, nxsPromptCache1hAllowlistEnvName, "sdk")
 	setDefaultProcessEnv(env, nxsAgentSDKDiagnosticsEnvName, "")
+	setDefaultProcessEnv(env, nxsAgentSDKDiagnosticsStreamProgressEnvName, "0")
 	setDefaultProcessEnv(env, nxsAgentSDKDebugEnvName, "")
 	setDefaultProcessEnv(env, nxsAgentSDKProviderDebugBodyEnvName, "")
 }
