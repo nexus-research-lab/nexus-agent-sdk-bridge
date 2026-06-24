@@ -6,6 +6,7 @@ All notable changes to this project are documented in this file.
 
 ### Added
 
+- Added forward-compatible parsing for Claude Agent SDK `system/task_updated` events while preserving unknown SDK message wire types.
 - Added `Session.Control().SendTaskMessage` for queueing follow-up messages to running native subagent tasks.
 
 ### Fixed

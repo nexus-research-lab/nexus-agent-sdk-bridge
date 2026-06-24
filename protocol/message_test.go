@@ -271,6 +271,85 @@ func TestParseTopLevelTaskNotificationMessage(t *testing.T) {
 	}
 }
 
+func TestParseSystemTaskUpdatedMessage(t *testing.T) {
+	message, err := ParseMessage([]byte(`{
+		"type":"system",
+		"subtype":"task_updated",
+		"session_id":"session-1",
+		"task_id":"task-1",
+		"patch":{
+			"status":"killed",
+			"description":"停止子任务",
+			"end_time":1710000000000,
+			"total_paused_ms":42,
+			"error":"user stopped",
+			"is_backgrounded":true
+		}
+	}`))
+	if err != nil {
+		t.Fatalf("ParseMessage(system task_updated) error = %v", err)
+	}
+	if message.Type != MessageTypeSystem {
+		t.Fatalf("Type = %q, want system", message.Type)
+	}
+	if message.System == nil || message.System.TaskUpdated == nil {
+		t.Fatal("System.TaskUpdated = nil")
+	}
+	if message.System.TaskUpdated.TaskID != "task-1" {
+		t.Fatalf("TaskID = %q, want task-1", message.System.TaskUpdated.TaskID)
+	}
+	if message.System.TaskUpdated.Status != "killed" {
+		t.Fatalf("Status = %q, want killed", message.System.TaskUpdated.Status)
+	}
+	if message.System.TaskUpdated.Patch.TotalPausedMS != 42 {
+		t.Fatalf("TotalPausedMS = %d, want 42", message.System.TaskUpdated.Patch.TotalPausedMS)
+	}
+	if !message.System.TaskUpdated.Patch.IsBackgrounded {
+		t.Fatal("IsBackgrounded = false, want true")
+	}
+}
+
+func TestParseTopLevelTaskUpdatedMessage(t *testing.T) {
+	message, err := ParseMessage([]byte(`{
+		"type":"task_updated",
+		"session_id":"session-1",
+		"task_id":"task-1",
+		"patch":{"status":"completed","description":"完成子任务"}
+	}`))
+	if err != nil {
+		t.Fatalf("ParseMessage(task_updated) error = %v", err)
+	}
+	if message.Type != MessageTypeTaskUpdated {
+		t.Fatalf("Type = %q, want task_updated", message.Type)
+	}
+	if message.TaskUpdated == nil {
+		t.Fatal("TaskUpdated = nil")
+	}
+	if message.TaskUpdated.Status != "completed" {
+		t.Fatalf("Status = %q, want completed", message.TaskUpdated.Status)
+	}
+	if message.TaskUpdated.Patch.Description != "完成子任务" {
+		t.Fatalf("Description = %q, want 完成子任务", message.TaskUpdated.Patch.Description)
+	}
+}
+
+func TestParseUnknownMessagePreservesWireType(t *testing.T) {
+	message, err := ParseMessage([]byte(`{
+		"type":"thinking_tokens",
+		"session_id":"session-1",
+		"estimated_tokens":128
+	}`))
+	if err != nil {
+		t.Fatalf("ParseMessage(thinking_tokens) error = %v", err)
+	}
+	if message.Type != MessageType("thinking_tokens") {
+		t.Fatalf("Type = %q, want thinking_tokens", message.Type)
+	}
+	if message.Raw["estimated_tokens"] != float64(128) {
+		t.Fatalf("Raw estimated_tokens = %#v, want 128", message.Raw["estimated_tokens"])
+	}
+}
+
 func TestParseToolProgressMessage(t *testing.T) {
 	message, err := ParseMessage([]byte(`{
 		"type":"tool_progress",

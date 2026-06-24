@@ -760,6 +760,8 @@ const (
 	MessageTypeTaskProgress MessageType = "task_progress"
 	// MessageTypeTaskNotification 表示任务通知消息。
 	MessageTypeTaskNotification MessageType = "task_notification"
+	// MessageTypeTaskUpdated 表示任务状态更新消息。
+	MessageTypeTaskUpdated MessageType = "task_updated"
 	// MessageTypePromptSuggestion 表示提示建议消息。
 	MessageTypePromptSuggestion MessageType = "prompt_suggestion"
 	// MessageTypeAuthStatus 表示鉴权状态消息。
@@ -860,6 +862,7 @@ type ReceivedMessage struct {
 	TaskStarted      *TaskStartedMessage      `json:"task_started,omitempty"`
 	TaskProgress     *TaskProgressMessage     `json:"task_progress,omitempty"`
 	TaskNotification *TaskNotificationMessage `json:"task_notification,omitempty"`
+	TaskUpdated      *TaskUpdatedMessage      `json:"task_updated,omitempty"`
 	PromptSuggestion *PromptSuggestionMessage `json:"prompt_suggestion,omitempty"`
 	AuthStatus       *AuthStatusMessage       `json:"auth_status,omitempty"`
 	Raw              map[string]any           `json:"raw,omitempty"`
@@ -1025,6 +1028,25 @@ type TaskNotificationMessage struct {
 	Additional     map[string]any `json:"additional,omitempty"`
 }
 
+// TaskUpdatedPatch 表示 task_updated 生命周期补丁。
+type TaskUpdatedPatch struct {
+	Status         string         `json:"status,omitempty"`
+	Description    string         `json:"description,omitempty"`
+	EndTime        int64          `json:"end_time,omitempty"`
+	TotalPausedMS  int            `json:"total_paused_ms,omitempty"`
+	Error          string         `json:"error,omitempty"`
+	IsBackgrounded bool           `json:"is_backgrounded,omitempty"`
+	Additional     map[string]any `json:"additional,omitempty"`
+}
+
+// TaskUpdatedMessage 表示后台任务状态变更消息。
+type TaskUpdatedMessage struct {
+	TaskID     string           `json:"task_id,omitempty"`
+	Patch      TaskUpdatedPatch `json:"patch,omitempty"`
+	Status     string           `json:"status,omitempty"`
+	Additional map[string]any   `json:"additional,omitempty"`
+}
+
 // SystemMessage 表示统一系统消息。
 type SystemMessage struct {
 	Subtype          string                      `json:"subtype,omitempty"`
@@ -1034,6 +1056,7 @@ type SystemMessage struct {
 	TaskStarted      *TaskStartedMessage         `json:"task_started,omitempty"`
 	TaskProgress     *TaskProgressMessage        `json:"task_progress,omitempty"`
 	TaskNotification *TaskNotificationMessage    `json:"task_notification,omitempty"`
+	TaskUpdated      *TaskUpdatedMessage         `json:"task_updated,omitempty"`
 	Data             map[string]any              `json:"data,omitempty"`
 }
 
@@ -1081,6 +1104,8 @@ func decodeSystemMessage(payload map[string]any) *SystemMessage {
 		system.TaskProgress = decodeTaskProgressMessage(payload)
 	case "task_notification":
 		system.TaskNotification = decodeTaskNotificationMessage(payload)
+	case "task_updated":
+		system.TaskUpdated = decodeTaskUpdatedMessage(payload)
 	}
 
 	return system
@@ -1207,6 +1232,29 @@ func decodeTaskNotificationMessage(payload map[string]any) *TaskNotificationMess
 	}
 }
 
+func decodeTaskUpdatedMessage(payload map[string]any) *TaskUpdatedMessage {
+	patch := decodeTaskUpdatedPatch(payload["patch"])
+	return &TaskUpdatedMessage{
+		TaskID:     jsonvalue.StringValue(payload["task_id"]),
+		Patch:      patch,
+		Status:     patch.Status,
+		Additional: payload,
+	}
+}
+
+func decodeTaskUpdatedPatch(raw any) TaskUpdatedPatch {
+	payload := jsonvalue.MapValue(raw)
+	return TaskUpdatedPatch{
+		Status:         jsonvalue.StringValue(payload["status"]),
+		Description:    jsonvalue.StringValue(payload["description"]),
+		EndTime:        int64(jsonvalue.IntValue(payload["end_time"])),
+		TotalPausedMS:  jsonvalue.IntValue(payload["total_paused_ms"]),
+		Error:          jsonvalue.StringValue(payload["error"]),
+		IsBackgrounded: jsonvalue.BoolValue(payload["is_backgrounded"]),
+		Additional:     payload,
+	}
+}
+
 func decodeTaskUsage(raw any) TaskUsage {
 	payload := jsonvalue.MapValue(raw)
 	return TaskUsage{
@@ -1307,6 +1355,8 @@ func DecodeMessage(payload map[string]any) (ReceivedMessage, error) {
 		message.TaskProgress = decodeTaskProgressMessage(payload)
 	case MessageTypeTaskNotification:
 		message.TaskNotification = decodeTaskNotificationMessage(payload)
+	case MessageTypeTaskUpdated:
+		message.TaskUpdated = decodeTaskUpdatedMessage(payload)
 	case MessageTypePromptSuggestion:
 		message.PromptSuggestion = &PromptSuggestionMessage{
 			Suggestion: jsonvalue.StringValue(payload["suggestion"]),
@@ -1319,7 +1369,6 @@ func DecodeMessage(payload map[string]any) (ReceivedMessage, error) {
 			Additional:       payload,
 		}
 	default:
-		message.Type = MessageTypeUnknown
 	}
 
 	return message, nil
@@ -1339,11 +1388,12 @@ func normalizeMessageType(messageType MessageType) MessageType {
 		MessageTypeTaskStarted,
 		MessageTypeTaskProgress,
 		MessageTypeTaskNotification,
+		MessageTypeTaskUpdated,
 		MessageTypePromptSuggestion,
 		MessageTypeAuthStatus:
 		return messageType
 	default:
-		return MessageTypeUnknown
+		return messageType
 	}
 }
 
