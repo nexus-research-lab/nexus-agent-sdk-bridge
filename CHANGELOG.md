@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.1.15] - 2026-06-29
+
 ### Added
 
 - Added forward-compatible parsing for Claude Agent SDK `system/task_updated` events while preserving unknown SDK message wire types.
