@@ -157,7 +157,7 @@ func (m *ProcessManager) Start(ctx context.Context) error {
 
 	cmd := exec.Command(commandPath, m.config.Args...)
 	cmd.Dir = m.config.CWD
-	cmd.Env = buildEnvironment(m.config.Env, m.config.CWD)
+	cmd.Env = buildEnvironment(m.config.Env, m.config.CWD, m.config.ControlWireDialect)
 	if err := applyCommandUser(cmd, m.config.User); err != nil {
 		return err
 	}
@@ -843,7 +843,7 @@ func (m *ProcessManager) emitDiagnostic(event string, attributes map[string]any)
 	})
 }
 
-func buildEnvironment(overrides map[string]string, cwd string) []string {
+func buildEnvironment(overrides map[string]string, cwd string, dialect ControlWireDialect) []string {
 	environment := map[string]string{}
 	for _, entry := range os.Environ() {
 		parts := strings.SplitN(entry, "=", 2)
@@ -856,7 +856,11 @@ func buildEnvironment(overrides map[string]string, cwd string) []string {
 		environment[parts[0]] = parts[1]
 	}
 
-	environment["CLAUDE_CODE_ENTRYPOINT"] = "sdk-go"
+	if dialect == ControlWireDialectSnake {
+		environment["NEXUS_ENTRYPOINT"] = "sdk-go"
+	} else {
+		environment["CLAUDE_CODE_ENTRYPOINT"] = "sdk-go"
+	}
 	environment["CLAUDE_AGENT_SDK_VERSION"] = "dev"
 	if cwd != "" {
 		environment["PWD"] = cwd

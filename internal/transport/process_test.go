@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -115,6 +116,34 @@ func TestProcessCommandVersionCheckSkipsSnakeWireRuntime(t *testing.T) {
 	if manager.shouldCheckCommandVersion() {
 		t.Fatal("shouldCheckCommandVersion() = true, want false for nxs snake wire runtime")
 	}
+}
+
+func TestBuildEnvironmentUsesRuntimeEntrypointEnv(t *testing.T) {
+	claudeEnv := buildEnvironment(nil, "", ControlWireDialectClaude)
+	if envValue(claudeEnv, "CLAUDE_CODE_ENTRYPOINT") != "sdk-go" {
+		t.Fatalf("CLAUDE_CODE_ENTRYPOINT missing in claude env: %#v", claudeEnv)
+	}
+	if got := envValue(claudeEnv, "NEXUS_ENTRYPOINT"); got != "" {
+		t.Fatalf("NEXUS_ENTRYPOINT = %q, want empty for claude env", got)
+	}
+
+	nxsEnv := buildEnvironment(nil, "", ControlWireDialectSnake)
+	if envValue(nxsEnv, "NEXUS_ENTRYPOINT") != "sdk-go" {
+		t.Fatalf("NEXUS_ENTRYPOINT missing in nxs env: %#v", nxsEnv)
+	}
+	if got := envValue(nxsEnv, "CLAUDE_CODE_ENTRYPOINT"); got != "" {
+		t.Fatalf("CLAUDE_CODE_ENTRYPOINT = %q, want empty for nxs env", got)
+	}
+}
+
+func envValue(environment []string, key string) string {
+	prefix := key + "="
+	for _, entry := range environment {
+		if strings.HasPrefix(entry, prefix) {
+			return strings.TrimPrefix(entry, prefix)
+		}
+	}
+	return ""
 }
 
 func newExitedProcessManagerWithOpenStderr(t *testing.T) (*ProcessManager, func()) {
