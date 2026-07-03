@@ -858,10 +858,13 @@ func buildEnvironment(overrides map[string]string, cwd string, dialect ControlWi
 
 	if dialect == ControlWireDialectSnake {
 		environment["NEXUS_ENTRYPOINT"] = "sdk-go"
+		// 宿主可能是 cc 会话，剥掉继承的 cc 入口标记，避免误导下游诊断。
+		delete(environment, "CLAUDE_CODE_ENTRYPOINT")
 	} else {
+		// cc 方言：CLAUDE_* 是 Claude Code CLI 的契约变量，保持原名。
 		environment["CLAUDE_CODE_ENTRYPOINT"] = "sdk-go"
+		environment["CLAUDE_AGENT_SDK_VERSION"] = "dev"
 	}
-	environment["CLAUDE_AGENT_SDK_VERSION"] = "dev"
 	if cwd != "" {
 		environment["PWD"] = cwd
 	}
