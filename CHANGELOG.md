@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.1.16] - 2026-07-04
+
+### Fixed
+
+- Set the `NEXUS` runtime entrypoint for `nxs` sessions and isolated entrypoint environment propagation.
+
 ## [0.1.15] - 2026-06-29
 
 ### Added
