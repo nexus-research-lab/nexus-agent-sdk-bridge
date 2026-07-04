@@ -8,7 +8,8 @@ All notable changes to this project are documented in this file.
 
 ### Fixed
 
-- Set the `NEXUS` runtime entrypoint for `nxs` sessions and isolated entrypoint environment propagation.
+- Set `NEXUS` as the runtime entrypoint for `nxs` sessions.
+- Isolated entrypoint environment propagation so bridge-managed process launches do not leak runtime hints across entrypoints.
 
 ## [0.1.15] - 2026-06-29
 
