@@ -6,33 +6,34 @@ import (
 	"testing"
 )
 
-func TestRuntimeInspectorStatusUsesEnvCommandPath(t *testing.T) {
+func TestRuntimeInspectorStatusEnvCommandPath(t *testing.T) {
 	runtimePath := writeRuntimeExecutableForTest(t, t.TempDir(), "nxs")
-	t.Setenv(commandPathEnvName, runtimePath)
-
-	status := NewRuntimeInspector(WithPlatform("linux", "amd64")).Status()
-	if !status.Available || status.Path != runtimePath || status.Source != RuntimeSourceEnv {
-		t.Fatalf("Status() = %+v, want env runtime", status)
-	}
-}
-
-func TestRuntimeInspectorStatusRejectsBrokenEnvCommandPath(t *testing.T) {
 	brokenPath := filepath.Join(t.TempDir(), "nxs")
-	t.Setenv(commandPathEnvName, brokenPath)
-
-	status := NewRuntimeInspector(WithPlatform("linux", "amd64")).Status()
-	if status.Available || status.CanDownload || status.Source != RuntimeSourceEnv ||
-		status.Error != StatusErrorEnvNotExecutable {
-		t.Fatalf("Status() = %+v, want broken env without download", status)
+	tests := []struct {
+		name      string
+		path      string
+		available bool
+		source    RuntimeSource
+		err       StatusError
+	}{
+		{name: "available", path: runtimePath, available: true, source: RuntimeSourceEnv},
+		{name: "broken", path: brokenPath, source: RuntimeSourceEnv, err: StatusErrorEnvNotExecutable},
+		{name: "missing", err: StatusErrorNotFound},
 	}
-}
 
-func TestRuntimeInspectorStatusRequiresEnvCommandPath(t *testing.T) {
-	t.Setenv(commandPathEnvName, "")
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			t.Setenv(commandPathEnvName, test.path)
 
-	status := NewRuntimeInspector(WithPlatform("linux", "amd64")).Status()
-	if status.Available || status.CanDownload || status.Error != StatusErrorNotFound {
-		t.Fatalf("Status() = %+v, want missing env without download", status)
+			status := NewRuntimeInspector(WithPlatform("linux", "amd64")).Status()
+			if status.Available != test.available || status.CanDownload || status.Source != test.source ||
+				status.Error != test.err {
+				t.Fatalf("Status() = %+v, want available=%v source=%v error=%v", status, test.available, test.source, test.err)
+			}
+			if test.available && status.Path != runtimePath {
+				t.Fatalf("Status().Path = %q, want %q", status.Path, runtimePath)
+			}
+		})
 	}
 }
 

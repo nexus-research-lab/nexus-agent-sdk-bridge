@@ -6,80 +6,69 @@ import (
 	"testing"
 )
 
-func TestRuntimeCommandResolverUsesClaudeOverride(t *testing.T) {
-	expected := `D:\tools\claude.exe`
-	resolver := runtimeCommandResolver{
-		goos:       "windows",
-		getenv:     fakeCommandEnv(map[string]string{claudeCommandPathEnvName: expected}),
-		lookPath:   func(string) (string, error) { return "", os.ErrNotExist },
-		fileExists: func(string) bool { return false },
-		globPaths:  fakeCommandGlob(nil),
-	}
-	if got := resolver.resolveClaudeCommandPath(); got != expected {
-		t.Fatalf("claude override = %q, want %q", got, expected)
-	}
-}
-
-func TestRuntimeCommandResolverUsesWindowsNPMShim(t *testing.T) {
+func TestRuntimeCommandResolverResolveClaudeCommandPath(t *testing.T) {
 	appData := `C:\Users\lee\AppData\Roaming`
-	expected := filepath.Join(appData, "npm", "claude.cmd")
-	resolver := runtimeCommandResolver{
-		goos:       "windows",
-		getenv:     fakeCommandEnv(map[string]string{"APPDATA": appData}),
-		lookPath:   func(string) (string, error) { return "", os.ErrNotExist },
-		fileExists: func(path string) bool { return path == expected },
-		globPaths:  fakeCommandGlob(nil),
-	}
-	if got := resolver.resolveClaudeCommandPath(); got != expected {
-		t.Fatalf("windows npm shim = %q, want %q", got, expected)
-	}
-}
-
-func TestRuntimeCommandResolverPrefersClaudeLookPath(t *testing.T) {
-	expected := `C:\Users\lee\AppData\Roaming\npm\claude.cmd`
-	resolver := runtimeCommandResolver{
-		goos:   "windows",
-		getenv: fakeCommandEnv(nil),
-		lookPath: func(name string) (string, error) {
-			if name == "claude.cmd" {
-				return expected, nil
-			}
-			return "", os.ErrNotExist
-		},
-		fileExists: func(string) bool { return false },
-		globPaths:  fakeCommandGlob(nil),
-	}
-	if got := resolver.resolveClaudeCommandPath(); got != expected {
-		t.Fatalf("PATH claude shim = %q, want %q", got, expected)
-	}
-}
-
-func TestRuntimeCommandResolverUsesNVMClaudeGlobalInstall(t *testing.T) {
 	home := "/Users/lee"
-	expected := filepath.Join(home, ".nvm", "versions", "node", "v22.11.0", "bin", "claude")
-	pattern := filepath.Join(home, ".nvm", "versions", "node", "*", "bin", "claude")
-	resolver := runtimeCommandResolver{
-		goos:       "darwin",
-		getenv:     fakeCommandEnv(map[string]string{"HOME": home}),
-		lookPath:   func(string) (string, error) { return "", os.ErrNotExist },
-		fileExists: func(path string) bool { return path == expected },
-		globPaths:  fakeCommandGlob(map[string][]string{pattern: []string{expected}}),
-	}
-	if got := resolver.resolveClaudeCommandPath(); got != expected {
-		t.Fatalf("nvm claude path = %q, want %q", got, expected)
-	}
-}
+	nvmPath := filepath.Join(home, ".nvm", "versions", "node", "v22.11.0", "bin", "claude")
+	nvmPattern := filepath.Join(home, ".nvm", "versions", "node", "*", "bin", "claude")
 
-func TestRuntimeCommandResolverFallsBackToClaudeCommandName(t *testing.T) {
-	resolver := runtimeCommandResolver{
-		goos:       "linux",
-		getenv:     fakeCommandEnv(nil),
-		lookPath:   func(string) (string, error) { return "", os.ErrNotExist },
-		fileExists: func(string) bool { return false },
-		globPaths:  fakeCommandGlob(nil),
+	tests := []struct {
+		name     string
+		goos     string
+		env      map[string]string
+		lookPath map[string]string
+		exists   map[string]bool
+		globs    map[string][]string
+		want     string
+	}{
+		{
+			name: "override",
+			goos: "windows",
+			env:  map[string]string{claudeCommandPathEnvName: `D:\tools\claude.exe`},
+			want: `D:\tools\claude.exe`,
+		},
+		{
+			name:   "windows npm shim",
+			goos:   "windows",
+			env:    map[string]string{"APPDATA": appData},
+			exists: map[string]bool{filepath.Join(appData, "npm", "claude.cmd"): true},
+			want:   filepath.Join(appData, "npm", "claude.cmd"),
+		},
+		{
+			name:     "look path",
+			goos:     "windows",
+			lookPath: map[string]string{"claude.cmd": `C:\Users\lee\AppData\Roaming\npm\claude.cmd`},
+			want:     `C:\Users\lee\AppData\Roaming\npm\claude.cmd`,
+		},
+		{
+			name:   "nvm install",
+			goos:   "darwin",
+			env:    map[string]string{"HOME": home},
+			exists: map[string]bool{nvmPath: true},
+			globs:  map[string][]string{nvmPattern: []string{nvmPath}},
+			want:   nvmPath,
+		},
+		{name: "fallback", goos: "linux", want: "claude"},
 	}
-	if got := resolver.resolveClaudeCommandPath(); got != "claude" {
-		t.Fatalf("claude default command = %q, want claude", got)
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			resolver := runtimeCommandResolver{
+				goos:   test.goos,
+				getenv: fakeCommandEnv(test.env),
+				lookPath: func(name string) (string, error) {
+					if value := test.lookPath[name]; value != "" {
+						return value, nil
+					}
+					return "", os.ErrNotExist
+				},
+				fileExists: func(path string) bool { return test.exists[path] },
+				globPaths:  fakeCommandGlob(test.globs),
+			}
+			if got := resolver.resolveClaudeCommandPath(); got != test.want {
+				t.Fatalf("resolveClaudeCommandPath() = %q, want %q", got, test.want)
+			}
+		})
 	}
 }
 
