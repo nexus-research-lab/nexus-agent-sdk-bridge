@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.1.17] - 2026-07-05
+
+### Fixed
+
+- Forwarded interrupt reasons through bridge client control requests so hosts can distinguish user stops, aborts, and other cancellation paths.
+- Refined runtime command resolver test coverage while preserving the existing command resolution behavior.
+
 ## [0.1.16] - 2026-07-04
 
 ### Fixed
