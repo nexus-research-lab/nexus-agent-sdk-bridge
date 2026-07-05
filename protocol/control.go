@@ -19,6 +19,7 @@ type ControlRequestEnvelope struct {
 // 它保留底层 wire 层 subtype union 形状，领域语义由 client、mcp、permission 等公开包承接。
 type ControlRequest struct {
 	Subtype                string              `json:"subtype"`
+	Reason                 string              `json:"reason,omitempty"`
 	Hooks                  map[string]any      `json:"hooks,omitempty"`
 	Agents                 map[string]any      `json:"agents,omitempty"`
 	SDKMCPServers          []string            `json:"sdk_mcp_servers,omitempty"`

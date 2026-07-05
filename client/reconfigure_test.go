@@ -185,6 +185,52 @@ func successfulControlResponse(requestID string, response map[string]any) map[st
 	}
 }
 
+func TestInterruptWithReasonSendsControlRequest(t *testing.T) {
+	transport := newScriptedTransport()
+	core := newSessionCoreWithTransport(
+		Options{
+			Transport: transport,
+			Runtime:   RuntimeOptions{InitializeTimeout: time.Second},
+		},
+		transport,
+	)
+
+	connectDone := make(chan error, 1)
+	go func() {
+		connectDone <- core.Connect(context.Background())
+	}()
+	assertInitializeRequest(t, receiveWrite(t, transport))
+	transport.pushRead(successfulInitializeResponse(map[string]any{"session_id": "session-1"}))
+	if err := receiveDone(t, connectDone); err != nil {
+		t.Fatalf("Connect() error = %v", err)
+	}
+	defer func() {
+		_ = core.Disconnect(context.Background())
+	}()
+
+	interruptDone := make(chan error, 1)
+	go func() {
+		interruptDone <- core.interruptWithReason(context.Background(), "interrupt")
+	}()
+	payload := receiveWrite(t, transport)
+	assertControlRequest(t, payload, "interrupt")
+	request := payload["request"].(map[string]any)
+	if request["reason"] != "interrupt" {
+		t.Fatalf("interrupt reason = %#v, want interrupt", request["reason"])
+	}
+	requestID, _ := payload["request_id"].(string)
+	transport.pushRead(map[string]any{
+		"type": "control_response",
+		"response": map[string]any{
+			"subtype":    "success",
+			"request_id": requestID,
+		},
+	})
+	if err := receiveDone(t, interruptDone); err != nil {
+		t.Fatalf("interruptWithReason() error = %v", err)
+	}
+}
+
 func assertControlRequest(t *testing.T, payload map[string]any, subtype string) {
 	t.Helper()
 	if payload["type"] != "control_request" {

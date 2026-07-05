@@ -239,6 +239,14 @@ func (s *Session) Interrupt(ctx context.Context) error {
 	return s.core.interrupt(ctx)
 }
 
+// InterruptWithReason 按指定原因中断当前执行。
+func (s *Session) InterruptWithReason(ctx context.Context, reason string) error {
+	if s == nil || s.core == nil {
+		return ErrNotConnected
+	}
+	return s.core.interruptWithReason(ctx, reason)
+}
+
 // Control 返回当前会话的运行期控制能力。
 func (s *Session) Control() *SessionControl {
 	return &SessionControl{session: s}

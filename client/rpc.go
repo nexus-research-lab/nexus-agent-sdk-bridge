@@ -19,6 +19,10 @@ import (
 const defaultInterruptControlTimeout = 5 * time.Second
 
 func (c *sessionCore) interrupt(ctx context.Context) error {
+	return c.interruptWithReason(ctx, "")
+}
+
+func (c *sessionCore) interruptWithReason(ctx context.Context, reason string) error {
 	if !c.isConnected() {
 		return ErrNotConnected
 	}
@@ -26,20 +30,29 @@ func (c *sessionCore) interrupt(ctx context.Context) error {
 	if c.transport == nil {
 		return ErrNotConnected
 	}
+	reason = strings.TrimSpace(reason)
+	if reason != "" {
+		return c.sendInterruptControlRequest(ctx, reason)
+	}
 	if err := c.transport.Interrupt(); err != nil {
 		if !errors.Is(err, transport.ErrInterruptUnsupported) {
 			return err
 		}
-		_, controlErr := c.sendControlRequest(
-			ctx,
-			protocol.ControlRequest{
-				Subtype: "interrupt",
-			},
-			interruptControlTimeout(c.options.Runtime.InitializeTimeout),
-		)
-		return controlErr
+		return c.sendInterruptControlRequest(ctx, "")
 	}
 	return nil
+}
+
+func (c *sessionCore) sendInterruptControlRequest(ctx context.Context, reason string) error {
+	_, err := c.sendControlRequest(
+		ctx,
+		protocol.ControlRequest{
+			Subtype: "interrupt",
+			Reason:  strings.TrimSpace(reason),
+		},
+		interruptControlTimeout(c.options.Runtime.InitializeTimeout),
+	)
+	return err
 }
 
 func interruptControlTimeout(timeout time.Duration) time.Duration {
