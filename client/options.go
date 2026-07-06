@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/agent"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/hook"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/jsonvalue"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/mcpwire"
@@ -33,6 +34,9 @@ type DiagnosticEvent struct {
 
 // DiagnosticHandler 接收 SDK 内部诊断事件。
 type DiagnosticHandler func(DiagnosticEvent)
+
+// AgentDefinition 表示可通过 Options 注入的子 agent 定义。
+type AgentDefinition = agent.Definition
 
 // PluginType 表示 SDK 显式加载的插件来源类型。
 type PluginType string

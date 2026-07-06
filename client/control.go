@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/agent"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/hook"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/jsonvalue"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/transport"
@@ -174,7 +175,7 @@ func (c *sessionCore) buildInitializeRequest() protocol.ControlRequest {
 		request.Hooks = hooks
 	}
 	if len(c.options.Agents) > 0 {
-		request.Agents = encodeAgentDefinitions(c.options.Agents)
+		request.Agents = agent.EncodeDefinitions(c.options.Agents)
 	}
 	if registry := c.currentSDKMCPServers(); len(registry) > 0 {
 		request.SDKMCPServers = sortedKeys(registry)
