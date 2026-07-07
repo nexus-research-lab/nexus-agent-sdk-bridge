@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.1.18] - 2026-07-08
+
+### Changed
+
+- Moved shared agent definition types into the public `agent` package and aligned bridge runtime options with the updated agent definition surface.
+
 ## [0.1.17] - 2026-07-05
 
 ### Fixed
