@@ -27,7 +27,6 @@ const (
 	EventPostCompact        Event = "PostCompact"
 	EventPermissionRequest  Event = "PermissionRequest"
 	EventSetup              Event = "Setup"
-	EventTeammateIdle       Event = "TeammateIdle"
 	EventTaskCreated        Event = "TaskCreated"
 	EventTaskCompleted      Event = "TaskCompleted"
 	EventElicitation        Event = "Elicitation"
@@ -69,8 +68,6 @@ type Input struct {
 	AgentTranscriptPath  string         `json:"agent_transcript_path,omitempty"`
 	CustomInstructions   any            `json:"custom_instructions,omitempty"`
 	CompactSummary       string         `json:"compact_summary,omitempty"`
-	TeammateName         string         `json:"teammate_name,omitempty"`
-	TeamName             string         `json:"team_name,omitempty"`
 	TaskID               string         `json:"task_id,omitempty"`
 	TaskSubject          string         `json:"task_subject,omitempty"`
 	TaskDescription      string         `json:"task_description,omitempty"`
@@ -240,8 +237,6 @@ func NewInput(input map[string]any) Input {
 		AgentTranscriptPath:  jsonvalue.StringValue(input["agent_transcript_path"]),
 		CustomInstructions:   jsonvalue.CloneValuePreserveTypedSlices(input["custom_instructions"]),
 		CompactSummary:       jsonvalue.StringValue(input["compact_summary"]),
-		TeammateName:         jsonvalue.StringValue(input["teammate_name"]),
-		TeamName:             jsonvalue.StringValue(input["team_name"]),
 		TaskID:               jsonvalue.StringValue(input["task_id"]),
 		TaskSubject:          jsonvalue.StringValue(input["task_subject"]),
 		TaskDescription:      jsonvalue.StringValue(input["task_description"]),

@@ -7,6 +7,7 @@ All notable changes to this project are documented in this file.
 ### Changed
 
 - Removed the bridge plugin control surface now that `nxs` no longer exposes plugin loading or reload controls.
+- Removed the product-side teammate idle hook surface from the bridge SDK.
 
 ### Fixed
 
