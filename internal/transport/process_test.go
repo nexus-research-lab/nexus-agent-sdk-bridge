@@ -1,6 +1,7 @@
 package transport
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -109,6 +110,48 @@ func TestProcessWaitUnblocksWhenDescendantKeepsStderrOpen(t *testing.T) {
 	case <-time.After(500 * time.Millisecond):
 		t.Fatal("Wait() blocked while stderr pipe was still inherited")
 	}
+}
+
+func TestProcessWaitIncludesStderrTailOnExit(t *testing.T) {
+	if os.Getenv("NEXUS_BRIDGE_TEST_EXIT_STDERR") == "1" {
+		_, _ = os.Stderr.WriteString("panic: task output failed\nstack line\n")
+		os.Exit(2)
+	}
+
+	var diagnostics []ProcessDiagnosticEvent
+	manager := NewProcessManager(ProcessConfig{
+		CommandPath:        os.Args[0],
+		CWD:                t.TempDir(),
+		Args:               []string{"-test.run=TestProcessWaitIncludesStderrTailOnExit"},
+		Env:                map[string]string{"NEXUS_BRIDGE_TEST_EXIT_STDERR": "1"},
+		ControlWireDialect: ControlWireDialectSnake,
+		Diagnostics: func(event ProcessDiagnosticEvent) {
+			diagnostics = append(diagnostics, event)
+		},
+	})
+	if err := manager.Start(t.Context()); err != nil {
+		t.Fatalf("Start() error = %v", err)
+	}
+
+	err := manager.Wait()
+	if err == nil {
+		t.Fatal("Wait() error = nil, want process exit error")
+	}
+	if !strings.Contains(err.Error(), "exit status 2") ||
+		!strings.Contains(err.Error(), "panic: task output failed") {
+		t.Fatalf("Wait() error = %v, want exit status and stderr tail", err)
+	}
+
+	for _, event := range diagnostics {
+		if event.Event != "process_exit" {
+			continue
+		}
+		if !strings.Contains(fmt.Sprint(event.Attributes["stderr_tail"]), "panic: task output failed") {
+			t.Fatalf("process_exit diagnostics = %#v, want stderr_tail", event.Attributes)
+		}
+		return
+	}
+	t.Fatalf("missing process_exit diagnostics: %#v", diagnostics)
 }
 
 func TestProcessCommandVersionCheckSkipsSnakeWireRuntime(t *testing.T) {

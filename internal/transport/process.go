@@ -239,9 +239,14 @@ func (m *ProcessManager) Start(ctx context.Context) error {
 		defer close(m.done)
 		err := cmd.Wait()
 		m.setWaitError(err)
+		m.waitForStderrReader()
+		stderrTail := strings.TrimSpace(m.stderrTail.String())
 		attributes := map[string]any{"pid": cmd.Process.Pid}
-		if normalizedErr := normalizeExitError(err); normalizedErr != nil {
+		if normalizedErr := normalizeExitErrorWithStderr(err, stderrTail); normalizedErr != nil {
 			attributes["error"] = normalizedErr.Error()
+		}
+		if stderrTail != "" {
+			attributes["stderr_tail"] = stderrTail
 		}
 		m.emitDiagnostic("process_exit", attributes)
 	}()
@@ -650,7 +655,7 @@ func (m *ProcessManager) Wait() error {
 	<-m.done
 	m.closeOutputPipes()
 	m.waitForStderrReader()
-	return normalizeExitError(m.waitError())
+	return normalizeExitErrorWithStderr(m.waitError(), m.stderrTail.String())
 }
 
 // Close 关闭进程。
@@ -689,7 +694,7 @@ func (m *ProcessManager) Close() error {
 		m.closeOutputPipes()
 		m.waitForStderrReader()
 		if !forcedExit {
-			closeErr = normalizeExitError(m.waitError())
+			closeErr = normalizeExitErrorWithStderr(m.waitError(), m.stderrTail.String())
 		}
 	})
 	return closeErr
@@ -889,6 +894,18 @@ func normalizeExitError(err error) error {
 		return fmt.Errorf("process: command exited with error: %w", err)
 	}
 	return err
+}
+
+func normalizeExitErrorWithStderr(err error, stderrTail string) error {
+	normalized := normalizeExitError(err)
+	if normalized == nil {
+		return nil
+	}
+	stderrTail = strings.TrimSpace(stderrTail)
+	if stderrTail == "" {
+		return normalized
+	}
+	return fmt.Errorf("%w stderr_tail=%q", normalized, stderrTail)
 }
 
 func readJSONLine(reader *bufio.Reader, maxBufferSize int) ([]byte, error) {

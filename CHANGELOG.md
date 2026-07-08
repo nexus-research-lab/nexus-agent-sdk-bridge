@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Preserved recent runtime stderr output on process exit errors and diagnostics so hosts can surface native runtime panic details.
+
 ## [0.1.18] - 2026-07-08
 
 ### Changed
