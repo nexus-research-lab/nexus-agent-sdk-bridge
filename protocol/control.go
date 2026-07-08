@@ -51,6 +51,7 @@ type ControlRequest struct {
 	MaxThinkingTokens      *int                `json:"max_thinking_tokens,omitempty"`
 	UserMessageID          string              `json:"user_message_id,omitempty"`
 	MessageUUID            string              `json:"message_uuid,omitempty"`
+	MessageUUIDs           []string            `json:"message_uuids,omitempty"`
 	DryRun                 *bool               `json:"dry_run,omitempty"`
 	Persist                *bool               `json:"persist,omitempty"`
 	ServerName             string              `json:"server_name,omitempty"`

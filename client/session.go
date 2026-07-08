@@ -325,6 +325,15 @@ func (c *SessionControl) RewindFiles(
 	return core.rewindFiles(ctx, userMessageID, dryRun)
 }
 
+// RemoveMessages 删除当前会话中的指定消息 UUID，并同步 runtime transcript。
+func (c *SessionControl) RemoveMessages(ctx context.Context, uuids []string) error {
+	core, err := c.activeCore()
+	if err != nil {
+		return err
+	}
+	return core.removeMessages(ctx, uuids)
+}
+
 // StopTask 停止指定后台任务。
 func (c *SessionControl) StopTask(ctx context.Context, taskID string) error {
 	core, err := c.activeCore()

@@ -177,6 +177,46 @@ func (c *sessionCore) rewindFiles(ctx context.Context, userMessageID string, dry
 	return decodeRewindFilesResult(response), nil
 }
 
+func (c *sessionCore) removeMessages(ctx context.Context, uuids []string) error {
+	if !c.isConnected() {
+		return ErrNotConnected
+	}
+	normalizedUUIDs := normalizeMessageUUIDs(uuids)
+	if len(normalizedUUIDs) == 0 {
+		return errors.New("client: message uuid is required")
+	}
+
+	_, err := c.sendControlRequest(
+		ctx,
+		protocol.ControlRequest{
+			Subtype:      "remove_messages",
+			MessageUUIDs: normalizedUUIDs,
+		},
+		c.options.Runtime.InitializeTimeout,
+	)
+	return err
+}
+
+func normalizeMessageUUIDs(uuids []string) []string {
+	if len(uuids) == 0 {
+		return nil
+	}
+	result := make([]string, 0, len(uuids))
+	seen := make(map[string]struct{}, len(uuids))
+	for _, uuid := range uuids {
+		uuid = strings.TrimSpace(uuid)
+		if uuid == "" {
+			continue
+		}
+		if _, exists := seen[uuid]; exists {
+			continue
+		}
+		seen[uuid] = struct{}{}
+		result = append(result, uuid)
+	}
+	return result
+}
+
 func (c *sessionCore) stopTask(ctx context.Context, taskID string) error {
 	if !c.isConnected() {
 		return ErrNotConnected
