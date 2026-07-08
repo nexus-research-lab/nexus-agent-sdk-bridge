@@ -39,26 +39,3 @@ func TestDecodeInitializeResponse(t *testing.T) {
 		t.Fatalf("initialize response = %#v", got)
 	}
 }
-
-func TestDecodeReloadPluginsResponse(t *testing.T) {
-	got := DecodeReloadPluginsResponse(map[string]any{
-		"plugins": []any{
-			map[string]any{"name": "local", "path": "/tmp/plugin", "source": "project"},
-		},
-		"mcp_servers": []any{
-			map[string]any{"name": "github", "status": "connected"},
-		},
-		"enabled_count": 1,
-		"mcp_count":     1,
-	})
-
-	if len(got.Plugins) != 1 || got.Plugins[0].Name != "local" {
-		t.Fatalf("plugins = %#v", got.Plugins)
-	}
-	if len(got.MCPServers) != 1 || got.MCPServers[0].Name != "github" {
-		t.Fatalf("mcp servers = %#v", got.MCPServers)
-	}
-	if got.EnabledCount != 1 || got.MCPCount != 1 {
-		t.Fatalf("counts = %#v", got)
-	}
-}

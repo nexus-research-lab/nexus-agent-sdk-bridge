@@ -309,8 +309,6 @@ func normalizeControlResponseFromClaude(subtype string, response map[string]any)
 			"canRewind":    "can_rewind",
 			"filesChanged": "files_changed",
 		})
-	case "reload_plugins":
-		return normalizeReloadPluginsResponseFromClaude(response)
 	default:
 		return response
 	}
@@ -330,15 +328,6 @@ func normalizeInitializeResponseFromClaude(response map[string]any) map[string]a
 	}
 	if account := jsonvalue.MapValue(response["account"]); len(account) > 0 {
 		output["account"] = normalizeAccountInfoFromClaude(account)
-	}
-	return output
-}
-
-func normalizeReloadPluginsResponseFromClaude(response map[string]any) map[string]any {
-	output := normalizeInitializeResponseFromClaude(response)
-	if servers, ok := response["mcpServers"]; ok {
-		output["mcp_servers"] = normalizeMCPServersFromClaude(servers)
-		delete(output, "mcpServers")
 	}
 	return output
 }

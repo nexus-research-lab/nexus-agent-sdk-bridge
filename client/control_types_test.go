@@ -74,57 +74,6 @@ func TestDecodeRewindFilesResult(t *testing.T) {
 	}
 }
 
-func TestDecodeReloadPluginsResponseMapsPublicSurface(t *testing.T) {
-	got := decodeReloadPluginsResponse(map[string]any{
-		"commands": []any{
-			map[string]any{"name": "visible", "description": "Run visible command"},
-			map[string]any{"name": "hidden", "description": "Hidden", "user_invocable": false},
-		},
-		"agents": []any{
-			map[string]any{"name": "reviewer", "description": "Review code", "model": "glm-5.1"},
-		},
-		"plugins": []any{
-			map[string]any{"name": "team", "path": "/tmp/team", "source": "project"},
-		},
-		"mcp_servers": []any{
-			map[string]any{
-				"name":   "fs",
-				"status": "connected",
-				"tools": []any{
-					map[string]any{"name": "read_file", "annotations": map[string]any{"read_only_hint": true}},
-				},
-			},
-		},
-		"command_count":  2,
-		"agent_count":    1,
-		"mcp_count":      1,
-		"error_count":    1,
-		"disabled_count": 3,
-	})
-
-	if len(got.Commands) != 1 || got.Commands[0].Name != "visible" {
-		t.Fatalf("commands = %#v, want only public visible command", got.Commands)
-	}
-	if len(got.Agents) != 1 || got.Agents[0].Name != "reviewer" {
-		t.Fatalf("agents = %#v, want reviewer", got.Agents)
-	}
-	if len(got.Plugins) != 1 || got.Plugins[0].Source != "project" {
-		t.Fatalf("plugins = %#v, want project plugin", got.Plugins)
-	}
-	if len(got.MCPServers) != 1 || got.MCPServers[0].Name != "fs" {
-		t.Fatalf("mcp servers = %#v, want fs", got.MCPServers)
-	}
-	if len(got.MCPServers[0].Tools) != 1 || !got.MCPServers[0].Tools[0].Annotations.ReadOnlyHint {
-		t.Fatalf("mcp tools = %#v, want read-only hint", got.MCPServers[0].Tools)
-	}
-	if got.CommandCount != 2 || got.AgentCount != 1 || got.MCPCount != 1 || got.ErrorCount != 1 || got.DisabledCount != 3 {
-		t.Fatalf("counts = %#v, want decoded counts", got)
-	}
-	if got.Raw["command_count"] == nil {
-		t.Fatalf("raw payload not preserved: %#v", got.Raw)
-	}
-}
-
 func TestDecodeSettingsResponse(t *testing.T) {
 	got := decodeSettingsResponse(map[string]any{
 		"effective": map[string]any{

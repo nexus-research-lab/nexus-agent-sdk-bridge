@@ -249,15 +249,6 @@ func (o Options) normalized() (Options, error) {
 	if result.DirectConnect != nil && strings.TrimSpace(result.DirectConnect.URL) == "" {
 		return Options{}, fmt.Errorf("client: direct connect url cannot be empty")
 	}
-	for _, plugin := range result.Plugins {
-		if plugin.Type != PluginTypeLocal {
-			return Options{}, fmt.Errorf("client: unsupported plugin type %q", plugin.Type)
-		}
-		if strings.TrimSpace(plugin.Path) == "" {
-			return Options{}, fmt.Errorf("client: plugin path cannot be empty")
-		}
-	}
-
 	return result, nil
 }
 
@@ -376,11 +367,6 @@ type resolvedDirectConnectConfig struct {
 	HTTPClient           *http.Client
 }
 
-type resolvedPluginConfig struct {
-	Type string
-	Path string
-}
-
 type resolvedSystemPromptPreset struct {
 	Append string
 }
@@ -452,7 +438,6 @@ type resolvedOptions struct {
 	MCPConfig                       string
 	MCPSerialized                   map[string]any
 	StrictMCPConfig                 bool
-	Plugins                         []resolvedPluginConfig
 	MaxThinkingTokens               int
 	Thinking                        *resolvedThinkingConfig
 	Effort                          string
@@ -590,14 +575,6 @@ func (o Options) buildResolvedOptions(strictMCP bool) (resolvedOptions, error) {
 		}
 	}
 
-	plugins := make([]resolvedPluginConfig, 0, len(o.Plugins))
-	for _, plugin := range o.Plugins {
-		plugins = append(plugins, resolvedPluginConfig{
-			Type: string(plugin.Type),
-			Path: plugin.Path,
-		})
-	}
-
 	skills, err := o.Skills.normalized()
 	if err != nil {
 		return resolvedOptions{}, err
@@ -651,7 +628,6 @@ func (o Options) buildResolvedOptions(strictMCP bool) (resolvedOptions, error) {
 		MCPConfig:                       o.MCP.Config,
 		MCPSerialized:                   serializedServers,
 		StrictMCPConfig:                 o.MCP.StrictConfig,
-		Plugins:                         plugins,
 		MaxThinkingTokens:               o.Runtime.MaxThinkingTokens,
 		Thinking:                        thinking,
 		Effort:                          string(o.Runtime.Effort),

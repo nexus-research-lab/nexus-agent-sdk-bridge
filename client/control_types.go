@@ -5,7 +5,6 @@ import (
 
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/jsonvalue"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/runtimeinfo"
-	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/mcp"
 )
 
 // ContextUsageCategory 表示上下文使用分类。
@@ -139,30 +138,6 @@ type InitializationResult struct {
 	Raw                   map[string]any `json:"raw,omitempty"`
 }
 
-// PluginStatus 表示 reload_plugins 后的插件状态。
-type PluginStatus struct {
-	Name   string `json:"name,omitempty"`
-	Path   string `json:"path,omitempty"`
-	Source string `json:"source,omitempty"`
-}
-
-// ReloadPluginsResponse 表示 Session.Control().ReloadPlugins 的结果。
-type ReloadPluginsResponse struct {
-	Commands      []SlashCommand     `json:"commands,omitempty"`
-	Agents        []AgentInfo        `json:"agents,omitempty"`
-	Plugins       []PluginStatus     `json:"plugins,omitempty"`
-	MCPServers    []mcp.ServerStatus `json:"mcp_servers,omitempty"`
-	EnabledCount  int                `json:"enabled_count,omitempty"`
-	DisabledCount int                `json:"disabled_count,omitempty"`
-	CommandCount  int                `json:"command_count,omitempty"`
-	AgentCount    int                `json:"agent_count,omitempty"`
-	HookCount     int                `json:"hook_count,omitempty"`
-	MCPCount      int                `json:"mcp_count,omitempty"`
-	LSPCount      int                `json:"lsp_count,omitempty"`
-	ErrorCount    int                `json:"error_count,omitempty"`
-	Raw           map[string]any     `json:"raw,omitempty"`
-}
-
 // SettingsSource 表示 settings 的单个来源。
 type SettingsSource struct {
 	Source   string         `json:"source,omitempty"`
@@ -253,40 +228,6 @@ func agentInfosFromRuntime(agents []runtimeinfo.AgentInfo) []AgentInfo {
 	return result
 }
 
-func reloadPluginsResponseFromRuntime(info runtimeinfo.ReloadPluginsResponse) ReloadPluginsResponse {
-	raw := jsonvalue.CloneMapPreserveTypedSlices(info.Raw)
-	if raw == nil {
-		raw = map[string]any{}
-	}
-	return ReloadPluginsResponse{
-		Commands:      slashCommandsFromRuntime(info.Commands),
-		Agents:        agentInfosFromRuntime(info.Agents),
-		Plugins:       pluginStatusesFromRuntime(info.Plugins),
-		MCPServers:    append([]mcp.ServerStatus(nil), info.MCPServers...),
-		EnabledCount:  info.EnabledCount,
-		DisabledCount: info.DisabledCount,
-		CommandCount:  info.CommandCount,
-		AgentCount:    info.AgentCount,
-		HookCount:     info.HookCount,
-		MCPCount:      info.MCPCount,
-		LSPCount:      info.LSPCount,
-		ErrorCount:    info.ErrorCount,
-		Raw:           raw,
-	}
-}
-
-func pluginStatusesFromRuntime(plugins []runtimeinfo.PluginStatus) []PluginStatus {
-	result := make([]PluginStatus, 0, len(plugins))
-	for _, plugin := range plugins {
-		result = append(result, PluginStatus{
-			Name:   plugin.Name,
-			Path:   plugin.Path,
-			Source: plugin.Source,
-		})
-	}
-	return result
-}
-
 func accountInfoFromRuntime(account runtimeinfo.AccountInfo) AccountInfo {
 	raw := jsonvalue.CloneMap(account.Raw)
 	if raw == nil {
@@ -301,10 +242,6 @@ func accountInfoFromRuntime(account runtimeinfo.AccountInfo) AccountInfo {
 		TokenSource:      jsonvalue.FirstNonEmptyString(raw["tokenSource"], raw["token_source"]),
 		Raw:              raw,
 	}
-}
-
-func decodeReloadPluginsResponse(payload map[string]any) ReloadPluginsResponse {
-	return reloadPluginsResponseFromRuntime(runtimeinfo.DecodeReloadPluginsResponse(payload))
 }
 
 func decodeSettingsResponse(payload map[string]any) SettingsResponse {

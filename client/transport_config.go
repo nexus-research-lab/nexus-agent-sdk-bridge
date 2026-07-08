@@ -141,11 +141,6 @@ func buildProcessTransportArgs(o resolvedOptions) []string {
 	if mcpConfigValue := buildProcessTransportMCPConfigValue(o); mcpConfigValue != "" {
 		args = append(args, "--mcp-config", mcpConfigValue)
 	}
-	for _, plugin := range o.Plugins {
-		if plugin.Type == "local" && plugin.Path != "" {
-			args = append(args, "--plugin-dir", plugin.Path)
-		}
-	}
 	if o.TaskBudget != nil && o.TaskBudget.Total > 0 {
 		args = append(args, "--task-budget", strconv.Itoa(o.TaskBudget.Total))
 	}

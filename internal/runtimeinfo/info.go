@@ -4,8 +4,6 @@ import (
 	"strings"
 
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/jsonvalue"
-	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/mcpwire"
-	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/mcp"
 )
 
 // InitializeResponse 表示 runtime 初始化响应快照。
@@ -63,30 +61,6 @@ type AccountInfo struct {
 	Raw                map[string]any `json:"raw,omitempty"`
 }
 
-// PluginStatus 表示插件重载后的插件信息。
-type PluginStatus struct {
-	Name   string `json:"name,omitempty"`
-	Path   string `json:"path,omitempty"`
-	Source string `json:"source,omitempty"`
-}
-
-// ReloadPluginsResponse 表示插件热重载响应。
-type ReloadPluginsResponse struct {
-	Commands      []SlashCommandInfo `json:"commands,omitempty"`
-	Agents        []AgentInfo        `json:"agents,omitempty"`
-	Plugins       []PluginStatus     `json:"plugins,omitempty"`
-	MCPServers    []mcp.ServerStatus `json:"mcp_servers,omitempty"`
-	EnabledCount  int                `json:"enabled_count,omitempty"`
-	DisabledCount int                `json:"disabled_count,omitempty"`
-	CommandCount  int                `json:"command_count,omitempty"`
-	AgentCount    int                `json:"agent_count,omitempty"`
-	HookCount     int                `json:"hook_count,omitempty"`
-	MCPCount      int                `json:"mcp_count,omitempty"`
-	LSPCount      int                `json:"lsp_count,omitempty"`
-	ErrorCount    int                `json:"error_count,omitempty"`
-	Raw           map[string]any     `json:"raw,omitempty"`
-}
-
 // DecodeInitializeResponse 解析初始化响应。
 func DecodeInitializeResponse(payload map[string]any) InitializeResponse {
 	return InitializeResponse{
@@ -99,38 +73,6 @@ func DecodeInitializeResponse(payload map[string]any) InitializeResponse {
 		Account:               decodeAccountInfo(payload["account"]),
 		FastModeState:         jsonvalue.StringValue(payload["fast_mode_state"]),
 		Raw:                   payload,
-	}
-}
-
-// DecodeReloadPluginsResponse 解析插件热重载结果。
-func DecodeReloadPluginsResponse(payload map[string]any) ReloadPluginsResponse {
-	plugins := make([]PluginStatus, 0, len(jsonvalue.SliceValue(payload["plugins"])))
-	for _, item := range jsonvalue.SliceValue(payload["plugins"]) {
-		plugin := jsonvalue.MapValue(item)
-		if len(plugin) == 0 {
-			continue
-		}
-		plugins = append(plugins, PluginStatus{
-			Name:   jsonvalue.StringValue(plugin["name"]),
-			Path:   jsonvalue.StringValue(plugin["path"]),
-			Source: jsonvalue.StringValue(plugin["source"]),
-		})
-	}
-
-	return ReloadPluginsResponse{
-		Commands:      decodeSlashCommands(payload["commands"]),
-		Agents:        decodeAgents(payload["agents"]),
-		Plugins:       plugins,
-		MCPServers:    mcpwire.DecodeStatusResponse(map[string]any{"mcp_servers": payload["mcp_servers"]}).MCPServers,
-		EnabledCount:  jsonvalue.IntValue(payload["enabled_count"]),
-		DisabledCount: jsonvalue.IntValue(payload["disabled_count"]),
-		CommandCount:  jsonvalue.IntValue(payload["command_count"]),
-		AgentCount:    jsonvalue.IntValue(payload["agent_count"]),
-		HookCount:     jsonvalue.IntValue(payload["hook_count"]),
-		MCPCount:      jsonvalue.IntValue(payload["mcp_count"]),
-		LSPCount:      jsonvalue.IntValue(payload["lsp_count"]),
-		ErrorCount:    jsonvalue.IntValue(payload["error_count"]),
-		Raw:           payload,
 	}
 }
 

@@ -9,7 +9,6 @@ import (
 
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/jsonvalue"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/mcpwire"
-	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/runtimeinfo"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/transport"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/mcp"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/permission"
@@ -278,57 +277,6 @@ func (c *sessionCore) applyFlagSettings(ctx context.Context, settings map[string
 		c.options.Runtime.InitializeTimeout,
 	)
 	return err
-}
-
-func (c *sessionCore) reloadPlugins(ctx context.Context) (ReloadPluginsResponse, error) {
-	if !c.isConnected() {
-		return ReloadPluginsResponse{}, ErrNotConnected
-	}
-
-	response, err := c.sendControlRequest(
-		ctx,
-		protocol.ControlRequest{
-			Subtype: "reload_plugins",
-		},
-		c.options.Runtime.InitializeTimeout,
-	)
-	if err != nil {
-		return ReloadPluginsResponse{}, err
-	}
-	decoded := runtimeinfo.DecodeReloadPluginsResponse(response)
-	c.applyReloadPluginsResponse(decoded)
-	return reloadPluginsResponseFromRuntime(decoded), nil
-}
-
-func (c *sessionCore) applyReloadPluginsResponse(response runtimeinfo.ReloadPluginsResponse) {
-	current := c.lifecycleState().initializeResponseValue()
-	current.Commands = append([]runtimeinfo.SlashCommandInfo(nil), response.Commands...)
-	current.Agents = append([]runtimeinfo.AgentInfo(nil), response.Agents...)
-
-	raw := jsonvalue.CloneMapPreserveTypedSlices(current.Raw)
-	if raw == nil {
-		raw = map[string]any{}
-	}
-	for _, key := range []string{
-		"commands",
-		"agents",
-		"plugins",
-		"mcp_servers",
-		"enabled_count",
-		"disabled_count",
-		"command_count",
-		"agent_count",
-		"hook_count",
-		"mcp_count",
-		"lsp_count",
-		"error_count",
-	} {
-		if value, ok := response.Raw[key]; ok {
-			raw[key] = jsonvalue.CloneValuePreserveTypedSlices(value)
-		}
-	}
-	current.Raw = raw
-	c.lifecycleState().setInitializeResponse(current)
 }
 
 func (c *sessionCore) getSettings(ctx context.Context) (SettingsResponse, error) {

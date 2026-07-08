@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Removed the bridge plugin control surface now that `nxs` no longer exposes plugin loading or reload controls.
+
 ### Fixed
 
 - Preserved recent runtime stderr output on process exit errors and diagnostics so hosts can surface native runtime panic details.
@@ -141,7 +145,7 @@ All notable changes to this project are documented in this file.
 ### Changed
 
 - Moved public agent definitions and runtime control result types out of `protocol`: agent definitions and control results now belong to `client`, while MCP status and set-servers results belong to `mcp`.
-- Kept runtime initialization, slash command, model, agent, account, and plugin reload snapshots internal to the bridge client lifecycle instead of exporting them as protocol API.
+- Kept runtime initialization, slash command, model, agent, and account snapshots internal to the bridge client lifecycle instead of exporting them as protocol API.
 - Exposed runtime initialization snapshots, supported commands/models/agents, account info, task stop, flag settings, streaming input, and MCP reconnect/toggle through `client.Session` capability objects.
 - Moved SDK MCP server and typed tool builders fully into `tools`; `mcp` now only carries MCP server configuration, status models, and the SDK server interface.
 - Added official-style process options for explicit runtime executable wiring, fixed session IDs, resume-at-message, sandbox inline settings, structured settings, debug/debug-file, load timeout aliases, and built-in tool configuration validation.

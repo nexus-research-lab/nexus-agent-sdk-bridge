@@ -361,15 +361,6 @@ func (c *SessionControl) ApplyFlagSettings(ctx context.Context, settings map[str
 	return core.applyFlagSettings(ctx, settings)
 }
 
-// ReloadPlugins 重新加载当前会话的插件、commands、agents 和 MCP 状态。
-func (c *SessionControl) ReloadPlugins(ctx context.Context) (ReloadPluginsResponse, error) {
-	core, err := c.activeCore()
-	if err != nil {
-		return ReloadPluginsResponse{}, err
-	}
-	return core.reloadPlugins(ctx)
-}
-
 // GetSettings 返回当前会话合并后的 runtime settings。
 func (c *SessionControl) GetSettings(ctx context.Context) (SettingsResponse, error) {
 	core, err := c.activeCore()

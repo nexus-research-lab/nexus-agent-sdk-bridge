@@ -38,20 +38,6 @@ type DiagnosticHandler func(DiagnosticEvent)
 // AgentDefinition 表示可通过 Options 注入的子 agent 定义。
 type AgentDefinition = agent.Definition
 
-// PluginType 表示 SDK 显式加载的插件来源类型。
-type PluginType string
-
-const (
-	// PluginTypeLocal 表示从本地目录加载插件。
-	PluginTypeLocal PluginType = "local"
-)
-
-// PluginConfig 表示 SDK 显式加载的本地插件配置。
-type PluginConfig struct {
-	Type PluginType
-	Path string
-}
-
 // SandboxNetworkConfig 表示 sandbox 网络配置。
 type SandboxNetworkConfig struct {
 	AllowedDomains          []string `json:"allowedDomains,omitempty"`
@@ -323,7 +309,6 @@ type Options struct {
 	OutputFormat           *OutputFormat
 	AdditionalDirectories  []string
 	MCP                    MCPOptions
-	Plugins                []PluginConfig
 	Sandbox                *SandboxSettings
 	SettingsObject         map[string]any
 	ToolConfig             *ToolConfig

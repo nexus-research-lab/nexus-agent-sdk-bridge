@@ -400,18 +400,6 @@ func (o Options) WithStrictMCPConfig(enabled bool) Options {
 	return o
 }
 
-// WithPlugins 批量设置插件。
-func (o Options) WithPlugins(items ...PluginConfig) Options {
-	o.Plugins = append([]PluginConfig(nil), items...)
-	return o
-}
-
-// AddPlugin 追加插件。
-func (o Options) AddPlugin(plugin PluginConfig) Options {
-	o.Plugins = append(append([]PluginConfig(nil), o.Plugins...), plugin)
-	return o
-}
-
 // WithEnv 批量设置环境变量。
 func (o Options) WithEnv(env map[string]string) Options {
 	o.Env = cloneStringMap(env)

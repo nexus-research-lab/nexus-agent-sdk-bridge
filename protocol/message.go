@@ -935,12 +935,6 @@ type InitMCPServerStatus struct {
 	Status string `json:"status,omitempty"`
 }
 
-// PluginInfo 表示插件信息。
-type PluginInfo struct {
-	Name string `json:"name,omitempty"`
-	Path string `json:"path,omitempty"`
-}
-
 // InitSystemMessage 表示 `system/init` 消息。
 type InitSystemMessage struct {
 	Agents         []string              `json:"agents,omitempty"`
@@ -955,7 +949,6 @@ type InitSystemMessage struct {
 	SlashCommands  []string              `json:"slash_commands,omitempty"`
 	OutputStyle    string                `json:"output_style,omitempty"`
 	Skills         []string              `json:"skills,omitempty"`
-	Plugins        []PluginInfo          `json:"plugins,omitempty"`
 	Additional     map[string]any        `json:"additional,omitempty"`
 }
 
@@ -1079,7 +1072,6 @@ func decodeSystemMessage(payload map[string]any) *SystemMessage {
 			SlashCommands:  jsonvalue.StringSliceValue(payload["slash_commands"]),
 			OutputStyle:    jsonvalue.StringValue(payload["output_style"]),
 			Skills:         jsonvalue.StringSliceValue(payload["skills"]),
-			Plugins:        decodePluginInfo(payload["plugins"]),
 			Additional:     payload,
 		}
 	case "status":
@@ -1165,22 +1157,6 @@ func decodeMCPServerStatus(raw any) []InitMCPServerStatus {
 		})
 	}
 	return servers
-}
-
-func decodePluginInfo(raw any) []PluginInfo {
-	items := jsonvalue.SliceValue(raw)
-	plugins := make([]PluginInfo, 0, len(items))
-	for _, item := range items {
-		payload := jsonvalue.MapValue(item)
-		if len(payload) == 0 {
-			continue
-		}
-		plugins = append(plugins, PluginInfo{
-			Name: jsonvalue.StringValue(payload["name"]),
-			Path: jsonvalue.StringValue(payload["path"]),
-		})
-	}
-	return plugins
 }
 
 func decodeTaskStartedMessage(payload map[string]any) *TaskStartedMessage {
