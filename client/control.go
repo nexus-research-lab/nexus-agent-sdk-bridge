@@ -195,9 +195,6 @@ func (c *sessionCore) buildInitializeRequest() protocol.ControlRequest {
 	if c.options.System.ExcludeDynamicSections != nil {
 		request.ExcludeDynamicSections = c.options.System.ExcludeDynamicSections
 	}
-	if c.options.System.PromptSuggestions != nil {
-		request.PromptSuggestions = c.options.System.PromptSuggestions
-	}
 	if c.options.System.AgentProgressSummaries != nil {
 		request.AgentProgressSummaries = c.options.System.AgentProgressSummaries
 	}

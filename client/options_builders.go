@@ -98,12 +98,6 @@ func (o Options) WithAppendSystemPrompt(prompt string) Options {
 	return o
 }
 
-// WithPromptSuggestions 设置是否启用提示建议。
-func (o Options) WithPromptSuggestions(enabled bool) Options {
-	o.System.PromptSuggestions = pointerTo(enabled)
-	return o
-}
-
 // WithExcludeDynamicSections 设置是否排除动态系统提示片段。
 func (o Options) WithExcludeDynamicSections(enabled bool) Options {
 	o.System.ExcludeDynamicSections = pointerTo(enabled)

@@ -121,7 +121,6 @@ type SystemOptions struct {
 	File                   string
 	Preset                 *SystemPromptPreset
 	Append                 string
-	PromptSuggestions      *bool
 	AgentProgressSummaries *bool
 	ExcludeDynamicSections *bool
 }

@@ -228,7 +228,6 @@ func formatInitializeRequestForClaude(request map[string]any) map[string]any {
 		"system_prompt":            "systemPrompt",
 		"append_system_prompt":     "appendSystemPrompt",
 		"exclude_dynamic_sections": "excludeDynamicSections",
-		"prompt_suggestions":       "promptSuggestions",
 		"agent_progress_summaries": "agentProgressSummaries",
 	})
 	if hooks := jsonvalue.MapValue(request["hooks"]); len(hooks) > 0 {

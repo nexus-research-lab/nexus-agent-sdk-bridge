@@ -431,7 +431,6 @@ type resolvedOptions struct {
 	SettingSources                  []string
 	ToolConfig                      *ToolConfig
 	OutputFormat                    *resolvedOutputFormat
-	PromptSuggestions               *bool
 	AgentProgressSummaries          *bool
 	ExcludeDynamicSections          *bool
 	AdditionalDirectories           []string
@@ -621,7 +620,6 @@ func (o Options) buildResolvedOptions(strictMCP bool) (resolvedOptions, error) {
 		SettingSources:                  append([]string(nil), o.SettingSources...),
 		ToolConfig:                      cloneToolConfig(o.ToolConfig),
 		OutputFormat:                    outputFormat,
-		PromptSuggestions:               cloneBoolPointer(o.System.PromptSuggestions),
 		AgentProgressSummaries:          cloneBoolPointer(o.System.AgentProgressSummaries),
 		ExcludeDynamicSections:          cloneBoolPointer(o.System.ExcludeDynamicSections),
 		AdditionalDirectories:           append([]string(nil), o.AdditionalDirectories...),

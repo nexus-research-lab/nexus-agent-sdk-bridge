@@ -29,7 +29,6 @@ type ControlRequest struct {
 	SystemPrompt           string              `json:"system_prompt,omitempty"`
 	AppendSystemPrompt     string              `json:"append_system_prompt,omitempty"`
 	ExcludeDynamicSections *bool               `json:"exclude_dynamic_sections,omitempty"`
-	PromptSuggestions      *bool               `json:"prompt_suggestions,omitempty"`
 	AgentProgressSummaries *bool               `json:"agent_progress_summaries,omitempty"`
 	Skills                 *[]string           `json:"skills,omitempty"`
 	ToolName               string              `json:"tool_name,omitempty"`
