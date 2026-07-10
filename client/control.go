@@ -393,9 +393,26 @@ func (c *sessionCore) sendControlRequest(
 	case result := <-waiter:
 		return result.Response, result.Err
 	case <-waitContext.Done():
-		c.pendingRequests.delete(requestID)
-		return nil, waitContext.Err()
+		if !c.pendingRequests.delete(requestID) {
+			return nil, waitContext.Err()
+		}
+		cancelErr := c.writeControlCancelRequest(requestID)
+		return nil, joinErrors(waitContext.Err(), cancelErr)
 	}
+}
+
+func (c *sessionCore) writeControlCancelRequest(requestID string) error {
+	if c.transport == nil {
+		return ErrNotConnected
+	}
+	if err := c.transport.WriteJSON(protocol.NewControlCancelRequest(requestID)); err != nil {
+		wrapped := fmt.Errorf("client: send control cancel request failed: %w", err)
+		if transport.IsTransportWriteFailure(err) {
+			c.markTransportFailed(wrapped)
+		}
+		return wrapped
+	}
+	return nil
 }
 
 func (c *sessionCore) failPendingRequests(err error) {

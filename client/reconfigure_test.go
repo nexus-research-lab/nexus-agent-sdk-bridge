@@ -161,7 +161,116 @@ func TestSendTaskMessageSendsControlRequest(t *testing.T) {
 	}
 	transport.pushRead(successfulControlResponse("req_2", map[string]any{}))
 	if err := receiveDone(t, sendDone); err != nil {
-		t.Fatalf("sendTaskMessage() error = %v", err)
+		t.Fatalf("SendTaskMessage() error = %v", err)
+	}
+}
+
+func TestTryAutoDreamSendsControlRequestAndDecodesResult(t *testing.T) {
+	transport := newScriptedTransport()
+	core := newSessionCoreWithTransport(
+		Options{
+			Transport: transport,
+			Runtime:   RuntimeOptions{InitializeTimeout: time.Second},
+		},
+		transport,
+	)
+
+	connectDone := make(chan error, 1)
+	go func() {
+		connectDone <- core.Connect(context.Background())
+	}()
+	assertInitializeRequest(t, receiveWrite(t, transport))
+	transport.pushRead(successfulInitializeResponse(map[string]any{"session_id": "session-1"}))
+	if err := receiveDone(t, connectDone); err != nil {
+		t.Fatalf("Connect() error = %v", err)
+	}
+	defer func() {
+		_ = core.Disconnect(context.Background())
+	}()
+
+	type autoDreamResponse struct {
+		result AutoDreamResult
+		err    error
+	}
+	done := make(chan autoDreamResponse, 1)
+	session := &Session{core: core}
+	go func() {
+		result, err := session.Control().TryAutoDream(context.Background())
+		done <- autoDreamResponse{result: result, err: err}
+	}()
+
+	payload := receiveWrite(t, transport)
+	assertControlRequest(t, payload, "run_auto_dream")
+	request := payload["request"].(map[string]any)
+	if len(request) != 1 {
+		t.Fatalf("run_auto_dream request = %#v, want subtype only", request)
+	}
+	transport.pushRead(successfulControlResponse("req_2", map[string]any{
+		"status":            "skipped",
+		"reason":            "time_gate",
+		"sessions_reviewed": 0,
+		"next_check_at_ms":  int64(1_783_651_200_000),
+	}))
+
+	var response autoDreamResponse
+	select {
+	case response = <-done:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for TryAutoDream")
+	}
+	if response.err != nil {
+		t.Fatalf("TryAutoDream() error = %v", response.err)
+	}
+	if response.result.Status != AutoDreamStatusSkipped || response.result.Reason != "time_gate" {
+		t.Fatalf("TryAutoDream() result = %#v, want skipped/time_gate", response.result)
+	}
+	if response.result.NextCheckAtMS != 1_783_651_200_000 {
+		t.Fatalf("TryAutoDream() next check = %d", response.result.NextCheckAtMS)
+	}
+}
+
+func TestTryAutoDreamContextCancelSendsControlCancelRequest(t *testing.T) {
+	transport := newScriptedTransport()
+	core := newSessionCoreWithTransport(
+		Options{
+			Transport: transport,
+			Runtime:   RuntimeOptions{InitializeTimeout: time.Second},
+		},
+		transport,
+	)
+
+	connectDone := make(chan error, 1)
+	go func() {
+		connectDone <- core.Connect(context.Background())
+	}()
+	assertInitializeRequest(t, receiveWrite(t, transport))
+	transport.pushRead(successfulInitializeResponse(map[string]any{"session_id": "session-1"}))
+	if err := receiveDone(t, connectDone); err != nil {
+		t.Fatalf("Connect() error = %v", err)
+	}
+	defer func() {
+		_ = core.Disconnect(context.Background())
+	}()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan error, 1)
+	session := &Session{core: core}
+	go func() {
+		_, err := session.Control().TryAutoDream(ctx)
+		done <- err
+	}()
+
+	request := receiveWrite(t, transport)
+	assertControlRequest(t, request, "run_auto_dream")
+	requestID, _ := request["request_id"].(string)
+	cancel()
+
+	cancelRequest := receiveWrite(t, transport)
+	if cancelRequest["type"] != "control_cancel_request" || cancelRequest["request_id"] != requestID {
+		t.Fatalf("control cancel request = %#v, want request_id %q", cancelRequest, requestID)
+	}
+	if err := receiveDone(t, done); !errors.Is(err, context.Canceled) {
+		t.Fatalf("TryAutoDream() error = %v, want context.Canceled", err)
 	}
 }
 

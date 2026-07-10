@@ -111,6 +111,24 @@ stopped task thread, including a failed terminal run. Claude Code task
 transcripts remain observable, but direct host follow-up is intentionally
 reported as unsupported.
 
+Only native `nxs` exposes `CapabilityAutoDream`. A host scheduler can wake the
+runtime and wait while `nxs` decides whether memory consolidation is due:
+
+```go
+if session.Supports(client.CapabilityAutoDream) {
+    dream, err := session.Control().TryAutoDream(ctx)
+    if err != nil {
+        return err
+    }
+    fmt.Printf("dream: %s (%s), files: %v\n", dream.Status, dream.Reason, dream.WrittenPaths)
+}
+```
+
+The wake-up does not force consolidation. Provider, model, workspace, and
+eligibility remain owned by the effective `nxs` runtime configuration. When
+background memory work finishes outside this control call, `system/memory_saved`
+is decoded as `message.System.MemorySaved` on the next main query.
+
 ### Host Scheduled Tasks
 
 Host daemons can observe `.nexus/scheduled_tasks.json` without putting that

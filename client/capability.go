@@ -11,6 +11,7 @@ const (
 	CapabilityTerminalCategory Capability = "terminal_category"
 	CapabilityStopTask         Capability = "stop_task"
 	CapabilitySendTaskMessage  Capability = "send_task_message"
+	CapabilityAutoDream        Capability = "auto_dream"
 )
 
 // InternalContextBlock 表示下一轮可注入的内部上下文块。
@@ -37,7 +38,7 @@ func (c *sessionCore) supports(capability Capability) bool {
 		CapabilityTerminalCategory,
 		CapabilityStopTask:
 		return true
-	case CapabilitySendTaskMessage:
+	case CapabilitySendTaskMessage, CapabilityAutoDream:
 		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS
 	default:
 		return false

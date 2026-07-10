@@ -107,6 +107,28 @@ func TestDecodeSettingsResponse(t *testing.T) {
 	}
 }
 
+func TestDecodeAutoDreamResult(t *testing.T) {
+	payload := map[string]any{
+		"status":            "completed",
+		"reason":            "ready",
+		"sessions_reviewed": 6,
+		"next_check_at_ms":  int64(1_783_651_200_000),
+		"summary":           "Consolidated durable memories.",
+		"written_paths":     []any{"/memory/user_preferences.md"},
+	}
+
+	got := decodeAutoDreamResult(payload)
+	if got.Status != AutoDreamStatusCompleted || got.Reason != "ready" {
+		t.Fatalf("auto dream result = %#v, want completed/ready", got)
+	}
+	if got.SessionsReviewed != 6 || got.NextCheckAtMS != 1_783_651_200_000 {
+		t.Fatalf("auto dream schedule fields = %#v", got)
+	}
+	if got.Summary != "Consolidated durable memories." || len(got.WrittenPaths) != 1 || got.WrittenPaths[0] != "/memory/user_preferences.md" || got.Raw["status"] != "completed" {
+		t.Fatalf("auto dream summary/raw = %#v", got)
+	}
+}
+
 func TestInitializationResultFromRuntimeFiltersAndMapsPublicSnapshot(t *testing.T) {
 	hidden := false
 	got := initializationResultFromRuntime(runtimeinfo.InitializeResponse{

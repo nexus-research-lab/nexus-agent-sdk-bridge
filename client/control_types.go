@@ -160,6 +160,27 @@ type SettingsResponse struct {
 	Raw       map[string]any   `json:"raw,omitempty"`
 }
 
+// AutoDreamStatus 表示一次 AutoDream 检查的终态。
+type AutoDreamStatus string
+
+const (
+	// AutoDreamStatusSkipped 表示当前未满足执行条件。
+	AutoDreamStatusSkipped AutoDreamStatus = "skipped"
+	// AutoDreamStatusCompleted 表示记忆巩固已经完成。
+	AutoDreamStatusCompleted AutoDreamStatus = "completed"
+)
+
+// AutoDreamResult 表示 nxs 对 AutoDream 唤醒请求的处理结果。
+type AutoDreamResult struct {
+	Status           AutoDreamStatus `json:"status,omitempty"`
+	Reason           string          `json:"reason,omitempty"`
+	SessionsReviewed int             `json:"sessions_reviewed,omitempty"`
+	NextCheckAtMS    int64           `json:"next_check_at_ms,omitempty"`
+	Summary          string          `json:"summary,omitempty"`
+	WrittenPaths     []string        `json:"written_paths,omitempty"`
+	Raw              map[string]any  `json:"raw,omitempty"`
+}
+
 func initializationResultFromRuntime(info runtimeinfo.InitializeResponse) InitializationResult {
 	raw := jsonvalue.CloneMap(info.Raw)
 	if raw == nil {
@@ -267,6 +288,23 @@ func decodeSettingsResponse(payload map[string]any) SettingsResponse {
 		Sources:   sources,
 		Applied:   decodeSettingsApplied(payload["applied"]),
 		Raw:       raw,
+	}
+}
+
+func decodeAutoDreamResult(payload map[string]any) AutoDreamResult {
+	nextCheckAtMS, _ := jsonvalue.Int64Value(payload["next_check_at_ms"])
+	raw := jsonvalue.CloneMapPreserveTypedSlices(payload)
+	if raw == nil {
+		raw = map[string]any{}
+	}
+	return AutoDreamResult{
+		Status:           AutoDreamStatus(jsonvalue.StringValue(payload["status"])),
+		Reason:           jsonvalue.StringValue(payload["reason"]),
+		SessionsReviewed: jsonvalue.IntValue(payload["sessions_reviewed"]),
+		NextCheckAtMS:    nextCheckAtMS,
+		Summary:          jsonvalue.StringValue(payload["summary"]),
+		WrittenPaths:     jsonvalue.StringSliceValue(jsonvalue.FirstNonNil(payload["written_paths"], payload["writtenPaths"])),
+		Raw:              raw,
 	}
 }
 

@@ -99,6 +99,14 @@ func NewControlRequestEnvelope(requestID string, request ControlRequest) Control
 	}
 }
 
+// NewControlCancelRequest 创建控制取消请求。
+func NewControlCancelRequest(requestID string) ControlCancelRequest {
+	return ControlCancelRequest{
+		Type:      "control_cancel_request",
+		RequestID: requestID,
+	}
+}
+
 // NewControlSuccessResponse 创建成功响应。
 func NewControlSuccessResponse(requestID string, response map[string]any) ControlResponseEnvelope {
 	return ControlResponseEnvelope{

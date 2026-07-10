@@ -24,7 +24,12 @@ func TestPendingControlRequestsResolveAndDelete(t *testing.T) {
 
 	deletedID := pending.nextID()
 	pending.register(deletedID)
-	pending.delete(deletedID)
+	if !pending.delete(deletedID) {
+		t.Fatal("delete(registered request) = false, want true")
+	}
+	if pending.delete(deletedID) {
+		t.Fatal("delete(already deleted request) = true, want false")
+	}
 	if pending.resolve(deletedID, controlWaitResult{}) {
 		t.Fatal("resolve(after delete) = true, want false")
 	}

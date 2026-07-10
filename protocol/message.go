@@ -968,6 +968,13 @@ type InformationalSystemMessage struct {
 	Additional          map[string]any `json:"additional,omitempty"`
 }
 
+// MemorySavedMessage 表示后台记忆任务实际新增或改进的 topic 文件。
+type MemorySavedMessage struct {
+	Verb         string         `json:"verb,omitempty"`
+	WrittenPaths []string       `json:"written_paths,omitempty"`
+	Additional   map[string]any `json:"additional,omitempty"`
+}
+
 // TaskStartedMessage 表示任务开始消息。
 type TaskStartedMessage struct {
 	TaskID         string         `json:"task_id,omitempty"`
@@ -1048,6 +1055,7 @@ type SystemMessage struct {
 	Init             *InitSystemMessage          `json:"init,omitempty"`
 	Status           *StatusSystemMessage        `json:"status,omitempty"`
 	Informational    *InformationalSystemMessage `json:"informational,omitempty"`
+	MemorySaved      *MemorySavedMessage         `json:"memory_saved,omitempty"`
 	TaskStarted      *TaskStartedMessage         `json:"task_started,omitempty"`
 	TaskProgress     *TaskProgressMessage        `json:"task_progress,omitempty"`
 	TaskNotification *TaskNotificationMessage    `json:"task_notification,omitempty"`
@@ -1091,6 +1099,12 @@ func decodeSystemMessage(payload map[string]any) *SystemMessage {
 			ToolUseID:           jsonvalue.StringValue(payload["tool_use_id"]),
 			PreventContinuation: jsonvalue.BoolValue(payload["prevent_continuation"]),
 			Additional:          payload,
+		}
+	case "memory_saved":
+		system.MemorySaved = &MemorySavedMessage{
+			Verb:         jsonvalue.StringValue(payload["verb"]),
+			WrittenPaths: jsonvalue.StringSliceValue(jsonvalue.FirstNonNil(payload["written_paths"], payload["writtenPaths"])),
+			Additional:   payload,
 		}
 	case "task_started":
 		system.TaskStarted = decodeTaskStartedMessage(payload)

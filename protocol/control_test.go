@@ -11,6 +11,10 @@ func TestControlEnvelopeConstructors(t *testing.T) {
 	if request.Type != "control_request" || request.RequestID != "request-1" || request.Request.Subtype != "initialize" {
 		t.Fatalf("NewControlRequestEnvelope() = %#v, want request envelope", request)
 	}
+	cancel := NewControlCancelRequest("request-1")
+	if cancel.Type != "control_cancel_request" || cancel.RequestID != "request-1" {
+		t.Fatalf("NewControlCancelRequest() = %#v, want cancel envelope", cancel)
+	}
 
 	success := NewControlSuccessResponse("request-1", map[string]any{"ok": true})
 	if success.Type != "control_response" ||

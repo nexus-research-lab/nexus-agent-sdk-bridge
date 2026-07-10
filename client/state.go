@@ -240,10 +240,14 @@ func (p *pendingControlRequests) resolve(requestID string, result controlWaitRes
 	return true
 }
 
-func (p *pendingControlRequests) delete(requestID string) {
+func (p *pendingControlRequests) delete(requestID string) bool {
 	p.mu.Lock()
-	delete(p.waiters, requestID)
+	_, ok := p.waiters[requestID]
+	if ok {
+		delete(p.waiters, requestID)
+	}
 	p.mu.Unlock()
+	return ok
 }
 
 func (p *pendingControlRequests) rejectAll(err error) {

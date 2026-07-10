@@ -322,6 +322,25 @@ func TestParseSystemTaskUpdatedMessage(t *testing.T) {
 	}
 }
 
+func TestParseSystemMemorySavedMessage(t *testing.T) {
+	message, err := ParseMessage([]byte(`{
+		"type":"system",
+		"subtype":"memory_saved",
+		"session_id":"session-1",
+		"verb":"Improved",
+		"written_paths":["/memory/project.md"]
+	}`))
+	if err != nil {
+		t.Fatalf("ParseMessage(system memory_saved) error = %v", err)
+	}
+	if message.Type != MessageTypeSystem || message.System == nil || message.System.MemorySaved == nil {
+		t.Fatalf("message = %#v, want typed memory_saved", message)
+	}
+	if message.System.MemorySaved.Verb != "Improved" || len(message.System.MemorySaved.WrittenPaths) != 1 || message.System.MemorySaved.WrittenPaths[0] != "/memory/project.md" {
+		t.Fatalf("MemorySaved = %#v", message.System.MemorySaved)
+	}
+}
+
 func TestParseUnknownMessagePreservesWireType(t *testing.T) {
 	message, err := ParseMessage([]byte(`{
 		"type":"thinking_tokens",

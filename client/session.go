@@ -358,6 +358,18 @@ func (c *SessionControl) SendTaskMessage(ctx context.Context, taskID string, mes
 	return core.sendTaskMessage(ctx, taskID, message, summary)
 }
 
+// TryAutoDream 唤醒 nxs 的 AutoDream 检查，并等待跳过或完成结果。
+func (c *SessionControl) TryAutoDream(ctx context.Context) (AutoDreamResult, error) {
+	core, err := c.activeCore()
+	if err != nil {
+		return AutoDreamResult{}, err
+	}
+	if !core.supports(CapabilityAutoDream) {
+		return AutoDreamResult{}, &UnsupportedCapabilityError{Capability: CapabilityAutoDream}
+	}
+	return core.tryAutoDream(ctx)
+}
+
 // ApplyFlagSettings 合并当前会话的运行时 flag settings。
 func (c *SessionControl) ApplyFlagSettings(ctx context.Context, settings map[string]any) error {
 	core, err := c.activeCore()

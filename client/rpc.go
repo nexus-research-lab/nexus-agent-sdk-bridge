@@ -264,6 +264,23 @@ func (c *sessionCore) sendTaskMessage(ctx context.Context, taskID string, messag
 	return err
 }
 
+// tryAutoDream 请求 nxs 检查并在满足条件时执行一次记忆巩固。
+func (c *sessionCore) tryAutoDream(ctx context.Context) (AutoDreamResult, error) {
+	if !c.isConnected() {
+		return AutoDreamResult{}, ErrNotConnected
+	}
+
+	response, err := c.sendControlRequest(
+		ctx,
+		protocol.ControlRequest{Subtype: "run_auto_dream"},
+		0,
+	)
+	if err != nil {
+		return AutoDreamResult{}, err
+	}
+	return decodeAutoDreamResult(response), nil
+}
+
 func (c *sessionCore) applyFlagSettings(ctx context.Context, settings map[string]any) error {
 	if !c.isConnected() {
 		return ErrNotConnected

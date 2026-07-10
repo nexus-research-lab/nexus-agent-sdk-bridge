@@ -6,6 +6,8 @@ All notable changes to this project are documented in this file.
 
 ### Added
 
+- Added native `nxs` AutoDream control so hosts can wake memory consolidation, await its terminal result, observe written memory paths, and inspect the next eligible check time.
+- Added typed `system/memory_saved` decoding so hosts can observe AutoMemory and AutoDream topic writes.
 - Added explicit subagent task control capabilities so hosts can distinguish Claude Code observation and stop support from native `nxs` thread continuation.
 - Added typed `child_session_id` and task type fields to subagent lifecycle events so hosts can retain thread identity without decoding raw payloads.
 
@@ -16,6 +18,7 @@ All notable changes to this project are documented in this file.
 
 ### Fixed
 
+- Forwarded canceled control request IDs to runtimes so long-running native maintenance can stop with its caller context.
 - Preserved recent runtime stderr output on process exit errors and diagnostics so hosts can surface native runtime panic details.
 - Kept Claude Code `stop_task.task_id` in the snake-case wire shape accepted by the current CLI.
 

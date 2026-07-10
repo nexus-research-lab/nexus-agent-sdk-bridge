@@ -26,6 +26,9 @@ func TestSessionSupportsHostRuntimePrimitives(t *testing.T) {
 	if !session.Supports(CapabilitySendTaskMessage) {
 		t.Fatal("Supports(send_task_message) = false, want true")
 	}
+	if !session.Supports(CapabilityAutoDream) {
+		t.Fatal("Supports(auto_dream) = false, want true")
+	}
 }
 
 func TestClaudeSessionDistinguishesSubagentTaskCapabilities(t *testing.T) {
@@ -38,10 +41,17 @@ func TestClaudeSessionDistinguishesSubagentTaskCapabilities(t *testing.T) {
 	if session.Supports(CapabilitySendTaskMessage) {
 		t.Fatal("Supports(send_task_message) = true, want false")
 	}
+	if session.Supports(CapabilityAutoDream) {
+		t.Fatal("Supports(auto_dream) = true, want false")
+	}
 
 	err := session.Control().SendTaskMessage(context.Background(), "task-1", "continue", "continue")
 	if !errors.Is(err, ErrUnsupportedCapability) {
 		t.Fatalf("SendTaskMessage() error = %v, want ErrUnsupportedCapability", err)
+	}
+	_, err = session.Control().TryAutoDream(context.Background())
+	if !errors.Is(err, ErrUnsupportedCapability) {
+		t.Fatalf("TryAutoDream() error = %v, want ErrUnsupportedCapability", err)
 	}
 }
 
