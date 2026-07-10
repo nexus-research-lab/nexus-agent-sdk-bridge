@@ -67,11 +67,11 @@ func TestControlCodecFormatsStopTaskForClaude(t *testing.T) {
 
 	payload := inner.payload.(map[string]any)
 	request := payload["request"].(map[string]any)
-	if request["taskId"] != "task-1" {
-		t.Fatalf("taskId = %#v, want task-1", request["taskId"])
+	if request["task_id"] != "task-1" {
+		t.Fatalf("task_id = %#v, want task-1", request["task_id"])
 	}
-	if _, exists := request["task_id"]; exists {
-		t.Fatalf("task_id should not be emitted for Claude wire: %#v", request)
+	if _, exists := request["taskId"]; exists {
+		t.Fatalf("taskId should not be emitted for Claude wire: %#v", request)
 	}
 }
 

@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"errors"
 	"testing"
 )
@@ -18,6 +19,29 @@ func TestSessionSupportsHostRuntimePrimitives(t *testing.T) {
 	}
 	if !session.Supports(CapabilityInternalContext) {
 		t.Fatal("Supports(internal_context) = false, want true")
+	}
+	if !session.Supports(CapabilityStopTask) {
+		t.Fatal("Supports(stop_task) = false, want true")
+	}
+	if !session.Supports(CapabilitySendTaskMessage) {
+		t.Fatal("Supports(send_task_message) = false, want true")
+	}
+}
+
+func TestClaudeSessionDistinguishesSubagentTaskCapabilities(t *testing.T) {
+	session := &Session{core: newSessionCore(Options{
+		Runtime: RuntimeOptions{Kind: RuntimeClaude},
+	})}
+	if !session.Supports(CapabilityStopTask) {
+		t.Fatal("Supports(stop_task) = false, want true")
+	}
+	if session.Supports(CapabilitySendTaskMessage) {
+		t.Fatal("Supports(send_task_message) = true, want false")
+	}
+
+	err := session.Control().SendTaskMessage(context.Background(), "task-1", "continue", "continue")
+	if !errors.Is(err, ErrUnsupportedCapability) {
+		t.Fatalf("SendTaskMessage() error = %v, want ErrUnsupportedCapability", err)
 	}
 }
 

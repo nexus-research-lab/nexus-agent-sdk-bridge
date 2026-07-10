@@ -144,7 +144,9 @@ func TestParseTaskProgressMessage(t *testing.T) {
 		"tool_use_id":"tool-1",
 		"agent_id":"agent-1",
 		"agent_type":"worker",
+		"child_session_id":"child-1",
 		"description":"运行子任务",
+		"task_type":"local_agent",
 		"last_tool_name":"Read",
 		"parent_task_id":"parent-1",
 		"summary":"已读取文件",
@@ -165,6 +167,9 @@ func TestParseTaskProgressMessage(t *testing.T) {
 	if message.TaskProgress.AgentID != "agent-1" || message.TaskProgress.AgentType != "worker" {
 		t.Fatalf("Agent fields = %#v, want agent-1/worker", message.TaskProgress)
 	}
+	if message.TaskProgress.ChildSessionID != "child-1" || message.TaskProgress.TaskType != "local_agent" {
+		t.Fatalf("Thread fields = %#v, want child-1/local_agent", message.TaskProgress)
+	}
 	if message.TaskProgress.ParentTaskID != "parent-1" {
 		t.Fatalf("ParentTaskID = %q, want parent-1", message.TaskProgress.ParentTaskID)
 	}
@@ -181,6 +186,7 @@ func TestParseTaskStartedMessage(t *testing.T) {
 		"tool_use_id":"tool-1",
 		"agent_id":"agent-1",
 		"agent_type":"worker",
+		"child_session_id":"child-1",
 		"description":"运行子任务",
 		"output_file":"/tmp/task.out",
 		"parent_task_id":"parent-1",
@@ -198,6 +204,9 @@ func TestParseTaskStartedMessage(t *testing.T) {
 	if message.TaskStarted.AgentID != "agent-1" || message.TaskStarted.AgentType != "worker" {
 		t.Fatalf("Agent fields = %#v, want agent-1/worker", message.TaskStarted)
 	}
+	if message.TaskStarted.ChildSessionID != "child-1" {
+		t.Fatalf("ChildSessionID = %q, want child-1", message.TaskStarted.ChildSessionID)
+	}
 	if message.TaskStarted.OutputFile != "/tmp/task.out" || message.TaskStarted.ParentTaskID != "parent-1" {
 		t.Fatalf("TaskStarted = %#v, want output file and parent task id", message.TaskStarted)
 	}
@@ -212,6 +221,7 @@ func TestParseSystemTaskNotificationMessage(t *testing.T) {
 		"tool_use_id":"tool-1",
 		"agent_id":"agent-1",
 		"agent_type":"worker",
+		"child_session_id":"child-1",
 		"parent_task_id":"parent-1",
 		"status":"completed",
 		"output_file":"/tmp/task.out",
@@ -230,6 +240,9 @@ func TestParseSystemTaskNotificationMessage(t *testing.T) {
 	}
 	if message.System.TaskNotification.AgentID != "agent-1" || message.System.TaskNotification.AgentType != "worker" {
 		t.Fatalf("Agent fields = %#v, want agent-1/worker", message.System.TaskNotification)
+	}
+	if message.System.TaskNotification.ChildSessionID != "child-1" {
+		t.Fatalf("ChildSessionID = %q, want child-1", message.System.TaskNotification.ChildSessionID)
 	}
 	if message.System.TaskNotification.ParentTaskID != "parent-1" {
 		t.Fatalf("ParentTaskID = %q, want parent-1", message.System.TaskNotification.ParentTaskID)

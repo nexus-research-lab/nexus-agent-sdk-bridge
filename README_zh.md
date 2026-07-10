@@ -121,9 +121,15 @@ Task 事件使用强类型消息：`protocol.MessageTypeTaskStarted`、
 顶层 task 事件使用
 `msg.TaskStarted`、`msg.TaskProgress` 或 `msg.TaskNotification`。
 task progress 和 notification 共用 `protocol.TaskUsage`。`agent_id`、
-`agent_type`、`parent_task_id`、`output_file` 和 `transcript_path` 这类
-subagent 元数据会在适用的消息上暴露为强类型字段，同时完整 wire payload
-仍保留在 `Additional`。
+`agent_type`、`child_session_id`、`task_type`、`parent_task_id`、
+`output_file` 和 `transcript_path` 这类 subagent 元数据会在适用的消息上
+暴露为强类型字段，同时完整 wire payload 仍保留在 `Additional`。
+
+宿主界面暴露任务控制前应调用 `session.Supports`。原生 `nxs` 和 Claude Code
+会话都支持 `CapabilityStopTask`；只有 `nxs` 支持
+`CapabilitySendTaskMessage`，可在同一个已完成或已停止的 task thread 上继续
+对话，也可继续失败的终态任务。Claude Code 的 task transcript 仍然可观测，
+但 bridge 会明确拒绝宿主直接发送后续消息。
 
 ### 宿主定时任务
 

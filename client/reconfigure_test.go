@@ -145,8 +145,9 @@ func TestSendTaskMessageSendsControlRequest(t *testing.T) {
 	}()
 
 	sendDone := make(chan error, 1)
+	session := &Session{core: core}
 	go func() {
-		sendDone <- core.sendTaskMessage(context.Background(), "task-1", "please continue", "continue")
+		sendDone <- session.Control().SendTaskMessage(context.Background(), "task-1", "please continue", "continue")
 	}()
 	payload := receiveWrite(t, transport)
 	assertControlRequest(t, payload, "send_task_message")

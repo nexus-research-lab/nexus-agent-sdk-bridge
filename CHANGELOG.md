@@ -4,6 +4,11 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Added explicit subagent task control capabilities so hosts can distinguish Claude Code observation and stop support from native `nxs` thread continuation.
+- Added typed `child_session_id` and task type fields to subagent lifecycle events so hosts can retain thread identity without decoding raw payloads.
+
 ### Changed
 
 - Removed the bridge plugin control surface now that `nxs` no longer exposes plugin loading or reload controls.
@@ -12,6 +17,7 @@ All notable changes to this project are documented in this file.
 ### Fixed
 
 - Preserved recent runtime stderr output on process exit errors and diagnostics so hosts can surface native runtime panic details.
+- Kept Claude Code `stop_task.task_id` in the snake-case wire shape accepted by the current CLI.
 
 ## [0.1.18] - 2026-07-08
 

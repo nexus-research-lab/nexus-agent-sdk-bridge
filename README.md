@@ -100,9 +100,16 @@ a top-level `MessageType`.
 top-level task events use `msg.TaskStarted`, `msg.TaskProgress`, or
 `msg.TaskNotification`. Task progress and notification messages share
 `protocol.TaskUsage`. Subagent metadata fields such as `agent_id`,
-`agent_type`, `parent_task_id`, `output_file`, and `transcript_path` are exposed
-as typed fields where they apply, while the full wire payload remains available
-in `Additional`.
+`agent_type`, `child_session_id`, `task_type`, `parent_task_id`, `output_file`,
+and `transcript_path` are exposed as typed fields where they apply, while the
+full wire payload remains available in `Additional`.
+
+Use `session.Supports` before exposing task controls in a host UI. Both native
+`nxs` and Claude Code sessions support `CapabilityStopTask`. Only `nxs`
+supports `CapabilitySendTaskMessage`, which can continue the same completed or
+stopped task thread, including a failed terminal run. Claude Code task
+transcripts remain observable, but direct host follow-up is intentionally
+reported as unsupported.
 
 ### Host Scheduled Tasks
 

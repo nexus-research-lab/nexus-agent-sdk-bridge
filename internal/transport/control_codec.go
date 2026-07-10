@@ -194,14 +194,6 @@ func formatControlRequestForClaude(request map[string]any) map[string]any {
 		return renameKeys(request, map[string]string{
 			"max_thinking_tokens": "maxThinkingTokens",
 		})
-	case "stop_task":
-		return renameKeys(request, map[string]string{
-			"task_id": "taskId",
-		})
-	case "send_task_message":
-		return renameKeys(request, map[string]string{
-			"task_id": "taskId",
-		})
 	case "rewind_files":
 		return renameKeys(request, map[string]string{
 			"user_message_id": "userMessageId",

@@ -340,6 +340,9 @@ func (c *SessionControl) StopTask(ctx context.Context, taskID string) error {
 	if err != nil {
 		return err
 	}
+	if !core.supports(CapabilityStopTask) {
+		return &UnsupportedCapabilityError{Capability: CapabilityStopTask}
+	}
 	return core.stopTask(ctx, taskID)
 }
 
@@ -348,6 +351,9 @@ func (c *SessionControl) SendTaskMessage(ctx context.Context, taskID string, mes
 	core, err := c.activeCore()
 	if err != nil {
 		return err
+	}
+	if !core.supports(CapabilitySendTaskMessage) {
+		return &UnsupportedCapabilityError{Capability: CapabilitySendTaskMessage}
 	}
 	return core.sendTaskMessage(ctx, taskID, message, summary)
 }

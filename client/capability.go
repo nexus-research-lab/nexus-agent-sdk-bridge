@@ -9,6 +9,8 @@ const (
 	CapabilityInternalContext  Capability = "internal_context"
 	CapabilityTypedUsage       Capability = "typed_usage"
 	CapabilityTerminalCategory Capability = "terminal_category"
+	CapabilityStopTask         Capability = "stop_task"
+	CapabilitySendTaskMessage  Capability = "send_task_message"
 )
 
 // InternalContextBlock 表示下一轮可注入的内部上下文块。
@@ -29,8 +31,14 @@ func (s *Session) Supports(capability Capability) bool {
 
 func (c *sessionCore) supports(capability Capability) bool {
 	switch capability {
-	case CapabilitySendOptions, CapabilityInternalContext, CapabilityTypedUsage, CapabilityTerminalCategory:
+	case CapabilitySendOptions,
+		CapabilityInternalContext,
+		CapabilityTypedUsage,
+		CapabilityTerminalCategory,
+		CapabilityStopTask:
 		return true
+	case CapabilitySendTaskMessage:
+		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS
 	default:
 		return false
 	}
