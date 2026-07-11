@@ -6,6 +6,7 @@ All notable changes to this project are documented in this file.
 
 ### Added
 
+- Added an explicit `CapabilityInProcessMCP` runtime contract so hosts can expose product-owned tools without coupling them to a specific agent kernel.
 - Added native `nxs` AutoDream control so hosts can wake memory consolidation, await its terminal result, observe written memory paths, and inspect the next eligible check time.
 - Added typed `system/memory_saved` decoding so hosts can observe AutoMemory and AutoDream topic writes.
 - Added explicit subagent task control capabilities so hosts can distinguish Claude Code observation and stop support from native `nxs` thread continuation.
@@ -13,6 +14,7 @@ All notable changes to this project are documented in this file.
 
 ### Changed
 
+- Removed the legacy `.nexus/scheduled_tasks.json` observer API; durable scheduling now belongs to the host product and is exposed to runtimes through in-process MCP.
 - Removed the bridge plugin control surface now that `nxs` no longer exposes plugin loading or reload controls.
 - Removed the product-side teammate idle hook surface from the bridge SDK.
 

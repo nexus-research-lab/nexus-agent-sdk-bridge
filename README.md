@@ -111,6 +111,12 @@ stopped task thread, including a failed terminal run. Claude Code task
 transcripts remain observable, but direct host follow-up is intentionally
 reported as unsupported.
 
+Both runtimes expose `CapabilityInProcessMCP`. Hosts can use this capability
+as the runtime-neutral boundary for product-owned tools: the host keeps the
+state and implementation, while the runtime only invokes the injected MCP
+server. A future runtime adapter must declare this capability before a product
+depends on host-owned tools such as durable scheduling.
+
 Only native `nxs` exposes `CapabilityAutoDream`. A host scheduler can wake the
 runtime and wait while `nxs` decides whether memory consolidation is due:
 
@@ -128,27 +134,6 @@ The wake-up does not force consolidation. Provider, model, workspace, and
 eligibility remain owned by the effective `nxs` runtime configuration. When
 background memory work finishes outside this control call, `system/memory_saved`
 is decoded as `message.System.MemorySaved` on the next main query.
-
-### Host Scheduled Tasks
-
-Host daemons can observe `.nexus/scheduled_tasks.json` without putting that
-polling loop inside SDK core:
-
-```go
-handle, err := client.WatchScheduledTasks(ctx, client.WatchScheduledTasksOptions{
-    Dir: ".",
-})
-if err != nil {
-    return err
-}
-
-for event := range handle.Events() {
-    if event.Type == client.ScheduledTaskMissed {
-        prompt := client.BuildMissedTaskNotification(event.Tasks)
-        _ = prompt
-    }
-}
-```
 
 ### Streaming Input
 

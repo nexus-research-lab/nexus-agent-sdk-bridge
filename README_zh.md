@@ -131,6 +131,10 @@ task progress 和 notification 共用 `protocol.TaskUsage`。`agent_id`、
 对话，也可继续失败的终态任务。Claude Code 的 task transcript 仍然可观测，
 但 bridge 会明确拒绝宿主直接发送后续消息。
 
+两种 runtime 都暴露 `CapabilityInProcessMCP`。宿主可把它作为产品内置工具的
+内核无关边界：状态和实现留在宿主，runtime 只负责调用注入的 MCP server。
+未来 runtime adapter 必须先声明该能力，产品才能依赖持久化调度等宿主工具。
+
 只有原生 `nxs` 暴露 `CapabilityAutoDream`。宿主调度器可以唤醒 runtime，
 并等待 `nxs` 判断记忆巩固是否到期：
 
@@ -147,26 +151,6 @@ if session.Supports(client.CapabilityAutoDream) {
 唤醒不会强制执行巩固；provider、model、workspace 和到期判断仍由有效的
 `nxs` 运行时配置负责。非本次 control 调用触发的后台记忆任务完成后，会在
 下一次主 query 通过 `message.System.MemorySaved` 暴露 `system/memory_saved`。
-
-### 宿主定时任务
-
-宿主 daemon 可以观察 `.nexus/scheduled_tasks.json`，不用把 polling loop 放回 SDK core：
-
-```go
-handle, err := client.WatchScheduledTasks(ctx, client.WatchScheduledTasksOptions{
-    Dir: ".",
-})
-if err != nil {
-    return err
-}
-
-for event := range handle.Events() {
-    if event.Type == client.ScheduledTaskMissed {
-        prompt := client.BuildMissedTaskNotification(event.Tasks)
-        _ = prompt
-    }
-}
-```
 
 ### 流式输入
 

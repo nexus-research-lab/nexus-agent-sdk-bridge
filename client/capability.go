@@ -10,6 +10,7 @@ const (
 	CapabilityTypedUsage       Capability = "typed_usage"
 	CapabilityTerminalCategory Capability = "terminal_category"
 	CapabilityStopTask         Capability = "stop_task"
+	CapabilityInProcessMCP     Capability = "in_process_mcp"
 	CapabilitySendTaskMessage  Capability = "send_task_message"
 	CapabilityAutoDream        Capability = "auto_dream"
 )
@@ -36,7 +37,8 @@ func (c *sessionCore) supports(capability Capability) bool {
 		CapabilityInternalContext,
 		CapabilityTypedUsage,
 		CapabilityTerminalCategory,
-		CapabilityStopTask:
+		CapabilityStopTask,
+		CapabilityInProcessMCP:
 		return true
 	case CapabilitySendTaskMessage, CapabilityAutoDream:
 		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS
