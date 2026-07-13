@@ -4,19 +4,18 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.1.19] - 2026-07-13
+
 ### Added
 
-- Added an explicit `CapabilityInProcessMCP` runtime contract so hosts can expose product-owned tools without coupling them to a specific agent kernel.
-- Added native `nxs` AutoDream control so hosts can wake memory consolidation, await its terminal result, observe written memory paths, and inspect the next eligible check time.
-- Added typed `system/memory_saved` decoding so hosts can observe AutoMemory and AutoDream topic writes.
-- Added explicit subagent task control capabilities so hosts can distinguish Claude Code observation and stop support from native `nxs` thread continuation.
-- Added typed `child_session_id` and task type fields to subagent lifecycle events so hosts can retain thread identity without decoding raw payloads.
+- Added in-process MCP capability negotiation so hosts can expose product-owned tools without coupling them to a runtime kernel.
+- Added native `nxs` AutoDream controls and typed `system/memory_saved` events for observable memory maintenance.
+- Added explicit subagent task capabilities and typed child-session metadata for observation, stopping, and native thread continuation.
 
 ### Changed
 
-- Removed the legacy `.nexus/scheduled_tasks.json` observer API; durable scheduling now belongs to the host product and is exposed to runtimes through in-process MCP.
-- Removed the bridge plugin control surface now that `nxs` no longer exposes plugin loading or reload controls.
-- Removed the product-side teammate idle hook surface from the bridge SDK.
+- Moved durable scheduling ownership to host products and removed the legacy scheduled-task observer.
+- Removed obsolete plugin controls and teammate idle hooks from the public bridge surface.
 
 ### Fixed
 
