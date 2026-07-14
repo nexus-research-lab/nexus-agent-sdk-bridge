@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/hook"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/mcp"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/permission"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/protocol"
@@ -30,6 +31,7 @@ type runner struct {
 	pendingRequests  *pendingControlRequests
 	inflightRequests *inflightControlRequests
 	hookCallbacks    *hookCallbackRegistry
+	hookAppliedAcks  *registry[func(hook.AppliedAck)]
 	sdkMCPServers    *registry[mcp.SDKMCPServer]
 	nextTurnContext  *nextTurnContextBuffer
 }
@@ -58,6 +60,7 @@ func newRunner(
 		pendingRequests:  newPendingControlRequests(),
 		inflightRequests: newInflightControlRequests(),
 		hookCallbacks:    newHookCallbackRegistry(),
+		hookAppliedAcks:  newRegistry[func(hook.AppliedAck)](),
 		sdkMCPServers:    newRegistry[mcp.SDKMCPServer](),
 		nextTurnContext:  newNextTurnContextBuffer(),
 	}
@@ -82,6 +85,13 @@ func (c *sessionCore) hookCallbackRegistry() *hookCallbackRegistry {
 		c.hookCallbacks = newHookCallbackRegistry()
 	}
 	return c.hookCallbacks
+}
+
+func (c *sessionCore) hookAppliedAckRegistry() *registry[func(hook.AppliedAck)] {
+	if c.hookAppliedAcks == nil {
+		c.hookAppliedAcks = newRegistry[func(hook.AppliedAck)]()
+	}
+	return c.hookAppliedAcks
 }
 
 func (c *sessionCore) sdkMCPServerRegistry() *registry[mcp.SDKMCPServer] {

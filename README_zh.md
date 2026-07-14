@@ -135,6 +135,11 @@ task progress 和 notification 共用 `protocol.TaskUsage`。`agent_id`、
 内核无关边界：状态和实现留在宿主，runtime 只负责调用注入的 MCP server。
 未来 runtime adapter 必须先声明该能力，产品才能依赖持久化调度等宿主工具。
 
+原生 runtime 可协商 `CapabilityHookResponseAck`。能力可用时，
+`hook.Output.OnApplied` 只会在 runtime 已应用 hook 响应后执行一次，而不是在
+bridge 仅把响应写入 stdin 时执行。旧 runtime 与 Claude Code 不暴露该能力，
+宿主应保留已有的兼容确认路径。
+
 只有原生 `nxs` 暴露 `CapabilityAutoDream`。宿主调度器可以唤醒 runtime，
 并等待 `nxs` 判断记忆巩固是否到期：
 

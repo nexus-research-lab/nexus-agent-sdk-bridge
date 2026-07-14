@@ -9,6 +9,7 @@ import (
 // InitializeResponse 表示 runtime 初始化响应快照。
 type InitializeResponse struct {
 	SessionID             string             `json:"session_id,omitempty"`
+	ProtocolCapabilities  []string           `json:"protocol_capabilities,omitempty"`
 	Commands              []SlashCommandInfo `json:"commands,omitempty"`
 	Agents                []AgentInfo        `json:"agents,omitempty"`
 	OutputStyle           string             `json:"output_style,omitempty"`
@@ -65,6 +66,7 @@ type AccountInfo struct {
 func DecodeInitializeResponse(payload map[string]any) InitializeResponse {
 	return InitializeResponse{
 		SessionID:             jsonvalue.FirstNonEmptyString(payload["session_id"], payload["sessionId"]),
+		ProtocolCapabilities:  jsonvalue.StringSliceValue(jsonvalue.FirstNonNil(payload["protocol_capabilities"], payload["protocolCapabilities"])),
 		Commands:              decodeSlashCommands(payload["commands"]),
 		Agents:                decodeAgents(payload["agents"]),
 		OutputStyle:           jsonvalue.StringValue(payload["output_style"]),

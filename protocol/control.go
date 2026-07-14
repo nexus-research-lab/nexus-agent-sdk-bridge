@@ -19,6 +19,7 @@ type ControlRequestEnvelope struct {
 // 它保留底层 wire 层 subtype union 形状，领域语义由 client、mcp、permission 等公开包承接。
 type ControlRequest struct {
 	Subtype                string              `json:"subtype"`
+	ProtocolCapabilities   []string            `json:"protocol_capabilities,omitempty"`
 	Reason                 string              `json:"reason,omitempty"`
 	Hooks                  map[string]any      `json:"hooks,omitempty"`
 	Agents                 map[string]any      `json:"agents,omitempty"`
@@ -88,6 +89,30 @@ type ControlResponse struct {
 type ControlCancelRequest struct {
 	Type      string `json:"type"`
 	RequestID string `json:"request_id"`
+}
+
+// ControlAckEnvelope 表示 runtime 对宿主控制响应的应用确认。
+type ControlAckEnvelope struct {
+	Type           string `json:"type"`
+	RequestID      string `json:"request_id"`
+	RequestSubtype string `json:"request_subtype,omitempty"`
+	Stage          string `json:"stage,omitempty"`
+	HookEventName  string `json:"hook_event_name,omitempty"`
+	ToolUseID      string `json:"tool_use_id,omitempty"`
+	SessionID      string `json:"session_id,omitempty"`
+}
+
+// DecodeControlAck 解析 runtime 发送的控制响应应用确认。
+func DecodeControlAck(payload map[string]any) ControlAckEnvelope {
+	return ControlAckEnvelope{
+		Type:           jsonvalue.StringValue(payload["type"]),
+		RequestID:      jsonvalue.StringValue(payload["request_id"]),
+		RequestSubtype: jsonvalue.StringValue(payload["request_subtype"]),
+		Stage:          jsonvalue.StringValue(payload["stage"]),
+		HookEventName:  jsonvalue.StringValue(payload["hook_event_name"]),
+		ToolUseID:      jsonvalue.StringValue(payload["tool_use_id"]),
+		SessionID:      jsonvalue.StringValue(payload["session_id"]),
+	}
 }
 
 // NewControlRequestEnvelope 创建控制请求包。

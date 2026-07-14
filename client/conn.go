@@ -197,6 +197,7 @@ func (c *sessionCore) resetLifecycleIfNeededLocked() {
 
 func (c *sessionCore) markDisconnected() {
 	c.lifecycleState().setConnected(false)
+	c.hookAppliedAckRegistry().reset()
 }
 
 func (c *sessionCore) markTransportFailed(err error) {
@@ -497,6 +498,8 @@ func (c *sessionCore) readLoop() {
 			go c.handleControlRequest(payload)
 		case "control_cancel_request":
 			c.handleControlCancelRequest(payload)
+		case "control_ack":
+			c.handleControlAck(payload)
 		default:
 			message, decodeErr := protocol.DecodeMessage(payload)
 			if decodeErr != nil {

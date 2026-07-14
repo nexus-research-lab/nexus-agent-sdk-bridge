@@ -5,6 +5,9 @@ import (
 	"errors"
 	"strings"
 	"testing"
+
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/hook"
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/runtimeinfo"
 )
 
 type failingControlTransport struct {
@@ -52,5 +55,100 @@ func TestHandleControlRequestMarksTransportFailedWhenResponseWriteFails(t *testi
 	if readErr == nil || !strings.Contains(readErr.Error(), "send control response failed") ||
 		!strings.Contains(readErr.Error(), "Stream closed") {
 		t.Fatalf("read error missing control response failure detail: %v", readErr)
+	}
+}
+
+func TestBuildInitializeRequestAdvertisesHookResponseAckOnlyToNXS(t *testing.T) {
+	nxsRequest := newSessionCore(Options{}).buildInitializeRequest()
+	if len(nxsRequest.ProtocolCapabilities) != 1 || nxsRequest.ProtocolCapabilities[0] != hookResponseAckProtocolCapability {
+		t.Fatalf("nxs protocol capabilities = %#v", nxsRequest.ProtocolCapabilities)
+	}
+
+	claudeRequest := newSessionCore(Options{Runtime: RuntimeOptions{Kind: RuntimeClaude}}).buildInitializeRequest()
+	if len(claudeRequest.ProtocolCapabilities) != 0 {
+		t.Fatalf("claude protocol capabilities = %#v, want none", claudeRequest.ProtocolCapabilities)
+	}
+}
+
+func TestHookResponseAppliedAckInvokesCallbackExactlyOnce(t *testing.T) {
+	transport := newScriptedTransport()
+	core := newSessionCoreWithTransport(Options{}, transport)
+	core.lifecycleState().setConnected(true)
+	core.lifecycleState().setInitializeResponse(runtimeinfo.InitializeResponse{
+		ProtocolCapabilities: []string{hookResponseAckProtocolCapability},
+	})
+
+	applied := make(chan hook.AppliedAck, 1)
+	callbackID := core.hookCallbackRegistry().register(func(context.Context, hook.Input, string) (hook.Output, error) {
+		return hook.Output{
+			SystemMessage: "continue",
+			OnApplied: func(ack hook.AppliedAck) {
+				applied <- ack
+			},
+		}, nil
+	})
+	core.handleControlRequest(map[string]any{
+		"request_id": "request-hook",
+		"request": map[string]any{
+			"subtype":     "hook_callback",
+			"callback_id": callbackID,
+			"tool_use_id": "tool-1",
+			"input":       map[string]any{"hook_event_name": "PostToolUse"},
+		},
+	})
+	receiveWrite(t, transport)
+
+	ack := map[string]any{
+		"type":            "control_ack",
+		"request_id":      "request-hook",
+		"request_subtype": "hook_callback",
+		"stage":           "applied",
+		"hook_event_name": "PostToolUse",
+		"tool_use_id":     "tool-1",
+		"session_id":      "session-1",
+	}
+	core.handleControlAck(ack)
+	core.handleControlAck(ack)
+
+	got := <-applied
+	if got.RequestID != "request-hook" || got.HookEventName != hook.EventPostToolUse ||
+		got.ToolUseID != "tool-1" || got.SessionID != "session-1" {
+		t.Fatalf("applied ack = %#v", got)
+	}
+	select {
+	case duplicate := <-applied:
+		t.Fatalf("duplicate applied callback = %#v", duplicate)
+	default:
+	}
+}
+
+func TestHookResponseAppliedAckIsClearedWhenResponseWriteFails(t *testing.T) {
+	transport := &failingControlTransport{writeErr: errors.New("write failed")}
+	core := newSessionCoreWithTransport(Options{}, transport)
+	core.lifecycleState().setConnected(true)
+	core.lifecycleState().setInitializeResponse(runtimeinfo.InitializeResponse{
+		ProtocolCapabilities: []string{hookResponseAckProtocolCapability},
+	})
+
+	called := false
+	callbackID := core.hookCallbackRegistry().register(func(context.Context, hook.Input, string) (hook.Output, error) {
+		return hook.Output{OnApplied: func(hook.AppliedAck) { called = true }}, nil
+	})
+	core.handleControlRequest(map[string]any{
+		"request_id": "request-hook",
+		"request": map[string]any{
+			"subtype":     "hook_callback",
+			"callback_id": callbackID,
+		},
+	})
+	core.handleControlAck(map[string]any{
+		"type":            "control_ack",
+		"request_id":      "request-hook",
+		"request_subtype": "hook_callback",
+		"stage":           "applied",
+	})
+
+	if called {
+		t.Fatal("OnApplied called after response write failure")
 	}
 }

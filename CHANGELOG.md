@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Added negotiated `hook_response_ack_v1` support and `hook.Output.OnApplied` so hosts can commit queued input only after a runtime has applied the hook response.
+
 ## [0.1.19] - 2026-07-13
 
 ### Added

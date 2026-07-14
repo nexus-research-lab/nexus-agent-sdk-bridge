@@ -92,18 +92,27 @@ type Input struct {
 	Data                 map[string]any `json:"data,omitempty"`
 }
 
+// AppliedAck 表示 runtime 已将一次 hook 响应合并进执行上下文。
+type AppliedAck struct {
+	RequestID     string
+	HookEventName Event
+	ToolUseID     string
+	SessionID     string
+}
+
 // Output 表示 hook 输出。
 type Output struct {
-	Async             *bool           `json:"async,omitempty"`
-	AsyncTimeout      time.Duration   `json:"-"`
-	Continue          *bool           `json:"continue,omitempty"`
-	SuppressOutput    *bool           `json:"suppress_output,omitempty"`
-	StopReason        string          `json:"stop_reason,omitempty"`
-	Decision          string          `json:"decision,omitempty"`
-	SystemMessage     string          `json:"system_message,omitempty"`
-	Reason            string          `json:"reason,omitempty"`
-	SpecificOutput    *SpecificOutput `json:"-"`
-	RawSpecificOutput map[string]any  `json:"hook_specific_output,omitempty"`
+	Async             *bool            `json:"async,omitempty"`
+	AsyncTimeout      time.Duration    `json:"-"`
+	Continue          *bool            `json:"continue,omitempty"`
+	SuppressOutput    *bool            `json:"suppress_output,omitempty"`
+	StopReason        string           `json:"stop_reason,omitempty"`
+	Decision          string           `json:"decision,omitempty"`
+	SystemMessage     string           `json:"system_message,omitempty"`
+	Reason            string           `json:"reason,omitempty"`
+	SpecificOutput    *SpecificOutput  `json:"-"`
+	RawSpecificOutput map[string]any   `json:"hook_specific_output,omitempty"`
+	OnApplied         func(AppliedAck) `json:"-"`
 }
 
 // ToMap 将 Output 转换为控制协议所需的 map。

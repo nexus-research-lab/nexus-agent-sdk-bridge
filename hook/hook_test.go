@@ -1,6 +1,9 @@
 package hook
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
 
 func TestEventConstantsMatchOfficialSDKSurface(t *testing.T) {
 	got := []Event{
@@ -64,5 +67,15 @@ func TestEventConstantsMatchOfficialSDKSurface(t *testing.T) {
 		if string(got[i]) != want[i] {
 			t.Fatalf("event[%d] = %q, want %q", i, got[i], want[i])
 		}
+	}
+}
+
+func TestOutputToMapDoesNotSerializeOnApplied(t *testing.T) {
+	output := Output{
+		SystemMessage: "continue",
+		OnApplied:     func(AppliedAck) {},
+	}
+	if got, want := output.ToMap(), map[string]any{"system_message": "continue"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("Output.ToMap() = %#v, want %#v", got, want)
 	}
 }
