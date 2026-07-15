@@ -129,6 +129,32 @@ func (c *sessionCore) setMaxThinkingTokens(ctx context.Context, maxThinkingToken
 	return err
 }
 
+func (c *sessionCore) updateEnvironment(ctx context.Context, environment map[string]string) error {
+	if !c.isConnected() {
+		return ErrNotConnected
+	}
+	if normalizedRuntimeKind(c.options.Runtime.Kind) != RuntimeNXS {
+		return ErrUnsupportedCapability
+	}
+	if len(environment) == 0 {
+		return nil
+	}
+	_, err := c.sendControlRequest(ctx, protocol.ControlRequest{
+		Subtype:   "update_environment_variables",
+		Variables: cloneStringMap(environment),
+	}, c.options.Runtime.InitializeTimeout)
+	if err != nil {
+		return err
+	}
+	if c.options.Env == nil {
+		c.options.Env = map[string]string{}
+	}
+	for key, value := range environment {
+		c.options.Env[key] = value
+	}
+	return nil
+}
+
 // getContextUsage 获取当前上下文使用情况。
 func (c *sessionCore) getContextUsage(ctx context.Context) (ContextUsageResponse, error) {
 	if !c.isConnected() {

@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Added `Session.Control().UpdateEnvironment` for hot-applying environment-backed configuration to active `nxs` sessions without restarting them.
+
 ## [0.1.19] - 2026-07-13
 
 ### Added

@@ -46,7 +46,7 @@ func (c *sessionCore) reconfigure(ctx context.Context, options Options) error {
 }
 
 func restartReasonForReconfigure(currentOptions Options, nextOptions Options) (RestartReason, bool) {
-	if !stringMapsEqual(currentOptions.Env, nextOptions.Env) {
+	if !stringMapsEqual(currentOptions.Env, nextOptions.Env) && normalizedRuntimeKind(nextOptions.Runtime.Kind) != RuntimeNXS {
 		return RestartReasonProcessEnvChanged, true
 	}
 	if !reflect.DeepEqual(currentOptions.Tools.Allow, nextOptions.Tools.Allow) ||
@@ -61,6 +61,11 @@ func (c *sessionCore) applyRuntimeReconfigure(
 	currentOptions Options,
 	nextOptions Options,
 ) error {
+	if !stringMapsEqual(currentOptions.Env, nextOptions.Env) {
+		if err := c.updateEnvironment(ctx, environmentDelta(currentOptions.Env, nextOptions.Env)); err != nil {
+			return err
+		}
+	}
 	if nextOptions.Runtime.PermissionMode != "" &&
 		nextOptions.Runtime.PermissionMode != currentOptions.Runtime.PermissionMode {
 		if err := c.setPermissionMode(ctx, nextOptions.Runtime.PermissionMode); err != nil {
@@ -89,6 +94,21 @@ func (c *sessionCore) applyRuntimeReconfigure(
 		}
 	}
 	return nil
+}
+
+func environmentDelta(current map[string]string, next map[string]string) map[string]string {
+	delta := make(map[string]string)
+	for key, value := range next {
+		if current[key] != value {
+			delta[key] = value
+		}
+	}
+	for key := range current {
+		if _, exists := next[key]; !exists {
+			delta[key] = ""
+		}
+	}
+	return delta
 }
 
 func shouldSyncMCPServersForRuntimeReconfigure(currentOptions Options, nextOptions Options) bool {

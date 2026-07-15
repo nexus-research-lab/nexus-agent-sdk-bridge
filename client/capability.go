@@ -5,14 +5,15 @@ type Capability string
 
 // 支持的会话后端能力。
 const (
-	CapabilitySendOptions      Capability = "send_options"
-	CapabilityInternalContext  Capability = "internal_context"
-	CapabilityTypedUsage       Capability = "typed_usage"
-	CapabilityTerminalCategory Capability = "terminal_category"
-	CapabilityStopTask         Capability = "stop_task"
-	CapabilityInProcessMCP     Capability = "in_process_mcp"
-	CapabilitySendTaskMessage  Capability = "send_task_message"
-	CapabilityAutoDream        Capability = "auto_dream"
+	CapabilitySendOptions       Capability = "send_options"
+	CapabilityInternalContext   Capability = "internal_context"
+	CapabilityTypedUsage        Capability = "typed_usage"
+	CapabilityTerminalCategory  Capability = "terminal_category"
+	CapabilityStopTask          Capability = "stop_task"
+	CapabilityInProcessMCP      Capability = "in_process_mcp"
+	CapabilitySendTaskMessage   Capability = "send_task_message"
+	CapabilityAutoDream         Capability = "auto_dream"
+	CapabilityUpdateEnvironment Capability = "update_environment"
 )
 
 // InternalContextBlock 表示下一轮可注入的内部上下文块。
@@ -41,6 +42,8 @@ func (c *sessionCore) supports(capability Capability) bool {
 		CapabilityInProcessMCP:
 		return true
 	case CapabilitySendTaskMessage, CapabilityAutoDream:
+		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS
+	case CapabilityUpdateEnvironment:
 		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS
 	default:
 		return false

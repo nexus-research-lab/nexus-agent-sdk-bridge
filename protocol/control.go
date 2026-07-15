@@ -60,6 +60,7 @@ type ControlRequest struct {
 	MTime                  int64               `json:"mtime,omitempty"`
 	Message                map[string]any      `json:"message,omitempty"`
 	Settings               map[string]any      `json:"settings,omitempty"`
+	Variables              map[string]string   `json:"variables,omitempty"`
 	MCPServerName          string              `json:"mcp_server_name,omitempty"`
 	URL                    string              `json:"url,omitempty"`
 	CallbackURL            string              `json:"callback_url,omitempty"`

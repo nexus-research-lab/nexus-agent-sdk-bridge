@@ -11,14 +11,14 @@ import (
 )
 
 func TestRestartReasonForReconfigureDetectsProcessEnvChange(t *testing.T) {
-	currentOptions, err := NewOptions().WithCLIPath("nxs").WithEnv(map[string]string{
+	currentOptions, err := NewOptions().WithCLIPath("claude").WithRuntime(RuntimeClaude).WithEnv(map[string]string{
 		"ANTHROPIC_AUTH_TOKEN": "old-token",
 		"ANTHROPIC_API_KEY":    "",
 	}).normalized()
 	if err != nil {
 		t.Fatalf("normalize current options: %v", err)
 	}
-	nextOptions, err := NewOptions().WithCLIPath("nxs").WithEnv(map[string]string{
+	nextOptions, err := NewOptions().WithCLIPath("claude").WithRuntime(RuntimeClaude).WithEnv(map[string]string{
 		"ANTHROPIC_AUTH_TOKEN": "new-token",
 		"ANTHROPIC_API_KEY":    "",
 	}).normalized()
@@ -33,17 +33,35 @@ func TestRestartReasonForReconfigureDetectsProcessEnvChange(t *testing.T) {
 	if _, ok := restartReasonForReconfigure(nextOptions, nextOptions); ok {
 		t.Fatal("unchanged options should not require restart")
 	}
-	emptyKeyOptions, err := NewOptions().WithCLIPath("nxs").WithEnv(map[string]string{"ANTHROPIC_API_KEY": ""}).normalized()
+	emptyKeyOptions, err := NewOptions().WithCLIPath("claude").WithRuntime(RuntimeClaude).WithEnv(map[string]string{"ANTHROPIC_API_KEY": ""}).normalized()
 	if err != nil {
 		t.Fatalf("normalize empty key options: %v", err)
 	}
-	emptyTokenOptions, err := NewOptions().WithCLIPath("nxs").WithEnv(map[string]string{"ANTHROPIC_AUTH_TOKEN": ""}).normalized()
+	emptyTokenOptions, err := NewOptions().WithCLIPath("claude").WithRuntime(RuntimeClaude).WithEnv(map[string]string{"ANTHROPIC_AUTH_TOKEN": ""}).normalized()
 	if err != nil {
 		t.Fatalf("normalize empty token options: %v", err)
 	}
 	reason, ok = restartReasonForReconfigure(emptyKeyOptions, emptyTokenOptions)
 	if !ok || reason != RestartReasonProcessEnvChanged {
 		t.Fatalf("restart reason = %q, %v; want key-only env change", reason, ok)
+	}
+}
+
+func TestRestartReasonForReconfigureAllowsNXSProcessEnvChange(t *testing.T) {
+	currentOptions, err := NewOptions().WithCLIPath("nxs").WithEnv(map[string]string{
+		"NEXUS_WEBSEARCH_CONFIG": `{"enabled":false}`,
+	}).normalized()
+	if err != nil {
+		t.Fatalf("normalize current options: %v", err)
+	}
+	nextOptions, err := NewOptions().WithCLIPath("nxs").WithEnv(map[string]string{
+		"NEXUS_WEBSEARCH_CONFIG": `{"enabled":true,"provider":"brave"}`,
+	}).normalized()
+	if err != nil {
+		t.Fatalf("normalize next options: %v", err)
+	}
+	if _, ok := restartReasonForReconfigure(currentOptions, nextOptions); ok {
+		t.Fatal("nxs environment changes should use the runtime control channel")
 	}
 }
 

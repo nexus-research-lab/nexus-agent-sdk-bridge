@@ -303,6 +303,15 @@ func (c *SessionControl) SetMaxThinkingTokens(ctx context.Context, maxThinkingTo
 	return core.setMaxThinkingTokens(ctx, maxThinkingTokens)
 }
 
+// UpdateEnvironment 热更新 nxs 的运行环境，并让后续轮次立即使用新配置。
+func (c *SessionControl) UpdateEnvironment(ctx context.Context, env map[string]string) error {
+	core, err := c.activeCore()
+	if err != nil {
+		return err
+	}
+	return core.updateEnvironment(ctx, env)
+}
+
 // ContextUsage 获取当前上下文使用量。
 func (c *SessionControl) ContextUsage(ctx context.Context) (ContextUsageResponse, error) {
 	core, err := c.activeCore()
