@@ -117,6 +117,12 @@ state and implementation, while the runtime only invokes the injected MCP
 server. A future runtime adapter must declare this capability before a product
 depends on host-owned tools such as durable scheduling.
 
+Native runtimes may negotiate `CapabilityHookResponseAck`. When available,
+`hook.Output.OnApplied` runs exactly once after the runtime has applied the hook
+response, rather than when the bridge merely writes the response to stdin.
+Older runtimes and Claude Code do not expose this capability, so hosts should
+keep their existing fallback confirmation path.
+
 Only native `nxs` exposes `CapabilityAutoDream`. A host scheduler can wake the
 runtime and wait while `nxs` decides whether memory consolidation is due:
 

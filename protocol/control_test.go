@@ -31,6 +31,20 @@ func TestControlEnvelopeConstructors(t *testing.T) {
 		failure.Response.Error != "failed" {
 		t.Fatalf("NewControlErrorResponse() = %#v, want error response", failure)
 	}
+
+	ack := DecodeControlAck(map[string]any{
+		"type":            "control_ack",
+		"request_id":      "request-3",
+		"request_subtype": "hook_callback",
+		"stage":           "applied",
+		"hook_event_name": "PostToolUse",
+		"tool_use_id":     "tool-1",
+		"session_id":      "session-1",
+	})
+	if ack.Type != "control_ack" || ack.RequestID != "request-3" || ack.Stage != "applied" ||
+		ack.HookEventName != "PostToolUse" || ack.ToolUseID != "tool-1" || ack.SessionID != "session-1" {
+		t.Fatalf("DecodeControlAck() = %#v, want applied hook ack", ack)
+	}
 }
 
 func TestElicitationAndUserDialogHelpersMatchControlShapes(t *testing.T) {

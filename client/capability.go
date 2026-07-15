@@ -1,5 +1,7 @@
 package client
 
+import "slices"
+
 // Capability 表示当前会话后端公开的运行时能力。
 type Capability string
 
@@ -14,7 +16,10 @@ const (
 	CapabilitySendTaskMessage   Capability = "send_task_message"
 	CapabilityAutoDream         Capability = "auto_dream"
 	CapabilityUpdateEnvironment Capability = "update_environment"
+	CapabilityHookResponseAck   Capability = "hook_response_ack"
 )
+
+const hookResponseAckProtocolCapability = "hook_response_ack_v1"
 
 // InternalContextBlock 表示下一轮可注入的内部上下文块。
 type InternalContextBlock struct {
@@ -45,6 +50,11 @@ func (c *sessionCore) supports(capability Capability) bool {
 		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS
 	case CapabilityUpdateEnvironment:
 		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS
+	case CapabilityHookResponseAck:
+		return slices.Contains(
+			c.lifecycleState().initializeResponseValue().ProtocolCapabilities,
+			hookResponseAckProtocolCapability,
+		)
 	default:
 		return false
 	}

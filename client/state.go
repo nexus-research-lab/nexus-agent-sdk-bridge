@@ -347,6 +347,23 @@ func (r *registry[T]) get(name string) (T, bool) {
 	return value, ok
 }
 
+func (r *registry[T]) set(name string, value T) {
+	r.mu.Lock()
+	r.values[name] = value
+	r.mu.Unlock()
+}
+
+func (r *registry[T]) pop(name string) (T, bool) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	value, ok := r.values[name]
+	if ok {
+		delete(r.values, name)
+	}
+	return value, ok
+}
+
 func (r *registry[T]) reset() {
 	r.replace(nil)
 }

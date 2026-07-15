@@ -18,6 +18,7 @@ func TestDecodeInitializeResponse(t *testing.T) {
 		"output_style":            "concise",
 		"available_output_styles": []any{"concise", "full"},
 		"fast_mode_state":         "enabled",
+		"protocol_capabilities":   []any{"hook_response_ack_v1"},
 	})
 
 	if len(got.Commands) != 1 || got.Commands[0].Name != "plan" {
@@ -37,5 +38,8 @@ func TestDecodeInitializeResponse(t *testing.T) {
 	}
 	if got.Account.EmailAddress != "dev@example.com" || got.OutputStyle != "concise" || got.SessionID != "session-1" {
 		t.Fatalf("initialize response = %#v", got)
+	}
+	if len(got.ProtocolCapabilities) != 1 || got.ProtocolCapabilities[0] != "hook_response_ack_v1" {
+		t.Fatalf("protocol capabilities = %#v", got.ProtocolCapabilities)
 	}
 }

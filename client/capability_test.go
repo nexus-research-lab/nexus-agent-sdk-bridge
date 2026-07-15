@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"testing"
+
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/runtimeinfo"
 )
 
 func TestSessionSupportsHostRuntimePrimitives(t *testing.T) {
@@ -31,6 +33,16 @@ func TestSessionSupportsHostRuntimePrimitives(t *testing.T) {
 	}
 	if !session.Supports(CapabilityAutoDream) {
 		t.Fatal("Supports(auto_dream) = false, want true")
+	}
+	if session.Supports(CapabilityHookResponseAck) {
+		t.Fatal("Supports(hook_response_ack) = true before negotiation, want false")
+	}
+
+	session.core.lifecycleState().setInitializeResponse(runtimeinfo.InitializeResponse{
+		ProtocolCapabilities: []string{hookResponseAckProtocolCapability},
+	})
+	if !session.Supports(CapabilityHookResponseAck) {
+		t.Fatal("Supports(hook_response_ack) = false after negotiation, want true")
 	}
 }
 

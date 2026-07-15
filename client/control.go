@@ -104,23 +104,26 @@ func (c *sessionCore) resolvePermissionRequest(ctx context.Context, request map[
 	return response
 }
 
-func (c *sessionCore) resolveHookCallback(ctx context.Context, request map[string]any) (map[string]any, error) {
+func (c *sessionCore) resolveHookCallback(
+	ctx context.Context,
+	request map[string]any,
+) (map[string]any, func(hook.AppliedAck), error) {
 	callbackID := jsonvalue.StringValue(request["callback_id"])
 	if callbackID == "" {
-		return nil, errors.New("hook callback id is missing")
+		return nil, nil, errors.New("hook callback id is missing")
 	}
 
 	callback, ok := c.hookCallbackRegistry().get(callbackID)
 	if !ok {
-		return nil, fmt.Errorf("hook callback not found: %s", callbackID)
+		return nil, nil, fmt.Errorf("hook callback not found: %s", callbackID)
 	}
 
 	input := jsonvalue.MapValue(request["input"])
 	output, err := callback(ctx, hook.NewInput(input), jsonvalue.StringValue(request["tool_use_id"]))
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	return output.ToMap(), nil
+	return output.ToMap(), output.OnApplied, nil
 }
 
 func (c *sessionCore) resolveElicitation(ctx context.Context, request map[string]any) (map[string]any, error) {
@@ -169,6 +172,9 @@ func (c *sessionCore) resolveOAuthTokenRefresh(ctx context.Context) (map[string]
 func (c *sessionCore) buildInitializeRequest() protocol.ControlRequest {
 	request := protocol.ControlRequest{
 		Subtype: "initialize",
+	}
+	if normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS {
+		request.ProtocolCapabilities = []string{hookResponseAckProtocolCapability}
 	}
 
 	if hooks := c.buildHookInitialization(); len(hooks) > 0 {
@@ -285,7 +291,7 @@ func (c *sessionCore) handleControlRequest(payload map[string]any) {
 		}
 		c.writeControlResponse(protocol.NewControlSuccessResponse(requestID, response))
 	case "hook_callback":
-		response, err := c.resolveHookCallback(ctx, request)
+		response, onApplied, err := c.resolveHookCallback(ctx, request)
 		if ctx.Err() != nil {
 			return
 		}
@@ -293,7 +299,16 @@ func (c *sessionCore) handleControlRequest(payload map[string]any) {
 			c.writeControlResponse(protocol.NewControlErrorResponse(requestID, err.Error()))
 			return
 		}
-		c.writeControlResponse(protocol.NewControlSuccessResponse(requestID, response))
+		if onApplied != nil && c.supports(CapabilityHookResponseAck) {
+			c.hookAppliedAckRegistry().set(requestID, onApplied)
+			if !c.isConnected() {
+				c.hookAppliedAckRegistry().pop(requestID)
+				return
+			}
+		}
+		if err := c.writeControlResponse(protocol.NewControlSuccessResponse(requestID, response)); err != nil {
+			c.hookAppliedAckRegistry().pop(requestID)
+		}
 	case "mcp_message":
 		response, err := c.resolveMCPMessage(ctx, request)
 		if ctx.Err() != nil {
@@ -343,14 +358,36 @@ func (c *sessionCore) handleControlRequest(payload map[string]any) {
 	}
 }
 
-func (c *sessionCore) writeControlResponse(payload any) {
+func (c *sessionCore) writeControlResponse(payload any) error {
 	if c.transport == nil {
 		c.markTransportFailed(ErrNotConnected)
-		return
+		return ErrNotConnected
 	}
 	if err := c.transport.WriteJSON(payload); err != nil {
-		c.markTransportFailed(fmt.Errorf("client: send control response failed: %w", err))
+		wrapped := fmt.Errorf("client: send control response failed: %w", err)
+		c.markTransportFailed(wrapped)
+		return wrapped
 	}
+	return nil
+}
+
+func (c *sessionCore) handleControlAck(payload map[string]any) {
+	ack := protocol.DecodeControlAck(payload)
+	if ack.RequestID == "" || ack.RequestSubtype != "hook_callback" || ack.Stage != "applied" {
+		return
+	}
+
+	onApplied, ok := c.hookAppliedAckRegistry().pop(ack.RequestID)
+	if !ok {
+		return
+	}
+	// 宿主回调可能发起新的 control；异步执行以免阻塞 readLoop。
+	go onApplied(hook.AppliedAck{
+		RequestID:     ack.RequestID,
+		HookEventName: hook.Event(ack.HookEventName),
+		ToolUseID:     ack.ToolUseID,
+		SessionID:     ack.SessionID,
+	})
 }
 
 func (c *sessionCore) handleControlCancelRequest(payload map[string]any) {
