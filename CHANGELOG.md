@@ -10,6 +10,7 @@ All notable changes to this project are documented in this file.
 - Removed legacy snake_case fallbacks from persisted session metadata reads; transcript fields now follow the canonical Claude Code camelCase shape.
 - Added `Session.Control().UpdateEnvironment` for hot-applying environment-backed configuration to active `nxs` sessions without restarting them.
 - Added negotiated `hook_response_ack_v1` support and `hook.Output.OnApplied` so hosts can commit queued input only after a runtime has applied the hook response.
+- Completed the inline sandbox settings contract with platform gates, denied domains, Mach lookup, Apple Events, managed-policy fields, and explicit Git-config policy forwarded to `nxs`.
 
 ## [0.1.19] - 2026-07-13
 

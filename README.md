@@ -286,6 +286,8 @@ client.NewOptions().
     WithDebugFile("/tmp/nexus-agent-sdk.log")
 ```
 
+`SandboxSettings` forwards the complete runtime policy contract, including filesystem carve-outs, domain/socket allowlists, platform gates, managed-policy restrictions, Git-config policy, and macOS IPC switches. The runtime remains responsible for enforcing those settings on the target platform.
+
 ### Custom Tools
 
 Define tools in Go via the `tools` package. Registered tools are exposed as MCP tools for the agent to call:

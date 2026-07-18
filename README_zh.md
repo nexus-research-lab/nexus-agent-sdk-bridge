@@ -293,6 +293,8 @@ client.NewOptions().
     WithDebugFile("/tmp/nexus-agent-sdk.log")
 ```
 
+`SandboxSettings` 会完整转发 runtime 策略合同，包括文件读写 carve-out、域名/Unix socket 白名单、平台开关、托管策略限制、Git 配置开关和 macOS IPC 权限；具体隔离仍由目标 runtime 在对应平台执行。
+
 ### 自定义工具
 
 通过 `tools` 包以纯 Go 定义工具，注册后作为 MCP 工具供 Agent 调用：

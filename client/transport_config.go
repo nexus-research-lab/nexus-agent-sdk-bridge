@@ -294,7 +294,28 @@ func sandboxSettingsMap(settings *SandboxSettings) map[string]any {
 	if err := json.Unmarshal(data, &value); err != nil {
 		return map[string]any{}
 	}
-	mergeAnyMap(value, settings.Extra)
+	// enabledPlatforms 的显式空数组表示关闭全部平台，不能被 omitempty
+	// 折叠成“未配置”。
+	if settings.EnabledPlatforms != nil {
+		value["enabledPlatforms"] = append([]string{}, settings.EnabledPlatforms...)
+	}
+	// CC 将 network.allowedDomains 的“显式空数组”解释为拒绝全部网络。
+	// Go 的切片无法区分 nil 与空数组，因此只要调用方提供了 network
+	// 对象，就把缺省列表补成空数组，避免序列化后意外退化为放行全部。
+	if settings.Network != nil {
+		network, ok := value["network"].(map[string]any)
+		if !ok {
+			network = map[string]any{}
+			value["network"] = network
+		}
+		if _, exists := network["allowedDomains"]; !exists {
+			network["allowedDomains"] = []string{}
+		}
+		if _, exists := network["deniedDomains"]; !exists {
+			network["deniedDomains"] = []string{}
+		}
+	}
+	mergeSandboxExtra(value, settings.Extra)
 	return value
 }
 

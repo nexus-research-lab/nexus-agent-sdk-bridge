@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -40,13 +41,44 @@ type AgentDefinition = agent.Definition
 
 // SandboxNetworkConfig 表示 sandbox 网络配置。
 type SandboxNetworkConfig struct {
-	AllowedDomains          []string `json:"allowedDomains,omitempty"`
-	AllowManagedDomainsOnly *bool    `json:"allowManagedDomainsOnly,omitempty"`
-	AllowUnixSockets        []string `json:"allowUnixSockets,omitempty"`
-	AllowAllUnixSockets     *bool    `json:"allowAllUnixSockets,omitempty"`
-	AllowLocalBinding       *bool    `json:"allowLocalBinding,omitempty"`
-	HTTPProxyPort           *int     `json:"httpProxyPort,omitempty"`
-	SOCKSProxyPort          *int     `json:"socksProxyPort,omitempty"`
+	AllowedDomains          []string                `json:"allowedDomains,omitempty"`
+	DeniedDomains           []string                `json:"deniedDomains,omitempty"`
+	AllowManagedDomainsOnly *bool                   `json:"allowManagedDomainsOnly,omitempty"`
+	AllowUnixSockets        []string                `json:"allowUnixSockets,omitempty"`
+	AllowAllUnixSockets     *bool                   `json:"allowAllUnixSockets,omitempty"`
+	AllowLocalBinding       *bool                   `json:"allowLocalBinding,omitempty"`
+	AllowMachLookup         []string                `json:"allowMachLookup,omitempty"`
+	HTTPProxyPort           *int                    `json:"httpProxyPort,omitempty"`
+	SOCKSProxyPort          *int                    `json:"socksProxyPort,omitempty"`
+	MITMProxy               *SandboxMITMProxyConfig `json:"mitmProxy,omitempty"`
+}
+
+// MarshalJSON 保留 CC 的 network presence 语义：只要调用方创建了
+// SandboxNetworkConfig，对应的 allowed/denied 列表就会显式下发；空
+// allowedDomains 表示拒绝全部外部域名，而不是“没有配置网络限制”。
+func (n SandboxNetworkConfig) MarshalJSON() ([]byte, error) {
+	type networkAlias SandboxNetworkConfig
+	data, err := json.Marshal(networkAlias(n))
+	if err != nil {
+		return nil, err
+	}
+	value := map[string]any{}
+	if err := json.Unmarshal(data, &value); err != nil {
+		return nil, err
+	}
+	if _, ok := value["allowedDomains"]; !ok {
+		value["allowedDomains"] = []string{}
+	}
+	if _, ok := value["deniedDomains"]; !ok {
+		value["deniedDomains"] = []string{}
+	}
+	return json.Marshal(value)
+}
+
+// SandboxMITMProxyConfig 描述按域名转发到宿主 MITM 代理的 Unix socket。
+type SandboxMITMProxyConfig struct {
+	SocketPath string   `json:"socketPath"`
+	Domains    []string `json:"domains"`
 }
 
 // SandboxFilesystemConfig 表示 sandbox 文件系统配置。
@@ -56,12 +88,40 @@ type SandboxFilesystemConfig struct {
 	DenyRead                  []string `json:"denyRead,omitempty"`
 	AllowRead                 []string `json:"allowRead,omitempty"`
 	AllowManagedReadPathsOnly *bool    `json:"allowManagedReadPathsOnly,omitempty"`
+	AllowGitConfig            *bool    `json:"allowGitConfig,omitempty"`
+}
+
+// MarshalJSON 保留 CC filesystem schema 的四个必填数组；显式空数组是
+// 有意义的配置，不能被 omitempty 折叠掉。
+func (f SandboxFilesystemConfig) MarshalJSON() ([]byte, error) {
+	type filesystemAlias SandboxFilesystemConfig
+	data, err := json.Marshal(filesystemAlias(f))
+	if err != nil {
+		return nil, err
+	}
+	value := map[string]any{}
+	if err := json.Unmarshal(data, &value); err != nil {
+		return nil, err
+	}
+	for _, key := range []string{"allowRead", "allowWrite", "denyRead", "denyWrite"} {
+		if _, ok := value[key]; !ok {
+			value[key] = []string{}
+		}
+	}
+	return json.Marshal(value)
 }
 
 // SandboxRipgrepConfig 表示 sandbox 内 ripgrep 配置。
 type SandboxRipgrepConfig struct {
-	Command string   `json:"command,omitempty"`
+	Command string   `json:"command"`
 	Args    []string `json:"args,omitempty"`
+	Argv0   string   `json:"argv0,omitempty"`
+}
+
+// SandboxSeccompConfig 描述 Linux seccomp 辅助文件的位置。
+type SandboxSeccompConfig struct {
+	BPFPath   string `json:"bpfPath,omitempty"`
+	ApplyPath string `json:"applyPath,omitempty"`
 }
 
 // SandboxSettings 表示命令执行隔离配置。
@@ -70,14 +130,58 @@ type SandboxSettings struct {
 	FailIfUnavailable            *bool                    `json:"failIfUnavailable,omitempty"`
 	AutoAllowBashIfSandboxed     *bool                    `json:"autoAllowBashIfSandboxed,omitempty"`
 	AllowUnsandboxedCommands     *bool                    `json:"allowUnsandboxedCommands,omitempty"`
+	EnabledPlatforms             []string                 `json:"enabledPlatforms,omitempty"`
 	Network                      *SandboxNetworkConfig    `json:"network,omitempty"`
 	Filesystem                   *SandboxFilesystemConfig `json:"filesystem,omitempty"`
 	IgnoreViolations             map[string][]string      `json:"ignoreViolations,omitempty"`
 	EnableWeakerNestedSandbox    *bool                    `json:"enableWeakerNestedSandbox,omitempty"`
 	EnableWeakerNetworkIsolation *bool                    `json:"enableWeakerNetworkIsolation,omitempty"`
+	AllowAppleEvents             *bool                    `json:"allowAppleEvents,omitempty"`
 	ExcludedCommands             []string                 `json:"excludedCommands,omitempty"`
 	Ripgrep                      *SandboxRipgrepConfig    `json:"ripgrep,omitempty"`
+	MandatoryDenySearchDepth     *int                     `json:"mandatoryDenySearchDepth,omitempty"`
+	AllowPty                     *bool                    `json:"allowPty,omitempty"`
+	Seccomp                      *SandboxSeccompConfig    `json:"seccomp,omitempty"`
 	Extra                        map[string]any           `json:"-"`
+}
+
+// MarshalJSON 保留显式空 enabledPlatforms，并把 Extra 作为 passthrough
+// 字段合并，和 Claude Code 的 settings schema 一样不丢未知扩展项。
+func (s SandboxSettings) MarshalJSON() ([]byte, error) {
+	type settingsAlias SandboxSettings
+	data, err := json.Marshal(settingsAlias(s))
+	if err != nil {
+		return nil, err
+	}
+	value := map[string]any{}
+	if err := json.Unmarshal(data, &value); err != nil {
+		return nil, err
+	}
+	if s.EnabledPlatforms != nil {
+		value["enabledPlatforms"] = append([]string{}, s.EnabledPlatforms...)
+	}
+	mergeSandboxExtra(value, s.Extra)
+	return json.Marshal(value)
+}
+
+// mergeSandboxExtra 只透传未知字段。已知 sandbox 字段由强类型结构负责，
+// 不能被 Extra 中同名值覆盖，否则 bridge 会把调用方明确设置的安全边界
+// 静默改写成另一份 JSON。
+func mergeSandboxExtra(value map[string]any, extra map[string]any) {
+	known := map[string]struct{}{
+		"enabled": {}, "failIfUnavailable": {}, "autoAllowBashIfSandboxed": {},
+		"allowUnsandboxedCommands": {}, "enabledPlatforms": {}, "network": {},
+		"filesystem": {}, "ignoreViolations": {}, "enableWeakerNestedSandbox": {},
+		"enableWeakerNetworkIsolation": {}, "allowAppleEvents": {},
+		"excludedCommands": {}, "ripgrep": {}, "mandatoryDenySearchDepth": {},
+		"allowPty": {}, "seccomp": {},
+	}
+	for key, item := range extra {
+		if _, exists := known[key]; exists {
+			continue
+		}
+		value[key] = item
+	}
 }
 
 // QuestionPreviewFormat 表示 AskUserQuestion preview 字段格式。
@@ -396,12 +500,19 @@ func cloneSandboxSettings(input *SandboxSettings) *SandboxSettings {
 	if input.Network != nil {
 		network := *input.Network
 		network.AllowedDomains = append([]string(nil), input.Network.AllowedDomains...)
+		network.DeniedDomains = append([]string(nil), input.Network.DeniedDomains...)
 		network.AllowManagedDomainsOnly = cloneBoolPointer(input.Network.AllowManagedDomainsOnly)
 		network.AllowUnixSockets = append([]string(nil), input.Network.AllowUnixSockets...)
 		network.AllowAllUnixSockets = cloneBoolPointer(input.Network.AllowAllUnixSockets)
 		network.AllowLocalBinding = cloneBoolPointer(input.Network.AllowLocalBinding)
+		network.AllowMachLookup = append([]string(nil), input.Network.AllowMachLookup...)
 		network.HTTPProxyPort = cloneIntPointer(input.Network.HTTPProxyPort)
 		network.SOCKSProxyPort = cloneIntPointer(input.Network.SOCKSProxyPort)
+		if input.Network.MITMProxy != nil {
+			mitm := *input.Network.MITMProxy
+			mitm.Domains = append([]string(nil), input.Network.MITMProxy.Domains...)
+			network.MITMProxy = &mitm
+		}
 		result.Network = &network
 	}
 	if input.Filesystem != nil {
@@ -411,6 +522,7 @@ func cloneSandboxSettings(input *SandboxSettings) *SandboxSettings {
 		filesystem.DenyRead = append([]string(nil), input.Filesystem.DenyRead...)
 		filesystem.AllowRead = append([]string(nil), input.Filesystem.AllowRead...)
 		filesystem.AllowManagedReadPathsOnly = cloneBoolPointer(input.Filesystem.AllowManagedReadPathsOnly)
+		filesystem.AllowGitConfig = cloneBoolPointer(input.Filesystem.AllowGitConfig)
 		result.Filesystem = &filesystem
 	}
 	if len(input.IgnoreViolations) > 0 {
@@ -424,12 +536,22 @@ func cloneSandboxSettings(input *SandboxSettings) *SandboxSettings {
 		ripgrep.Args = append([]string(nil), input.Ripgrep.Args...)
 		result.Ripgrep = &ripgrep
 	}
+	if input.Seccomp != nil {
+		seccomp := *input.Seccomp
+		result.Seccomp = &seccomp
+	}
 	result.Enabled = cloneBoolPointer(input.Enabled)
 	result.FailIfUnavailable = cloneBoolPointer(input.FailIfUnavailable)
 	result.AutoAllowBashIfSandboxed = cloneBoolPointer(input.AutoAllowBashIfSandboxed)
 	result.AllowUnsandboxedCommands = cloneBoolPointer(input.AllowUnsandboxedCommands)
+	result.MandatoryDenySearchDepth = cloneIntPointer(input.MandatoryDenySearchDepth)
+	result.AllowPty = cloneBoolPointer(input.AllowPty)
+	if input.EnabledPlatforms != nil {
+		result.EnabledPlatforms = append([]string{}, input.EnabledPlatforms...)
+	}
 	result.EnableWeakerNestedSandbox = cloneBoolPointer(input.EnableWeakerNestedSandbox)
 	result.EnableWeakerNetworkIsolation = cloneBoolPointer(input.EnableWeakerNetworkIsolation)
+	result.AllowAppleEvents = cloneBoolPointer(input.AllowAppleEvents)
 	result.ExcludedCommands = append([]string(nil), input.ExcludedCommands...)
 	result.Extra = jsonvalue.CloneMapPreserveTypedSlices(input.Extra)
 	return &result
