@@ -116,7 +116,7 @@ func GetSessionMessages(sessionID string, options GetSessionMessagesOptions) ([]
 		messages = append(messages, SessionMessage{
 			Type:            messageType,
 			UUID:            jsonvalue.TrimmedStringValue(payload["uuid"]),
-			SessionID:       firstString(payload["session_id"], payload["sessionId"], record.info.SessionID),
+			SessionID:       firstString(payload["sessionId"], record.info.SessionID),
 			Message:         payload["message"],
 			ParentToolUseID: stringPointer(payload["parent_tool_use_id"]),
 			Raw:             cloneAnyMap(payload),
@@ -317,14 +317,14 @@ func parseSessionFile(path string) (sessionRecord, error) {
 	messageCount := 0
 
 	if err := readSessionJSONL(path, func(payload map[string]any) error {
-		sessionID := firstString(payload["session_id"], payload["sessionId"])
+		sessionID := firstString(payload["sessionId"])
 		if sessionID != "" {
 			record.info.SessionID = sessionID
 		}
 		if cwd := jsonvalue.TrimmedStringValue(payload["cwd"]); cwd != "" {
 			record.info.CWD = &cwd
 		}
-		if branch := firstString(payload["git_branch"], payload["gitBranch"]); branch != "" {
+		if branch := firstString(payload["gitBranch"]); branch != "" {
 			record.info.GitBranch = &branch
 		}
 		if createdAt := parseTimestampMillis(payload["timestamp"]); createdAt != nil && record.info.CreatedAt == nil {
@@ -333,9 +333,9 @@ func parseSessionFile(path string) (sessionRecord, error) {
 
 		switch jsonvalue.TrimmedStringValue(payload["type"]) {
 		case "ai-title":
-			aiTitle = firstString(payload["aiTitle"], payload["ai_title"], payload["title"])
+			aiTitle = firstString(payload["aiTitle"], payload["title"])
 		case "custom-title":
-			if title := firstString(payload["customTitle"], payload["custom_title"], payload["title"]); title != "" {
+			if title := firstString(payload["customTitle"], payload["title"]); title != "" {
 				record.info.CustomTitle = &title
 			}
 		case "session-tag":

@@ -415,7 +415,7 @@ func setDefaultProcessEnv(env map[string]string, key string, value string) {
 
 func processControlWireDialect(o resolvedOptions) transport.ControlWireDialect {
 	if normalizedRuntimeKind(o.RuntimeKind) == RuntimeNXS {
-		return transport.ControlWireDialectSnake
+		return transport.ControlWireDialectNXS
 	}
 	return transport.ControlWireDialectClaude
 }

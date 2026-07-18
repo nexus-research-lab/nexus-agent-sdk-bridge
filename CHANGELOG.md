@@ -6,6 +6,8 @@ All notable changes to this project are documented in this file.
 
 ### Added
 
+- Aligned native `nxs` control transport with the Claude Code SDK control schemas; the bridge now applies the same control codec to `nxs` and Claude runtimes and projects the wire back to the bridge's canonical snake_case API.
+- Removed legacy snake_case fallbacks from persisted session metadata reads; transcript fields now follow the canonical Claude Code camelCase shape.
 - Added `Session.Control().UpdateEnvironment` for hot-applying environment-backed configuration to active `nxs` sessions without restarting them.
 - Added negotiated `hook_response_ack_v1` support and `hook.Output.OnApplied` so hosts can commit queued input only after a runtime has applied the hook response.
 

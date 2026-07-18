@@ -224,9 +224,9 @@ type UserDialogResponse map[string]any
 // DecodeElicitationRequest 解析控制协议中的 elicitation 请求。
 func DecodeElicitationRequest(payload map[string]any) ElicitationRequest {
 	return ElicitationRequest{
-		ServerName:      jsonvalue.FirstNonEmptyString(payload["mcp_server_name"], payload["server_name"]),
+		ServerName:      jsonvalue.StringValue(payload["mcp_server_name"]),
 		Message:         jsonvalue.StringValue(payload["message"]),
-		Mode:            NormalizeElicitationMode(jsonvalue.FirstNonEmptyString(payload["mode"], payload["elicitation_mode"])),
+		Mode:            NormalizeElicitationMode(jsonvalue.StringValue(payload["mode"])),
 		URL:             jsonvalue.StringValue(payload["url"]),
 		ElicitationID:   jsonvalue.StringValue(payload["elicitation_id"]),
 		RequestedSchema: jsonvalue.MapValue(payload["requested_schema"]),

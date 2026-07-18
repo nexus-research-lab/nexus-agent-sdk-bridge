@@ -124,7 +124,7 @@ func TestProcessWaitIncludesStderrTailOnExit(t *testing.T) {
 		CWD:                t.TempDir(),
 		Args:               []string{"-test.run=TestProcessWaitIncludesStderrTailOnExit"},
 		Env:                map[string]string{"NEXUS_BRIDGE_TEST_EXIT_STDERR": "1"},
-		ControlWireDialect: ControlWireDialectSnake,
+		ControlWireDialect: ControlWireDialectNXS,
 		Diagnostics: func(event ProcessDiagnosticEvent) {
 			diagnostics = append(diagnostics, event)
 		},
@@ -154,10 +154,10 @@ func TestProcessWaitIncludesStderrTailOnExit(t *testing.T) {
 	t.Fatalf("missing process_exit diagnostics: %#v", diagnostics)
 }
 
-func TestProcessCommandVersionCheckSkipsSnakeWireRuntime(t *testing.T) {
-	manager := NewProcessManager(ProcessConfig{ControlWireDialect: ControlWireDialectSnake})
+func TestProcessCommandVersionCheckSkipsNXSRuntime(t *testing.T) {
+	manager := NewProcessManager(ProcessConfig{ControlWireDialect: ControlWireDialectNXS})
 	if manager.shouldCheckCommandVersion() {
-		t.Fatal("shouldCheckCommandVersion() = true, want false for nxs snake wire runtime")
+		t.Fatal("shouldCheckCommandVersion() = true, want false for nxs runtime")
 	}
 }
 
@@ -170,7 +170,7 @@ func TestBuildEnvironmentUsesRuntimeEntrypointEnv(t *testing.T) {
 		t.Fatalf("NEXUS_ENTRYPOINT = %q, want empty for claude env", got)
 	}
 
-	nxsEnv := buildEnvironment(nil, "", ControlWireDialectSnake)
+	nxsEnv := buildEnvironment(nil, "", ControlWireDialectNXS)
 	if envValue(nxsEnv, "NEXUS_ENTRYPOINT") != "sdk-go" {
 		t.Fatalf("NEXUS_ENTRYPOINT missing in nxs env: %#v", nxsEnv)
 	}

@@ -234,6 +234,11 @@ The bridge does not download `nxs`, scan app roots, inspect caches, or fall back
 to `PATH` at runtime. Missing or broken `NEXUS_NXS_COMMAND_PATH` is reported as
 a launch configuration error.
 
+Native `nxs` and Claude Code share one control codec. The bridge exposes
+canonical snake_case control maps internally, while each runtime receives the
+exact Claude Code SDK schema on the wire; fields remain mixed where Claude's
+schema defines them that way, and ordinary stream messages are not rewritten.
+
 Claude Code remains available as an explicit compatibility runtime:
 
 ```go

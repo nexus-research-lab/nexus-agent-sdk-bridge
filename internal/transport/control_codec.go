@@ -190,15 +190,6 @@ func formatControlRequestForClaude(request map[string]any) map[string]any {
 	switch jsonvalue.StringValue(request["subtype"]) {
 	case "initialize":
 		return formatInitializeRequestForClaude(request)
-	case "set_max_thinking_tokens":
-		return renameKeys(request, map[string]string{
-			"max_thinking_tokens": "maxThinkingTokens",
-		})
-	case "rewind_files":
-		return renameKeys(request, map[string]string{
-			"user_message_id": "userMessageId",
-			"dry_run":         "dryRun",
-		})
 	case "mcp_reconnect", "mcp_toggle", "mcp_authenticate", "mcp_clear_auth":
 		return renameKeys(request, map[string]string{
 			"server_name": "serverName",
@@ -260,16 +251,16 @@ func formatAgentDefinitionsForClaude(agents map[string]any) map[string]any {
 			output[name] = jsonvalue.CloneValuePreserveTypedSlices(rawDefinition)
 			continue
 		}
-		output[name] = renameKeys(definition, map[string]string{
+		mapped := renameKeys(definition, map[string]string{
 			"disallowed_tools":                      "disallowedTools",
-			"prompt":                                "systemPrompt",
 			"mcp_servers":                           "mcpServers",
 			"required_mcp_servers":                  "requiredMcpServers",
-			"critical_system_reminder_experimental": "criticalSystemReminderExperimental",
+			"critical_system_reminder_experimental": "criticalSystemReminder_EXPERIMENTAL",
 			"initial_prompt":                        "initialPrompt",
 			"max_turns":                             "maxTurns",
 			"permission_mode":                       "permissionMode",
 		})
+		output[name] = mapped
 	}
 	return output
 }
@@ -306,11 +297,7 @@ func normalizeControlResponseFromClaude(subtype string, response map[string]any)
 }
 
 func normalizeInitializeResponseFromClaude(response map[string]any) map[string]any {
-	output := renameKeys(response, map[string]string{
-		"outputStyle":           "output_style",
-		"availableOutputStyles": "available_output_styles",
-		"fastModeState":         "fast_mode_state",
-	})
+	output := jsonvalue.CloneMapPreserveTypedSlices(response)
 	if commands := normalizeMapSlice(response["commands"], normalizeSlashCommandFromClaude); len(commands) > 0 {
 		output["commands"] = commands
 	}
@@ -346,28 +333,19 @@ func normalizeModelInfoFromClaude(model map[string]any) map[string]any {
 	if value := jsonvalue.StringValue(model["value"]); value != "" && output["id"] == nil {
 		output["id"] = value
 	}
+	delete(output, "value")
 	return output
 }
 
 func normalizeAccountInfoFromClaude(account map[string]any) map[string]any {
 	output := renameKeys(account, map[string]string{
-		"emailAddress":       "email_address",
-		"organizationName":   "organization_name",
-		"subscriptionStatus": "subscription_status",
-		"subscriptionType":   "subscription_type",
-		"tokenSource":        "token_source",
-		"apiKeySource":       "api_key_source",
-		"apiProvider":        "api_provider",
+		"email":            "email_address",
+		"organization":     "organization_name",
+		"subscriptionType": "subscription_type",
+		"tokenSource":      "token_source",
+		"apiKeySource":     "api_key_source",
+		"apiProvider":      "api_provider",
 	})
-	if email := jsonvalue.StringValue(account["email"]); email != "" && output["email_address"] == nil {
-		output["email_address"] = email
-	}
-	if organization := jsonvalue.StringValue(account["organization"]); organization != "" && output["organization_name"] == nil {
-		output["organization_name"] = organization
-	}
-	if subscriptionType := jsonvalue.StringValue(output["subscription_type"]); subscriptionType != "" && output["plan"] == nil {
-		output["plan"] = subscriptionType
-	}
 	return output
 }
 

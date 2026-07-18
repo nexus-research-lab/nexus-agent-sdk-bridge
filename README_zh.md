@@ -241,6 +241,11 @@ options := client.NewOptions().
 
 bridge 运行期不下载 `nxs`，不扫描 app root，不读取缓存，也不回退到 PATH。`NEXUS_NXS_COMMAND_PATH` 缺失或不可执行时，会直接作为启动配置错误返回。
 
+原生 `nxs` 与 Claude Code 共用同一条 control codec：bridge 内部统一暴露
+snake_case control map，runtime 侧严格使用 Claude Code SDK 的真实 schema。
+CC schema 本身有意混合 camel 与 snake，因此不做全字段改名；普通 stream
+消息也保持 provider 原生形状。
+
 Claude Code 仍作为显式兼容 runtime 保留：
 
 ```go

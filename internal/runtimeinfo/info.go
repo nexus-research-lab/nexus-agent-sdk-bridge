@@ -65,8 +65,8 @@ type AccountInfo struct {
 // DecodeInitializeResponse 解析初始化响应。
 func DecodeInitializeResponse(payload map[string]any) InitializeResponse {
 	return InitializeResponse{
-		SessionID:             jsonvalue.FirstNonEmptyString(payload["session_id"], payload["sessionId"]),
-		ProtocolCapabilities:  jsonvalue.StringSliceValue(jsonvalue.FirstNonNil(payload["protocol_capabilities"], payload["protocolCapabilities"])),
+		SessionID:             jsonvalue.StringValue(payload["session_id"]),
+		ProtocolCapabilities:  jsonvalue.StringSliceValue(payload["protocol_capabilities"]),
 		Commands:              decodeSlashCommands(payload["commands"]),
 		Agents:                decodeAgents(payload["agents"]),
 		OutputStyle:           jsonvalue.StringValue(payload["output_style"]),
@@ -226,10 +226,10 @@ func decodeAgents(raw any) []AgentInfo {
 func decodeAccountInfo(raw any) AccountInfo {
 	item := jsonvalue.MapValue(raw)
 	return AccountInfo{
-		EmailAddress:       jsonvalue.FirstNonEmptyString(item["email"], item["email_address"]),
+		EmailAddress:       jsonvalue.StringValue(item["email_address"]),
 		OrganizationName:   jsonvalue.StringValue(item["organization_name"]),
-		Plan:               jsonvalue.FirstNonEmptyString(item["plan"], item["subscription_plan"]),
-		SubscriptionStatus: jsonvalue.StringValue(item["subscription_status"]),
+		Plan:               jsonvalue.StringValue(item["subscription_type"]),
+		SubscriptionStatus: jsonvalue.StringValue(item["token_source"]),
 		Raw:                item,
 	}
 }

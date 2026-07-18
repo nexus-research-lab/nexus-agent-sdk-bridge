@@ -33,8 +33,8 @@ func TestOptionsTransportConfiguration(t *testing.T) {
 
 func TestOptionsDefaultRuntimeUsesNXSControlWire(t *testing.T) {
 	config := NewOptions().WithCLIPath("nxs").processConfig()
-	if config.ControlWireDialect != transport.ControlWireDialectSnake {
-		t.Fatalf("control wire dialect = %q, want snake", config.ControlWireDialect)
+	if config.ControlWireDialect != transport.ControlWireDialectNXS {
+		t.Fatalf("control wire dialect = %q, want nxs", config.ControlWireDialect)
 	}
 }
 

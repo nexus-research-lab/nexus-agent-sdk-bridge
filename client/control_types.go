@@ -255,12 +255,12 @@ func accountInfoFromRuntime(account runtimeinfo.AccountInfo) AccountInfo {
 		raw = map[string]any{}
 	}
 	return AccountInfo{
-		APIProvider:      jsonvalue.FirstNonEmptyString(raw["apiProvider"], raw["api_provider"]),
-		APIKeySource:     jsonvalue.FirstNonEmptyString(raw["apiKeySource"], raw["api_key_source"]),
-		Email:            jsonvalue.FirstNonEmptyString(raw["email"], raw["email_address"], account.EmailAddress),
-		Organization:     jsonvalue.FirstNonEmptyString(raw["organization"], raw["organization_name"], account.OrganizationName),
-		SubscriptionType: jsonvalue.FirstNonEmptyString(raw["subscriptionType"], raw["subscription_type"], raw["subscription"], raw["plan"], account.Plan),
-		TokenSource:      jsonvalue.FirstNonEmptyString(raw["tokenSource"], raw["token_source"]),
+		APIProvider:      jsonvalue.FirstNonEmptyString(raw["api_provider"]),
+		APIKeySource:     jsonvalue.FirstNonEmptyString(raw["api_key_source"]),
+		Email:            jsonvalue.FirstNonEmptyString(raw["email_address"], account.EmailAddress),
+		Organization:     jsonvalue.FirstNonEmptyString(raw["organization_name"], account.OrganizationName),
+		SubscriptionType: jsonvalue.FirstNonEmptyString(raw["subscription_type"], account.Plan),
+		TokenSource:      jsonvalue.FirstNonEmptyString(raw["token_source"]),
 		Raw:              raw,
 	}
 }
@@ -303,7 +303,7 @@ func decodeAutoDreamResult(payload map[string]any) AutoDreamResult {
 		SessionsReviewed: jsonvalue.IntValue(payload["sessions_reviewed"]),
 		NextCheckAtMS:    nextCheckAtMS,
 		Summary:          jsonvalue.StringValue(payload["summary"]),
-		WrittenPaths:     jsonvalue.StringSliceValue(jsonvalue.FirstNonNil(payload["written_paths"], payload["writtenPaths"])),
+		WrittenPaths:     jsonvalue.StringSliceValue(payload["written_paths"]),
 		Raw:              raw,
 	}
 }

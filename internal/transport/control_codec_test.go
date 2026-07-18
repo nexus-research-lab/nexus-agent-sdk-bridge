@@ -89,9 +89,9 @@ func TestControlCodecFormatsRuntimeControlsForClaude(t *testing.T) {
 				Subtype:           "set_max_thinking_tokens",
 				MaxThinkingTokens: intPointer(512),
 			},
-			wantKey:   "maxThinkingTokens",
+			wantKey:   "max_thinking_tokens",
 			wantValue: float64(512),
-			blocked:   "max_thinking_tokens",
+			blocked:   "maxThinkingTokens",
 		},
 		{
 			name: "rewind files",
@@ -100,9 +100,9 @@ func TestControlCodecFormatsRuntimeControlsForClaude(t *testing.T) {
 				UserMessageID: "user-1",
 				DryRun:        boolPointer(true),
 			},
-			wantKey:   "userMessageId",
+			wantKey:   "user_message_id",
 			wantValue: "user-1",
-			blocked:   "user_message_id",
+			blocked:   "userMessageId",
 		},
 		{
 			name: "mcp oauth callback",
@@ -164,8 +164,11 @@ func TestControlCodecFormatsInitializeAgentsForClaude(t *testing.T) {
 	request := payload["request"].(map[string]any)
 	agents := request["agents"].(map[string]any)
 	reviewer := agents["reviewer"].(map[string]any)
-	if reviewer["systemPrompt"] != "be strict" || reviewer["mcpServers"] == nil || reviewer["requiredMcpServers"] == nil {
-		t.Fatalf("reviewer = %#v, want Claude camel agent fields", reviewer)
+	if reviewer["prompt"] != "be strict" || reviewer["mcpServers"] == nil {
+		t.Fatalf("reviewer = %#v, want CC agent fields", reviewer)
+	}
+	if got := reviewer["requiredMcpServers"]; got == nil {
+		t.Fatalf("requiredMcpServers = %#v, want docs", got)
 	}
 	if _, exists := reviewer["mcp_servers"]; exists {
 		t.Fatalf("mcp_servers should not be emitted for Claude wire: %#v", reviewer)
@@ -184,8 +187,8 @@ func TestControlCodecNormalizesInitializeResponseFromClaude(t *testing.T) {
 			"subtype":    "success",
 			"request_id": "init-1",
 			"response": map[string]any{
-				"outputStyle":           "default",
-				"availableOutputStyles": []any{"default"},
+				"output_style":            "default",
+				"available_output_styles": []any{"default"},
 				"commands": []any{
 					map[string]any{"name": "review", "argumentHint": "<target>"},
 				},
@@ -312,15 +315,10 @@ func TestControlCodecFormatsHookCallbackResponseForClaude(t *testing.T) {
 	}
 }
 
-func TestNewProcessTransportSkipsClaudeCodecForSnakeWire(t *testing.T) {
-	native := NewProcessTransport(ProcessConfig{ControlWireDialect: ControlWireDialectSnake})
-	if _, ok := native.(*ProcessManager); !ok {
-		t.Fatalf("native transport = %T, want *ProcessManager", native)
-	}
-
-	claude := NewProcessTransport(ProcessConfig{})
-	if _, ok := claude.(*controlCodecTransport); !ok {
-		t.Fatalf("claude transport = %T, want *controlCodecTransport", claude)
+func TestNewProcessTransportUsesControlCodecForNXS(t *testing.T) {
+	nxs := NewProcessTransport(ProcessConfig{ControlWireDialect: ControlWireDialectNXS})
+	if _, ok := nxs.(*controlCodecTransport); !ok {
+		t.Fatalf("nxs transport = %T, want *controlCodecTransport", nxs)
 	}
 }
 
