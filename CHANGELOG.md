@@ -4,13 +4,17 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.1.20] - 2026-07-19
+
 ### Added
 
-- Removed the bridge-side casing codec: Claude Code and native `nxs` now share the exact mixed control wire, with camelCase and snake_case retained only where the CC schema defines them. MCP status uses `inputSchema`; model tool arguments keep their CC-defined names such as `file_path`, while provider payloads remain outside this control contract.
-- Removed legacy snake_case fallbacks from persisted session metadata reads; transcript fields now follow the canonical Claude Code camelCase shape.
 - Added `Session.Control().UpdateEnvironment` for hot-applying environment-backed configuration to active `nxs` sessions without restarting them.
 - Added negotiated `hook_response_ack_v1` support and `hook.Output.OnApplied` so hosts can commit queued input only after a runtime has applied the hook response.
-- Completed the inline sandbox settings contract with platform gates, denied domains, Mach lookup, Apple Events, managed-policy fields, and explicit Git-config policy forwarded to `nxs`.
+- Completed sandbox policy forwarding with platform gates, denied domains, Mach lookup, Apple Events, managed-policy fields, and explicit Git-config policy.
+
+### Changed
+
+- Aligned control and persisted session metadata with Claude Code's exact mixed wire schema, removing the duplicate casing codec and legacy snake_case fallback.
 
 ## [0.1.19] - 2026-07-13
 
