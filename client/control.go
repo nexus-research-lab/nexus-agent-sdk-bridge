@@ -44,8 +44,8 @@ func decodePermissionRuleValues(raw any) []permission.RuleValue {
 			continue
 		}
 		values = append(values, permission.RuleValue{
-			ToolName:    jsonvalue.StringValue(payload["tool_name"]),
-			RuleContent: jsonvalue.StringValue(payload["rule_content"]),
+			ToolName:    jsonvalue.StringValue(payload["toolName"]),
+			RuleContent: jsonvalue.StringValue(payload["ruleContent"]),
 		})
 	}
 	return values
@@ -85,11 +85,11 @@ func (c *sessionCore) resolvePermissionRequest(ctx context.Context, request map[
 			updatedInput = permissionRequest.Input
 		}
 		response := map[string]any{
-			"behavior":      "allow",
-			"updated_input": updatedInput,
+			"behavior":     "allow",
+			"updatedInput": updatedInput,
 		}
 		if len(decision.UpdatedPermissions) > 0 {
-			response["updated_permissions"] = append([]permission.Update(nil), decision.UpdatedPermissions...)
+			response["updatedPermissions"] = append([]permission.Update(nil), decision.UpdatedPermissions...)
 		}
 		return response
 	}
@@ -233,7 +233,7 @@ func (c *sessionCore) buildHookInitialization() map[string]any {
 			}
 
 			encoded := map[string]any{
-				"hook_callback_ids": callbackIDs,
+				"hookCallbackIds": callbackIDs,
 			}
 			if matcher.Matcher != "" {
 				encoded["matcher"] = matcher.Matcher

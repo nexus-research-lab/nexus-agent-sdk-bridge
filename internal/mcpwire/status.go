@@ -7,7 +7,7 @@ import (
 
 // DecodeStatusResponse 解析 MCP 状态控制响应。
 func DecodeStatusResponse(payload map[string]any) mcp.StatusResponse {
-	items := jsonvalue.SliceValue(payload["mcp_servers"])
+	items := jsonvalue.SliceValue(payload["mcpServers"])
 	servers := make([]mcp.ServerStatus, 0, len(items))
 	for _, item := range items {
 		server := jsonvalue.MapValue(item)
@@ -18,7 +18,7 @@ func DecodeStatusResponse(payload map[string]any) mcp.StatusResponse {
 		servers = append(servers, mcp.ServerStatus{
 			Name:       jsonvalue.StringValue(server["name"]),
 			Status:     jsonvalue.StringValue(server["status"]),
-			ServerInfo: decodeServerInfo(server["server_info"]),
+			ServerInfo: decodeServerInfo(server["serverInfo"]),
 			Error:      jsonvalue.StringValue(server["error"]),
 			Config:     jsonvalue.MapValue(server["config"]),
 			Scope:      jsonvalue.StringValue(server["scope"]),
@@ -74,7 +74,7 @@ func decodeTools(raw any) []mcp.ToolInfo {
 		tools = append(tools, mcp.ToolInfo{
 			Name:        jsonvalue.StringValue(tool["name"]),
 			Description: jsonvalue.StringValue(tool["description"]),
-			InputSchema: jsonvalue.MapValue(tool["input_schema"]),
+			InputSchema: jsonvalue.MapValue(tool["inputSchema"]),
 			Meta:        jsonvalue.MapValue(tool["_meta"]),
 			Annotations: decodeToolAnnotations(tool["annotations"]),
 		})
@@ -87,17 +87,17 @@ func decodeToolAnnotations(raw any) *mcp.ToolStatusAnnotations {
 	if len(data) == 0 {
 		return nil
 	}
-	readOnlyHint := jsonvalue.BoolValue(data["read_only_hint"])
-	readOnly := jsonvalue.BoolValue(data["read_only"])
-	destructiveHint := jsonvalue.BoolValue(data["destructive_hint"])
+	readOnlyHint := jsonvalue.BoolValue(data["readOnlyHint"])
+	readOnly := jsonvalue.BoolValue(data["readOnly"])
+	destructiveHint := jsonvalue.BoolValue(data["destructiveHint"])
 	destructive := jsonvalue.BoolValue(data["destructive"])
-	openWorldHint := jsonvalue.BoolValue(data["open_world_hint"])
-	openWorld := jsonvalue.BoolValue(data["open_world"])
+	openWorldHint := jsonvalue.BoolValue(data["openWorldHint"])
+	openWorld := jsonvalue.BoolValue(data["openWorld"])
 
 	return &mcp.ToolStatusAnnotations{
 		ReadOnlyHint:    readOnlyHint || readOnly,
 		DestructiveHint: destructiveHint || destructive,
-		IdempotentHint:  jsonvalue.BoolValue(data["idempotent_hint"]),
+		IdempotentHint:  jsonvalue.BoolValue(data["idempotentHint"]),
 		OpenWorldHint:   openWorldHint || openWorld,
 		ReadOnly:        readOnly,
 		Destructive:     destructive,

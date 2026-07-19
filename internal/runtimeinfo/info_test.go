@@ -5,15 +5,15 @@ import "testing"
 func TestDecodeInitializeResponse(t *testing.T) {
 	got := DecodeInitializeResponse(map[string]any{
 		"commands": []any{
-			map[string]any{"name": "plan", "allowed_tools": "Read, Edit", "user_invocable": "true"},
+			map[string]any{"name": "plan", "argumentHint": "<task>", "allowedTools": "Read, Edit", "userInvocable": "true"},
 		},
 		"agents": []any{
 			map[string]any{"name": "reviewer", "description": "Review code"},
 		},
 		"models": []any{
-			map[string]any{"id": "model-a", "display_name": "Model A"},
+			map[string]any{"value": "model-a", "displayName": "Model A", "description": "Model A description"},
 		},
-		"account":                 map[string]any{"email_address": "dev@example.com"},
+		"account":                 map[string]any{"email": "dev@example.com", "subscriptionType": "pro"},
 		"session_id":              "session-1",
 		"output_style":            "concise",
 		"available_output_styles": []any{"concise", "full"},
@@ -36,7 +36,7 @@ func TestDecodeInitializeResponse(t *testing.T) {
 	if len(got.Models) != 1 || got.Models[0].ID != "model-a" {
 		t.Fatalf("models = %#v", got.Models)
 	}
-	if got.Account.EmailAddress != "dev@example.com" || got.OutputStyle != "concise" || got.SessionID != "session-1" {
+	if got.Account.Email != "dev@example.com" || got.Account.SubscriptionType != "pro" || got.OutputStyle != "concise" || got.SessionID != "session-1" {
 		t.Fatalf("initialize response = %#v", got)
 	}
 	if len(got.ProtocolCapabilities) != 1 || got.ProtocolCapabilities[0] != "hook_response_ack_v1" {

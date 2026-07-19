@@ -54,8 +54,8 @@ const (
 
 // RuleValue 表示权限规则条目。
 type RuleValue struct {
-	ToolName    string `json:"tool_name"`
-	RuleContent string `json:"rule_content,omitempty"`
+	ToolName    string `json:"toolName"`
+	RuleContent string `json:"ruleContent,omitempty"`
 }
 
 // RuleSource 表示权限规则来源。
@@ -115,11 +115,11 @@ type Request struct {
 type Decision struct {
 	Behavior           Behavior         `json:"behavior"`
 	Message            string           `json:"message,omitempty"`
-	AcceptFeedback     string           `json:"accept_feedback,omitempty"`
-	ContentBlocks      []map[string]any `json:"content_blocks,omitempty"`
+	AcceptFeedback     string           `json:"acceptFeedback,omitempty"`
+	ContentBlocks      []map[string]any `json:"contentBlocks,omitempty"`
 	Interrupt          bool             `json:"interrupt,omitempty"`
-	UpdatedInput       map[string]any   `json:"updated_input,omitempty"`
-	UpdatedPermissions []Update         `json:"updated_permissions,omitempty"`
+	UpdatedInput       map[string]any   `json:"updatedInput,omitempty"`
+	UpdatedPermissions []Update         `json:"updatedPermissions,omitempty"`
 }
 
 // Handler 负责处理工具权限请求。
@@ -152,23 +152,23 @@ func (d Decision) ToMap() map[string]any {
 		result["message"] = d.Message
 	}
 	if d.AcceptFeedback != "" {
-		result["accept_feedback"] = d.AcceptFeedback
+		result["acceptFeedback"] = d.AcceptFeedback
 	}
 	if len(d.ContentBlocks) > 0 {
 		blocks := make([]map[string]any, len(d.ContentBlocks))
 		for i, block := range d.ContentBlocks {
 			blocks[i] = jsonvalue.CloneMap(block)
 		}
-		result["content_blocks"] = blocks
+		result["contentBlocks"] = blocks
 	}
 	if d.Interrupt {
 		result["interrupt"] = true
 	}
 	if len(d.UpdatedInput) > 0 {
-		result["updated_input"] = jsonvalue.CloneMap(d.UpdatedInput)
+		result["updatedInput"] = jsonvalue.CloneMap(d.UpdatedInput)
 	}
 	if len(d.UpdatedPermissions) > 0 {
-		result["updated_permissions"] = append([]Update(nil), d.UpdatedPermissions...)
+		result["updatedPermissions"] = append([]Update(nil), d.UpdatedPermissions...)
 	}
 	return result
 }

@@ -14,6 +14,10 @@ Nexus product
 
 - `client/`：Session、能力发现、runtime control 与消息投影
 - `protocol/`：stdio control/message wire 真相源
+  - `protocol/` 直接承载 Claude Code 的 mixed-casing control wire；不要再引入
+  全局 snake/camel 转换层。工具参数、hook 输入和 provider payload 各自遵循
+  所属协议（例如 Agent 的 `subagent_type`、Bash 的 `run_in_background`、Read 的
+  `file_path` 仍为 CC 原生 snake_case），不能按字段外观批量改名。
 - `internal/transport/`：子进程和传输实现，不向产品泄漏
 - `runtimes/`：runtime kind 的公开能力差异
 - 新能力必须先定义 capability；产品不能按 runtime 名称猜测 control 是否存在

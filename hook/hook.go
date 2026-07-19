@@ -105,13 +105,13 @@ type Output struct {
 	Async             *bool            `json:"async,omitempty"`
 	AsyncTimeout      time.Duration    `json:"-"`
 	Continue          *bool            `json:"continue,omitempty"`
-	SuppressOutput    *bool            `json:"suppress_output,omitempty"`
-	StopReason        string           `json:"stop_reason,omitempty"`
+	SuppressOutput    *bool            `json:"suppressOutput,omitempty"`
+	StopReason        string           `json:"stopReason,omitempty"`
 	Decision          string           `json:"decision,omitempty"`
-	SystemMessage     string           `json:"system_message,omitempty"`
+	SystemMessage     string           `json:"systemMessage,omitempty"`
 	Reason            string           `json:"reason,omitempty"`
 	SpecificOutput    *SpecificOutput  `json:"-"`
-	RawSpecificOutput map[string]any   `json:"hook_specific_output,omitempty"`
+	RawSpecificOutput map[string]any   `json:"hookSpecificOutput,omitempty"`
 	OnApplied         func(AppliedAck) `json:"-"`
 }
 
@@ -121,31 +121,31 @@ func (o Output) ToMap() map[string]any {
 	if o.Async != nil {
 		result["async"] = *o.Async
 		if o.AsyncTimeout > 0 {
-			result["async_timeout"] = o.AsyncTimeout.Milliseconds()
+			result["asyncTimeout"] = o.AsyncTimeout.Milliseconds()
 		}
 	}
 	if o.Continue != nil {
 		result["continue"] = *o.Continue
 	}
 	if o.SuppressOutput != nil {
-		result["suppress_output"] = *o.SuppressOutput
+		result["suppressOutput"] = *o.SuppressOutput
 	}
 	if o.StopReason != "" {
-		result["stop_reason"] = o.StopReason
+		result["stopReason"] = o.StopReason
 	}
 	if o.Decision != "" {
 		result["decision"] = o.Decision
 	}
 	if o.SystemMessage != "" {
-		result["system_message"] = o.SystemMessage
+		result["systemMessage"] = o.SystemMessage
 	}
 	if o.Reason != "" {
 		result["reason"] = o.Reason
 	}
 	if len(o.RawSpecificOutput) > 0 {
-		result["hook_specific_output"] = o.RawSpecificOutput
+		result["hookSpecificOutput"] = o.RawSpecificOutput
 	} else if o.SpecificOutput != nil {
-		result["hook_specific_output"] = o.SpecificOutput.ToMap()
+		result["hookSpecificOutput"] = o.SpecificOutput.ToMap()
 	}
 	return result
 }
@@ -175,28 +175,28 @@ func (o SpecificOutput) ToMap() map[string]any {
 		result = map[string]any{}
 	}
 	if o.HookEventName != "" {
-		result["hook_event_name"] = string(o.HookEventName)
+		result["hookEventName"] = string(o.HookEventName)
 	}
 	if o.PermissionDecision != "" {
-		result["permission_decision"] = string(o.PermissionDecision)
+		result["permissionDecision"] = string(o.PermissionDecision)
 	}
 	if o.PermissionDecisionReason != "" {
-		result["permission_decision_reason"] = o.PermissionDecisionReason
+		result["permissionDecisionReason"] = o.PermissionDecisionReason
 	}
 	if len(o.UpdatedInput) > 0 {
-		result["updated_input"] = jsonvalue.CloneMapPreserveTypedSlices(o.UpdatedInput)
+		result["updatedInput"] = jsonvalue.CloneMapPreserveTypedSlices(o.UpdatedInput)
 	}
 	if o.AdditionalContext != "" {
-		result["additional_context"] = o.AdditionalContext
+		result["additionalContext"] = o.AdditionalContext
 	}
 	if o.InitialUserMessage != "" {
-		result["initial_user_message"] = o.InitialUserMessage
+		result["initialUserMessage"] = o.InitialUserMessage
 	}
 	if len(o.WatchPaths) > 0 {
-		result["watch_paths"] = append([]string(nil), o.WatchPaths...)
+		result["watchPaths"] = append([]string(nil), o.WatchPaths...)
 	}
 	if o.UpdatedMCPToolOutput != nil {
-		result["updated_mcp_tool_output"] = jsonvalue.CloneValuePreserveTypedSlices(o.UpdatedMCPToolOutput)
+		result["updatedMCPToolOutput"] = jsonvalue.CloneValuePreserveTypedSlices(o.UpdatedMCPToolOutput)
 	}
 	if o.Retry != nil {
 		result["retry"] = *o.Retry
@@ -211,7 +211,7 @@ func (o SpecificOutput) ToMap() map[string]any {
 		result["content"] = jsonvalue.CloneMapPreserveTypedSlices(o.Content)
 	}
 	if o.WorktreePath != "" {
-		result["worktree_path"] = o.WorktreePath
+		result["worktreePath"] = o.WorktreePath
 	}
 	return result
 }

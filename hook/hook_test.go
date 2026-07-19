@@ -75,7 +75,7 @@ func TestOutputToMapDoesNotSerializeOnApplied(t *testing.T) {
 		SystemMessage: "continue",
 		OnApplied:     func(AppliedAck) {},
 	}
-	if got, want := output.ToMap(), map[string]any{"system_message": "continue"}; !reflect.DeepEqual(got, want) {
+	if got, want := output.ToMap(), map[string]any{"systemMessage": "continue"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("Output.ToMap() = %#v, want %#v", got, want)
 	}
 }

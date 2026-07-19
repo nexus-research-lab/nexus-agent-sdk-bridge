@@ -10,13 +10,12 @@ const (
 	ControlWireDialectNXS ControlWireDialect = "nxs"
 )
 
-// NewDirectConnectTransport 创建带 control schema 边界层的 direct-connect 传输。
+// NewDirectConnectTransport 创建 direct-connect 传输。
 func NewDirectConnectTransport(config DirectConnectConfig) Transport {
-	return newControlCodecTransport(NewDirectConnectManager(config))
+	return NewDirectConnectManager(config)
 }
 
 // NewProcessTransport 创建本地进程传输。
 func NewProcessTransport(config ProcessConfig) Transport {
-	manager := NewProcessManager(config)
-	return newControlCodecTransport(manager)
+	return NewProcessManager(config)
 }

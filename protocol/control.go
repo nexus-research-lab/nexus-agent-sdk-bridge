@@ -23,14 +23,14 @@ type ControlRequest struct {
 	Reason                 string              `json:"reason,omitempty"`
 	Hooks                  map[string]any      `json:"hooks,omitempty"`
 	Agents                 map[string]any      `json:"agents,omitempty"`
-	SDKMCPServers          []string            `json:"sdk_mcp_servers,omitempty"`
+	SDKMCPServers          []string            `json:"sdkMcpServers,omitempty"`
 	Servers                map[string]any      `json:"servers,omitempty"`
-	JSONSchema             map[string]any      `json:"json_schema,omitempty"`
+	JSONSchema             map[string]any      `json:"jsonSchema,omitempty"`
 	Payload                map[string]any      `json:"payload,omitempty"`
-	SystemPrompt           string              `json:"system_prompt,omitempty"`
-	AppendSystemPrompt     string              `json:"append_system_prompt,omitempty"`
-	ExcludeDynamicSections *bool               `json:"exclude_dynamic_sections,omitempty"`
-	AgentProgressSummaries *bool               `json:"agent_progress_summaries,omitempty"`
+	SystemPrompt           string              `json:"systemPrompt,omitempty"`
+	AppendSystemPrompt     string              `json:"appendSystemPrompt,omitempty"`
+	ExcludeDynamicSections *bool               `json:"excludeDynamicSections,omitempty"`
+	AgentProgressSummaries *bool               `json:"agentProgressSummaries,omitempty"`
 	Skills                 *[]string           `json:"skills,omitempty"`
 	ToolName               string              `json:"tool_name,omitempty"`
 	Input                  map[string]any      `json:"input,omitempty"`
@@ -54,7 +54,7 @@ type ControlRequest struct {
 	MessageUUIDs           []string            `json:"message_uuids,omitempty"`
 	DryRun                 *bool               `json:"dry_run,omitempty"`
 	Persist                *bool               `json:"persist,omitempty"`
-	ServerName             string              `json:"server_name,omitempty"`
+	ServerName             string              `json:"serverName,omitempty"`
 	Enabled                *bool               `json:"enabled,omitempty"`
 	TaskID                 string              `json:"task_id,omitempty"`
 	Path                   string              `json:"path,omitempty"`
@@ -64,7 +64,7 @@ type ControlRequest struct {
 	Variables              map[string]string   `json:"variables,omitempty"`
 	MCPServerName          string              `json:"mcp_server_name,omitempty"`
 	URL                    string              `json:"url,omitempty"`
-	CallbackURL            string              `json:"callback_url,omitempty"`
+	CallbackURL            string              `json:"callbackUrl,omitempty"`
 	ElicitationID          string              `json:"elicitation_id,omitempty"`
 	RequestedSchema        map[string]any      `json:"requested_schema,omitempty"`
 	LoginWithWeb           *bool               `json:"login_with_web,omitempty"`

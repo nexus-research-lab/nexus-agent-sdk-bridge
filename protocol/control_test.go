@@ -1,10 +1,88 @@
 package protocol
 
 import (
+	"encoding/json"
+	"reflect"
 	"testing"
 
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/jsonvalue"
 )
+
+func TestControlRequestUsesClaudeMixedCasing(t *testing.T) {
+	cases := []struct {
+		name    string
+		request ControlRequest
+		want    map[string]any
+	}{
+		{
+			name: "initialize camel fields",
+			request: ControlRequest{
+				Subtype:                "initialize",
+				SDKMCPServers:          []string{"docs"},
+				JSONSchema:             map[string]any{"type": "object"},
+				SystemPrompt:           "system",
+				AppendSystemPrompt:     "append",
+				ExcludeDynamicSections: boolPointer(true),
+				AgentProgressSummaries: boolPointer(true),
+			},
+			want: map[string]any{
+				"sdkMcpServers":          []any{"docs"},
+				"jsonSchema":             map[string]any{"type": "object"},
+				"systemPrompt":           "system",
+				"appendSystemPrompt":     "append",
+				"excludeDynamicSections": true,
+				"agentProgressSummaries": true,
+			},
+		},
+		{
+			name: "rewind snake fields",
+			request: ControlRequest{
+				Subtype:       "rewind_files",
+				UserMessageID: "user-1",
+				DryRun:        boolPointer(true),
+			},
+			want: map[string]any{
+				"user_message_id": "user-1",
+				"dry_run":         true,
+			},
+		},
+		{
+			name: "mcp camel fields",
+			request: ControlRequest{
+				Subtype:     "mcp_oauth_callback_url",
+				ServerName:  "github",
+				CallbackURL: "https://example.test/callback",
+			},
+			want: map[string]any{
+				"serverName":  "github",
+				"callbackUrl": "https://example.test/callback",
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			encoded, err := json.Marshal(NewControlRequestEnvelope("request-1", tc.request))
+			if err != nil {
+				t.Fatalf("Marshal() error = %v", err)
+			}
+			var payload map[string]any
+			if err := json.Unmarshal(encoded, &payload); err != nil {
+				t.Fatalf("Unmarshal() error = %v", err)
+			}
+			request := payload["request"].(map[string]any)
+			for key, want := range tc.want {
+				if got := request[key]; !reflect.DeepEqual(got, want) {
+					t.Fatalf("request[%q] = %#v, want %#v", key, got, want)
+				}
+			}
+		})
+	}
+}
+
+func boolPointer(value bool) *bool {
+	return &value
+}
 
 func TestControlEnvelopeConstructors(t *testing.T) {
 	request := NewControlRequestEnvelope("request-1", ControlRequest{Subtype: "initialize"})
