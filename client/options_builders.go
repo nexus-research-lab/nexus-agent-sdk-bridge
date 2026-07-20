@@ -95,6 +95,16 @@ func (o Options) WithSystemPromptPreset(preset SystemPromptPreset) Options {
 // WithAppendSystemPrompt 追加系统提示词。
 func (o Options) WithAppendSystemPrompt(prompt string) Options {
 	o.System.Append = prompt
+	o.System.AppendStatic = ""
+	o.System.AppendDynamic = ""
+	return o
+}
+
+// WithAppendSystemPromptParts 按缓存稳定性设置追加系统提示词。
+func (o Options) WithAppendSystemPromptParts(staticPrompt string, dynamicPrompt string) Options {
+	o.System.Append = ""
+	o.System.AppendStatic = staticPrompt
+	o.System.AppendDynamic = dynamicPrompt
 	return o
 }
 

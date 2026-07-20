@@ -273,6 +273,8 @@ client.NewOptions().
     WithAppendSystemPrompt("Always respond in Chinese.")
 ```
 
+When prompt-cache boundaries matter, use `WithAppendSystemPromptParts(static, dynamic)` to keep stable Room rules separate from turn-specific context. The `nxs` runtime carries both fields; Claude Code process runtimes receive the same content as one flattened append prompt.
+
 ### Runtime Settings
 
 Inline settings, sandbox settings, debug flags, fixed session IDs, and resume points are configured on `client.Options` and translated to the process bridge:

@@ -279,6 +279,8 @@ client.NewOptions().
     WithAppendSystemPrompt("始终用中文回答。")
 ```
 
+需要控制 prompt cache 边界时，可使用 `WithAppendSystemPromptParts(static, dynamic)`，将稳定的 Room 规则与每轮动态上下文分开。`nxs` runtime 会携带两个字段；Claude Code process runtime 会将它们展平成一个追加提示词。
+
 ### 运行时设置
 
 inline settings、sandbox、debug、固定 session ID 和 resume 截断点都通过 `client.Options` 设置，并会转成 process bridge 参数：

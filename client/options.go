@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/agent"
@@ -221,12 +222,29 @@ type SystemPromptPreset struct {
 
 // SystemOptions 表示系统提示词与初始化展示偏好。
 type SystemOptions struct {
-	Text                   string
-	File                   string
-	Preset                 *SystemPromptPreset
-	Append                 string
+	Text   string
+	File   string
+	Preset *SystemPromptPreset
+	Append string
+	// AppendStatic 与 AppendDynamic 分别进入 prompt cache 的稳定段和动态段。
+	AppendStatic           string
+	AppendDynamic          string
 	AgentProgressSummaries *bool
 	ExcludeDynamicSections *bool
+}
+
+// combinedSystemAppendPrompt 为不支持分段 prompt 的进程 runtime 生成兼容串。
+func combinedSystemAppendPrompt(system SystemOptions) string {
+	if system.Append != "" {
+		return system.Append
+	}
+	parts := make([]string, 0, 3)
+	for _, value := range []string{system.AppendStatic, system.AppendDynamic} {
+		if trimmed := strings.TrimSpace(value); trimmed != "" {
+			parts = append(parts, trimmed)
+		}
+	}
+	return strings.Join(parts, "\n\n")
 }
 
 // ToolsPreset 表示内置 tools preset 配置。

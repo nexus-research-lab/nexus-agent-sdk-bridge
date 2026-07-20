@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Added stable and dynamic system-prompt append fields to the `nxs` initialize wire while flattening them for Claude Code process runtimes.
+
 ## [0.1.20] - 2026-07-19
 
 ### Added

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/agent"
@@ -195,8 +196,16 @@ func (c *sessionCore) buildInitializeRequest() protocol.ControlRequest {
 	if c.options.System.Text != "" {
 		request.SystemPrompt = c.options.System.Text
 	}
-	if c.options.System.Append != "" {
-		request.AppendSystemPrompt = c.options.System.Append
+	if appendPrompt := combinedSystemAppendPrompt(c.options.System); appendPrompt != "" {
+		request.AppendSystemPrompt = appendPrompt
+	}
+	if normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS {
+		if staticPrompt := strings.TrimSpace(c.options.System.AppendStatic); staticPrompt != "" {
+			request.AppendSystemPromptStatic = staticPrompt
+		}
+		if dynamicPrompt := strings.TrimSpace(c.options.System.AppendDynamic); dynamicPrompt != "" {
+			request.AppendSystemPromptDynamic = dynamicPrompt
+		}
 	}
 	if c.options.System.ExcludeDynamicSections != nil {
 		request.ExcludeDynamicSections = c.options.System.ExcludeDynamicSections
