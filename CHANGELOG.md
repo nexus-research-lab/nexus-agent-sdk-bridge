@@ -13,12 +13,18 @@ All notable changes to this project are documented in this file.
 ### Added
 
 - Added `Session.Control().UpdateEnvironment` for hot-applying environment-backed configuration to active `nxs` sessions without restarting them.
+- Added regression coverage for OpenAI Responses and Azure provider environment variables across initial `nxs` process launch and live `update_environment_variables` reconfiguration.
+- Added an opt-in real-process test that hot-switches a local `nxs` from Chat Completions to Responses and verifies the upstream `/v1/responses` request.
 - Added negotiated `hook_response_ack_v1` support and `hook.Output.OnApplied` so hosts can commit queued input only after a runtime has applied the hook response.
 - Completed sandbox policy forwarding with platform gates, denied domains, Mach lookup, Apple Events, managed-policy fields, and explicit Git-config policy.
 
 ### Changed
 
 - Aligned control and persisted session metadata with Claude Code's exact mixed wire schema, removing the duplicate casing codec and legacy snake_case fallback.
+
+### Changed
+
+- Clarified that the bridge remains provider-neutral: it forwards `NEXUS_OPENAI_PROTOCOL=responses` and OpenAI provider variables, while `nxs` owns endpoint normalization, request translation, streaming, cache accounting, and Azure compatibility.
 
 ## [0.1.19] - 2026-07-13
 
