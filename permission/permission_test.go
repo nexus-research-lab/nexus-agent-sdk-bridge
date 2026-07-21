@@ -13,12 +13,12 @@ func TestPermissionDecisionToMapIncludesApprovalFeedbackAndContentBlocks(t *test
 	}
 
 	payload := decision.ToMap()
-	if payload["accept_feedback"] != "approved with context" {
-		t.Fatalf("accept_feedback = %#v, want approval feedback", payload["accept_feedback"])
+	if payload["acceptFeedback"] != "approved with context" {
+		t.Fatalf("acceptFeedback = %#v, want approval feedback", payload["acceptFeedback"])
 	}
-	blocks, ok := payload["content_blocks"].([]map[string]any)
+	blocks, ok := payload["contentBlocks"].([]map[string]any)
 	if !ok || len(blocks) != 2 {
-		t.Fatalf("content_blocks = %#v, want cloned content block list", payload["content_blocks"])
+		t.Fatalf("contentBlocks = %#v, want cloned content block list", payload["contentBlocks"])
 	}
 	blocks[0]["text"] = "mutated"
 	if decision.ContentBlocks[0]["text"] != "extra note" {

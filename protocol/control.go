@@ -18,58 +18,60 @@ type ControlRequestEnvelope struct {
 //
 // 它保留底层 wire 层 subtype union 形状，领域语义由 client、mcp、permission 等公开包承接。
 type ControlRequest struct {
-	Subtype                string              `json:"subtype"`
-	ProtocolCapabilities   []string            `json:"protocol_capabilities,omitempty"`
-	Reason                 string              `json:"reason,omitempty"`
-	Hooks                  map[string]any      `json:"hooks,omitempty"`
-	Agents                 map[string]any      `json:"agents,omitempty"`
-	SDKMCPServers          []string            `json:"sdk_mcp_servers,omitempty"`
-	Servers                map[string]any      `json:"servers,omitempty"`
-	JSONSchema             map[string]any      `json:"json_schema,omitempty"`
-	Payload                map[string]any      `json:"payload,omitempty"`
-	SystemPrompt           string              `json:"system_prompt,omitempty"`
-	AppendSystemPrompt     string              `json:"append_system_prompt,omitempty"`
-	ExcludeDynamicSections *bool               `json:"exclude_dynamic_sections,omitempty"`
-	AgentProgressSummaries *bool               `json:"agent_progress_summaries,omitempty"`
-	Skills                 *[]string           `json:"skills,omitempty"`
-	ToolName               string              `json:"tool_name,omitempty"`
-	Input                  map[string]any      `json:"input,omitempty"`
-	PermissionSuggestions  []permission.Update `json:"permission_suggestions,omitempty"`
-	BlockedPath            string              `json:"blocked_path,omitempty"`
-	DecisionReason         string              `json:"decision_reason,omitempty"`
-	Title                  string              `json:"title,omitempty"`
-	Name                   string              `json:"name,omitempty"`
-	DisplayName            string              `json:"display_name,omitempty"`
-	Description            string              `json:"description,omitempty"`
-	Question               string              `json:"question,omitempty"`
-	DialogKind             string              `json:"dialog_kind,omitempty"`
-	ToolUseID              string              `json:"tool_use_id,omitempty"`
-	AgentID                string              `json:"agent_id,omitempty"`
-	Mode                   permission.Mode     `json:"mode,omitempty"`
-	CallbackID             string              `json:"callback_id,omitempty"`
-	Model                  string              `json:"model,omitempty"`
-	MaxThinkingTokens      *int                `json:"max_thinking_tokens,omitempty"`
-	UserMessageID          string              `json:"user_message_id,omitempty"`
-	MessageUUID            string              `json:"message_uuid,omitempty"`
-	MessageUUIDs           []string            `json:"message_uuids,omitempty"`
-	DryRun                 *bool               `json:"dry_run,omitempty"`
-	Persist                *bool               `json:"persist,omitempty"`
-	ServerName             string              `json:"server_name,omitempty"`
-	Enabled                *bool               `json:"enabled,omitempty"`
-	TaskID                 string              `json:"task_id,omitempty"`
-	Path                   string              `json:"path,omitempty"`
-	MTime                  int64               `json:"mtime,omitempty"`
-	Message                map[string]any      `json:"message,omitempty"`
-	Settings               map[string]any      `json:"settings,omitempty"`
-	Variables              map[string]string   `json:"variables,omitempty"`
-	MCPServerName          string              `json:"mcp_server_name,omitempty"`
-	URL                    string              `json:"url,omitempty"`
-	CallbackURL            string              `json:"callback_url,omitempty"`
-	ElicitationID          string              `json:"elicitation_id,omitempty"`
-	RequestedSchema        map[string]any      `json:"requested_schema,omitempty"`
-	LoginWithWeb           *bool               `json:"login_with_web,omitempty"`
-	AuthorizationCode      string              `json:"authorization_code,omitempty"`
-	State                  string              `json:"state,omitempty"`
+	Subtype                   string              `json:"subtype"`
+	ProtocolCapabilities      []string            `json:"protocol_capabilities,omitempty"`
+	Reason                    string              `json:"reason,omitempty"`
+	Hooks                     map[string]any      `json:"hooks,omitempty"`
+	Agents                    map[string]any      `json:"agents,omitempty"`
+	SDKMCPServers             []string            `json:"sdkMcpServers,omitempty"`
+	Servers                   map[string]any      `json:"servers,omitempty"`
+	JSONSchema                map[string]any      `json:"jsonSchema,omitempty"`
+	Payload                   map[string]any      `json:"payload,omitempty"`
+	SystemPrompt              string              `json:"systemPrompt,omitempty"`
+	AppendSystemPrompt        string              `json:"appendSystemPrompt,omitempty"`
+	AppendSystemPromptStatic  string              `json:"appendSystemPromptStatic,omitempty"`
+	AppendSystemPromptDynamic string              `json:"appendSystemPromptDynamic,omitempty"`
+	ExcludeDynamicSections    *bool               `json:"excludeDynamicSections,omitempty"`
+	AgentProgressSummaries    *bool               `json:"agentProgressSummaries,omitempty"`
+	Skills                    *[]string           `json:"skills,omitempty"`
+	ToolName                  string              `json:"tool_name,omitempty"`
+	Input                     map[string]any      `json:"input,omitempty"`
+	PermissionSuggestions     []permission.Update `json:"permission_suggestions,omitempty"`
+	BlockedPath               string              `json:"blocked_path,omitempty"`
+	DecisionReason            string              `json:"decision_reason,omitempty"`
+	Title                     string              `json:"title,omitempty"`
+	Name                      string              `json:"name,omitempty"`
+	DisplayName               string              `json:"display_name,omitempty"`
+	Description               string              `json:"description,omitempty"`
+	Question                  string              `json:"question,omitempty"`
+	DialogKind                string              `json:"dialog_kind,omitempty"`
+	ToolUseID                 string              `json:"tool_use_id,omitempty"`
+	AgentID                   string              `json:"agent_id,omitempty"`
+	Mode                      permission.Mode     `json:"mode,omitempty"`
+	CallbackID                string              `json:"callback_id,omitempty"`
+	Model                     string              `json:"model,omitempty"`
+	MaxThinkingTokens         *int                `json:"max_thinking_tokens,omitempty"`
+	UserMessageID             string              `json:"user_message_id,omitempty"`
+	MessageUUID               string              `json:"message_uuid,omitempty"`
+	MessageUUIDs              []string            `json:"message_uuids,omitempty"`
+	DryRun                    *bool               `json:"dry_run,omitempty"`
+	Persist                   *bool               `json:"persist,omitempty"`
+	ServerName                string              `json:"serverName,omitempty"`
+	Enabled                   *bool               `json:"enabled,omitempty"`
+	TaskID                    string              `json:"task_id,omitempty"`
+	Path                      string              `json:"path,omitempty"`
+	MTime                     int64               `json:"mtime,omitempty"`
+	Message                   map[string]any      `json:"message,omitempty"`
+	Settings                  map[string]any      `json:"settings,omitempty"`
+	Variables                 map[string]string   `json:"variables,omitempty"`
+	MCPServerName             string              `json:"mcp_server_name,omitempty"`
+	URL                       string              `json:"url,omitempty"`
+	CallbackURL               string              `json:"callbackUrl,omitempty"`
+	ElicitationID             string              `json:"elicitation_id,omitempty"`
+	RequestedSchema           map[string]any      `json:"requested_schema,omitempty"`
+	LoginWithWeb              *bool               `json:"login_with_web,omitempty"`
+	AuthorizationCode         string              `json:"authorization_code,omitempty"`
+	State                     string              `json:"state,omitempty"`
 }
 
 // ControlResponseEnvelope 表示控制响应包。
@@ -224,9 +226,9 @@ type UserDialogResponse map[string]any
 // DecodeElicitationRequest 解析控制协议中的 elicitation 请求。
 func DecodeElicitationRequest(payload map[string]any) ElicitationRequest {
 	return ElicitationRequest{
-		ServerName:      jsonvalue.FirstNonEmptyString(payload["mcp_server_name"], payload["server_name"]),
+		ServerName:      jsonvalue.StringValue(payload["mcp_server_name"]),
 		Message:         jsonvalue.StringValue(payload["message"]),
-		Mode:            NormalizeElicitationMode(jsonvalue.FirstNonEmptyString(payload["mode"], payload["elicitation_mode"])),
+		Mode:            NormalizeElicitationMode(jsonvalue.StringValue(payload["mode"])),
 		URL:             jsonvalue.StringValue(payload["url"]),
 		ElicitationID:   jsonvalue.StringValue(payload["elicitation_id"]),
 		RequestedSchema: jsonvalue.MapValue(payload["requested_schema"]),

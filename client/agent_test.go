@@ -25,31 +25,24 @@ func TestAgentDefinitionToMapMatchesAgentShape(t *testing.T) {
 	}
 
 	payload := definition.ToMap()
-	if got := payload["mcp_servers"]; len(got.([]any)) != 1 {
-		t.Fatalf("mcp_servers = %#v, want one server", got)
+	if got := payload["mcpServers"]; len(got.([]any)) != 1 {
+		t.Fatalf("mcpServers = %#v, want one server", got)
 	}
 	if payload["background"] != true {
 		t.Fatalf("background = %#v, want true", payload["background"])
 	}
-	if payload["permission_mode"] != permission.ModePlan {
-		t.Fatalf("permission_mode = %#v, want plan", payload["permission_mode"])
+	if payload["permissionMode"] != permission.ModePlan {
+		t.Fatalf("permissionMode = %#v, want plan", payload["permissionMode"])
 	}
 
 	definition.MCPServers[0] = "changed"
-	if got := payload["mcp_servers"].([]any)[0].(map[string]any)["name"]; got != "slack" {
-		t.Fatalf("payload mcp_servers mutated to %q, want clone", got)
+	if got := payload["mcpServers"].([]any)[0].(map[string]any)["name"]; got != "slack" {
+		t.Fatalf("payload mcpServers mutated to %q, want clone", got)
 	}
-	if _, ok := payload["requiredMcpServers"]; ok {
-		t.Fatal("payload contains legacy requiredMcpServers alias")
-	}
-	if _, ok := payload["required_mcp_servers"]; ok {
-		t.Fatal("payload contains removed required_mcp_servers field")
-	}
-	if _, ok := payload["critical_system_reminder_experimental"]; ok {
-		t.Fatal("payload contains removed critical_system_reminder_experimental field")
-	}
-	if _, ok := payload["isolation"]; ok {
-		t.Fatal("payload contains removed isolation field")
+	for _, key := range []string{"mcp_servers", "permission_mode", "disallowed_tools", "initial_prompt", "max_turns"} {
+		if _, ok := payload[key]; ok {
+			t.Fatalf("payload contains non-CC key %q", key)
+		}
 	}
 }
 

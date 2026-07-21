@@ -579,7 +579,7 @@ func (m *ProcessManager) shouldCheckCommandVersion() bool {
 	if versionCheckSkipped() {
 		return false
 	}
-	if m != nil && m.config.ControlWireDialect == ControlWireDialectSnake {
+	if m != nil && m.config.ControlWireDialect == ControlWireDialectNXS {
 		return false
 	}
 	return true
@@ -861,7 +861,7 @@ func buildEnvironment(overrides map[string]string, cwd string, dialect ControlWi
 		environment[parts[0]] = parts[1]
 	}
 
-	if dialect == ControlWireDialectSnake {
+	if dialect == ControlWireDialectNXS {
 		environment["NEXUS_ENTRYPOINT"] = "sdk-go"
 		// 宿主可能是 cc 会话，剥掉继承的 cc 入口标记，避免误导下游诊断。
 		delete(environment, "CLAUDE_CODE_ENTRYPOINT")

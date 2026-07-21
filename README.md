@@ -234,6 +234,13 @@ The bridge does not download `nxs`, scan app roots, inspect caches, or fall back
 to `PATH` at runtime. Missing or broken `NEXUS_NXS_COMMAND_PATH` is reported as
 a launch configuration error.
 
+Native `nxs` and Claude Code use the same control wire directly. The bridge
+does not maintain a second snake_case representation or a casing compatibility
+layer: fields remain mixed exactly as Claude Code defines them. For example,
+MCP status uses `mcpServers`/`inputSchema`, while tool arguments retain their
+per-tool names such as `file_path`; provider request schemas are separate and
+are not rewritten here.
+
 Claude Code remains available as an explicit compatibility runtime:
 
 ```go
@@ -266,6 +273,8 @@ client.NewOptions().
     WithAppendSystemPrompt("Always respond in Chinese.")
 ```
 
+When prompt-cache boundaries matter, use `WithAppendSystemPromptParts(static, dynamic)` to keep stable Room rules separate from turn-specific context. The `nxs` runtime carries both fields; Claude Code process runtimes receive the same content as one flattened append prompt.
+
 ### Runtime Settings
 
 Inline settings, sandbox settings, debug flags, fixed session IDs, and resume points are configured on `client.Options` and translated to the process bridge:
@@ -280,6 +289,8 @@ client.NewOptions().
     WithSandbox(client.SandboxSettings{Enabled: &enabled}).
     WithDebugFile("/tmp/nexus-agent-sdk.log")
 ```
+
+`SandboxSettings` forwards the complete runtime policy contract, including filesystem carve-outs, domain/socket allowlists, platform gates, managed-policy restrictions, Git-config policy, and macOS IPC switches. The runtime remains responsible for enforcing those settings on the target platform.
 
 For OpenAI Responses, the bridge is intentionally provider-neutral. Pass the
 runtime configuration through `WithEnv`; the native `nxs` runtime owns the

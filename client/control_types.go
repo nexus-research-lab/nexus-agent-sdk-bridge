@@ -12,40 +12,39 @@ type ContextUsageCategory struct {
 	Name       string `json:"name,omitempty"`
 	Tokens     int    `json:"tokens,omitempty"`
 	Color      string `json:"color,omitempty"`
-	IsDeferred bool   `json:"is_deferred,omitempty"`
+	IsDeferred bool   `json:"isDeferred,omitempty"`
 }
 
 // ContextUsageEntry 表示上下文使用明细中的通用条目。
 type ContextUsageEntry struct {
-	Name        string         `json:"name,omitempty"`
-	Path        string         `json:"path,omitempty"`
-	Description string         `json:"description,omitempty"`
-	Type        string         `json:"type,omitempty"`
-	Scope       string         `json:"scope,omitempty"`
-	Tokens      int            `json:"tokens,omitempty"`
-	Count       int            `json:"count,omitempty"`
-	Percentage  float64        `json:"percentage,omitempty"`
-	Raw         map[string]any `json:"raw,omitempty"`
+	Name       string         `json:"name,omitempty"`
+	Path       string         `json:"path,omitempty"`
+	Type       string         `json:"type,omitempty"`
+	ServerName string         `json:"serverName,omitempty"`
+	IsLoaded   bool           `json:"isLoaded,omitempty"`
+	AgentType  string         `json:"agentType,omitempty"`
+	Source     string         `json:"source,omitempty"`
+	Tokens     int            `json:"tokens,omitempty"`
+	Raw        map[string]any `json:"raw,omitempty"`
 }
 
 // ContextUsageGridCell 表示网格中的单个单元格。
 type ContextUsageGridCell struct {
-	Name       string         `json:"name,omitempty"`
-	Value      string         `json:"value,omitempty"`
-	Tokens     int            `json:"tokens,omitempty"`
-	Count      int            `json:"count,omitempty"`
-	Color      string         `json:"color,omitempty"`
-	Percentage float64        `json:"percentage,omitempty"`
-	Raw        map[string]any `json:"raw,omitempty"`
+	Color          string         `json:"color,omitempty"`
+	IsFilled       bool           `json:"isFilled,omitempty"`
+	CategoryName   string         `json:"categoryName,omitempty"`
+	Tokens         int            `json:"tokens,omitempty"`
+	Percentage     float64        `json:"percentage,omitempty"`
+	SquareFullness float64        `json:"squareFullness,omitempty"`
+	Raw            map[string]any `json:"raw,omitempty"`
 }
 
-// ContextUsageSlashCommand 表示 slash command 使用信息。
-type ContextUsageSlashCommand struct {
-	Name        string         `json:"name,omitempty"`
-	Description string         `json:"description,omitempty"`
-	Tokens      int            `json:"tokens,omitempty"`
-	Count       int            `json:"count,omitempty"`
-	Raw         map[string]any `json:"raw,omitempty"`
+// ContextUsageSlashCommands 表示 slash command 的上下文占用汇总。
+type ContextUsageSlashCommands struct {
+	TotalCommands    int            `json:"totalCommands,omitempty"`
+	IncludedCommands int            `json:"includedCommands,omitempty"`
+	Tokens           int            `json:"tokens,omitempty"`
+	Raw              map[string]any `json:"raw,omitempty"`
 }
 
 // ContextUsageAPIUsage 表示 API 账单相关使用情况。
@@ -59,31 +58,31 @@ type ContextUsageAPIUsage struct {
 
 // ContextUsageResponse 表示 Session.Control().ContextUsage 的结果。
 type ContextUsageResponse struct {
-	Categories           []ContextUsageCategory     `json:"categories,omitempty"`
-	TotalTokens          int                        `json:"total_tokens,omitempty"`
-	MaxTokens            int                        `json:"max_tokens,omitempty"`
-	RawMaxTokens         int                        `json:"raw_max_tokens,omitempty"`
-	Percentage           float64                    `json:"percentage,omitempty"`
-	Model                string                     `json:"model,omitempty"`
-	IsAutoCompactEnabled bool                       `json:"is_auto_compact_enabled,omitempty"`
-	MemoryFiles          []ContextUsageEntry        `json:"memory_files,omitempty"`
-	MCPTools             []ContextUsageEntry        `json:"mcp_tools,omitempty"`
-	Agents               []ContextUsageEntry        `json:"agents,omitempty"`
-	GridRows             [][]ContextUsageGridCell   `json:"grid_rows,omitempty"`
-	AutoCompactThreshold int                        `json:"auto_compact_threshold,omitempty"`
-	DeferredBuiltinTools []ContextUsageEntry        `json:"deferred_builtin_tools,omitempty"`
-	SystemTools          []ContextUsageEntry        `json:"system_tools,omitempty"`
-	SystemPromptSections []ContextUsageEntry        `json:"system_prompt_sections,omitempty"`
-	SlashCommands        []ContextUsageSlashCommand `json:"slash_commands,omitempty"`
-	APIUsage             ContextUsageAPIUsage       `json:"api_usage,omitempty"`
-	Raw                  map[string]any             `json:"raw,omitempty"`
+	Categories           []ContextUsageCategory    `json:"categories,omitempty"`
+	TotalTokens          int                       `json:"totalTokens,omitempty"`
+	MaxTokens            int                       `json:"maxTokens,omitempty"`
+	RawMaxTokens         int                       `json:"rawMaxTokens,omitempty"`
+	Percentage           float64                   `json:"percentage,omitempty"`
+	Model                string                    `json:"model,omitempty"`
+	IsAutoCompactEnabled bool                      `json:"isAutoCompactEnabled,omitempty"`
+	MemoryFiles          []ContextUsageEntry       `json:"memoryFiles,omitempty"`
+	MCPTools             []ContextUsageEntry       `json:"mcpTools,omitempty"`
+	Agents               []ContextUsageEntry       `json:"agents,omitempty"`
+	GridRows             [][]ContextUsageGridCell  `json:"gridRows,omitempty"`
+	AutoCompactThreshold int                       `json:"autoCompactThreshold,omitempty"`
+	DeferredBuiltinTools []ContextUsageEntry       `json:"deferredBuiltinTools,omitempty"`
+	SystemTools          []ContextUsageEntry       `json:"systemTools,omitempty"`
+	SystemPromptSections []ContextUsageEntry       `json:"systemPromptSections,omitempty"`
+	SlashCommands        ContextUsageSlashCommands `json:"slashCommands,omitempty"`
+	APIUsage             ContextUsageAPIUsage      `json:"apiUsage,omitempty"`
+	Raw                  map[string]any            `json:"raw,omitempty"`
 }
 
 // RewindFilesResult 表示 Session.Control().RewindFiles 的结果。
 type RewindFilesResult struct {
-	CanRewind    bool           `json:"can_rewind,omitempty"`
+	CanRewind    bool           `json:"canRewind,omitempty"`
 	Error        string         `json:"error,omitempty"`
-	FilesChanged []string       `json:"files_changed,omitempty"`
+	FilesChanged []string       `json:"filesChanged,omitempty"`
 	Insertions   int            `json:"insertions,omitempty"`
 	Deletions    int            `json:"deletions,omitempty"`
 	Raw          map[string]any `json:"raw,omitempty"`
@@ -93,16 +92,16 @@ type RewindFilesResult struct {
 type SlashCommand struct {
 	Name         string         `json:"name,omitempty"`
 	Description  string         `json:"description,omitempty"`
-	ArgumentHint string         `json:"argument_hint,omitempty"`
+	ArgumentHint string         `json:"argumentHint,omitempty"`
 	Raw          map[string]any `json:"raw,omitempty"`
 }
 
 // ModelInfo 表示当前会话可选模型。
 type ModelInfo struct {
-	ID          string         `json:"id,omitempty"`
+	ID          string         `json:"value,omitempty"`
 	Name        string         `json:"name,omitempty"`
-	DisplayName string         `json:"display_name,omitempty"`
-	Vendor      string         `json:"vendor,omitempty"`
+	DisplayName string         `json:"displayName,omitempty"`
+	Vendor      string         `json:"description,omitempty"`
 	Raw         map[string]any `json:"raw,omitempty"`
 }
 
@@ -117,12 +116,12 @@ type AgentInfo struct {
 
 // AccountInfo 表示当前会话的账号快照。
 type AccountInfo struct {
-	APIProvider      string         `json:"api_provider,omitempty"`
-	APIKeySource     string         `json:"api_key_source,omitempty"`
+	APIProvider      string         `json:"apiProvider,omitempty"`
+	APIKeySource     string         `json:"apiKeySource,omitempty"`
 	Email            string         `json:"email,omitempty"`
 	Organization     string         `json:"organization,omitempty"`
-	SubscriptionType string         `json:"subscription_type,omitempty"`
-	TokenSource      string         `json:"token_source,omitempty"`
+	SubscriptionType string         `json:"subscriptionType,omitempty"`
+	TokenSource      string         `json:"tokenSource,omitempty"`
 	Raw              map[string]any `json:"raw,omitempty"`
 }
 
@@ -206,9 +205,6 @@ func slashCommandsFromRuntime(commands []runtimeinfo.SlashCommandInfo) []SlashCo
 		}
 		name := strings.TrimSpace(command.Name)
 		if name == "" {
-			name = jsonvalue.StringValue(command.Raw["command"])
-		}
-		if name == "" {
 			continue
 		}
 		result = append(result, SlashCommand{
@@ -255,12 +251,12 @@ func accountInfoFromRuntime(account runtimeinfo.AccountInfo) AccountInfo {
 		raw = map[string]any{}
 	}
 	return AccountInfo{
-		APIProvider:      jsonvalue.FirstNonEmptyString(raw["apiProvider"], raw["api_provider"]),
-		APIKeySource:     jsonvalue.FirstNonEmptyString(raw["apiKeySource"], raw["api_key_source"]),
-		Email:            jsonvalue.FirstNonEmptyString(raw["email"], raw["email_address"], account.EmailAddress),
-		Organization:     jsonvalue.FirstNonEmptyString(raw["organization"], raw["organization_name"], account.OrganizationName),
-		SubscriptionType: jsonvalue.FirstNonEmptyString(raw["subscriptionType"], raw["subscription_type"], raw["subscription"], raw["plan"], account.Plan),
-		TokenSource:      jsonvalue.FirstNonEmptyString(raw["tokenSource"], raw["token_source"]),
+		APIProvider:      account.APIProvider,
+		APIKeySource:     account.APIKeySource,
+		Email:            account.Email,
+		Organization:     account.Organization,
+		SubscriptionType: account.SubscriptionType,
+		TokenSource:      account.TokenSource,
 		Raw:              raw,
 	}
 }
@@ -303,7 +299,7 @@ func decodeAutoDreamResult(payload map[string]any) AutoDreamResult {
 		SessionsReviewed: jsonvalue.IntValue(payload["sessions_reviewed"]),
 		NextCheckAtMS:    nextCheckAtMS,
 		Summary:          jsonvalue.StringValue(payload["summary"]),
-		WrittenPaths:     jsonvalue.StringSliceValue(jsonvalue.FirstNonNil(payload["written_paths"], payload["writtenPaths"])),
+		WrittenPaths:     jsonvalue.StringSliceValue(payload["written_paths"]),
 		Raw:              raw,
 	}
 }
@@ -347,37 +343,37 @@ func decodeContextUsageResponse(payload map[string]any) ContextUsageResponse {
 			Name:       jsonvalue.StringValue(category["name"]),
 			Tokens:     jsonvalue.IntValue(category["tokens"]),
 			Color:      jsonvalue.StringValue(category["color"]),
-			IsDeferred: jsonvalue.BoolValue(category["is_deferred"]),
+			IsDeferred: jsonvalue.BoolValue(category["isDeferred"]),
 		})
 	}
 
 	return ContextUsageResponse{
 		Categories:           categories,
-		TotalTokens:          jsonvalue.IntValue(payload["total_tokens"]),
-		MaxTokens:            jsonvalue.IntValue(payload["max_tokens"]),
-		RawMaxTokens:         jsonvalue.IntValue(payload["raw_max_tokens"]),
+		TotalTokens:          jsonvalue.IntValue(payload["totalTokens"]),
+		MaxTokens:            jsonvalue.IntValue(payload["maxTokens"]),
+		RawMaxTokens:         jsonvalue.IntValue(payload["rawMaxTokens"]),
 		Percentage:           jsonvalue.FloatValue(payload["percentage"]),
 		Model:                jsonvalue.StringValue(payload["model"]),
-		IsAutoCompactEnabled: jsonvalue.BoolValue(payload["is_auto_compact_enabled"]),
-		MemoryFiles:          decodeContextUsageEntries(payload["memory_files"]),
-		MCPTools:             decodeContextUsageEntries(payload["mcp_tools"]),
+		IsAutoCompactEnabled: jsonvalue.BoolValue(payload["isAutoCompactEnabled"]),
+		MemoryFiles:          decodeContextUsageEntries(payload["memoryFiles"]),
+		MCPTools:             decodeContextUsageEntries(payload["mcpTools"]),
 		Agents:               decodeContextUsageEntries(payload["agents"]),
-		GridRows:             decodeContextUsageGridRows(payload["grid_rows"]),
-		AutoCompactThreshold: jsonvalue.IntValue(payload["auto_compact_threshold"]),
-		DeferredBuiltinTools: decodeContextUsageEntries(payload["deferred_builtin_tools"]),
-		SystemTools:          decodeContextUsageEntries(payload["system_tools"]),
-		SystemPromptSections: decodeContextUsageEntries(payload["system_prompt_sections"]),
-		SlashCommands:        decodeContextUsageSlashCommands(payload["slash_commands"]),
-		APIUsage:             decodeContextUsageAPIUsage(payload["api_usage"]),
+		GridRows:             decodeContextUsageGridRows(payload["gridRows"]),
+		AutoCompactThreshold: jsonvalue.IntValue(payload["autoCompactThreshold"]),
+		DeferredBuiltinTools: decodeContextUsageEntries(payload["deferredBuiltinTools"]),
+		SystemTools:          decodeContextUsageEntries(payload["systemTools"]),
+		SystemPromptSections: decodeContextUsageEntries(payload["systemPromptSections"]),
+		SlashCommands:        decodeContextUsageSlashCommands(payload["slashCommands"]),
+		APIUsage:             decodeContextUsageAPIUsage(payload["apiUsage"]),
 		Raw:                  payload,
 	}
 }
 
 func decodeRewindFilesResult(payload map[string]any) RewindFilesResult {
 	return RewindFilesResult{
-		CanRewind:    jsonvalue.BoolValue(payload["can_rewind"]),
+		CanRewind:    jsonvalue.BoolValue(payload["canRewind"]),
 		Error:        jsonvalue.StringValue(payload["error"]),
-		FilesChanged: jsonvalue.StringSliceValue(payload["files_changed"]),
+		FilesChanged: jsonvalue.StringSliceValue(payload["filesChanged"]),
 		Insertions:   jsonvalue.IntValue(payload["insertions"]),
 		Deletions:    jsonvalue.IntValue(payload["deletions"]),
 		Raw:          payload,
@@ -389,15 +385,15 @@ func decodeContextUsageEntries(raw any) []ContextUsageEntry {
 	result := make([]ContextUsageEntry, 0, len(items))
 	for _, item := range items {
 		result = append(result, ContextUsageEntry{
-			Name:        jsonvalue.FirstNonEmptyString(item["name"], item["label"]),
-			Path:        jsonvalue.FirstNonEmptyString(item["path"], item["file"]),
-			Description: jsonvalue.StringValue(item["description"]),
-			Type:        jsonvalue.StringValue(item["type"]),
-			Scope:       jsonvalue.StringValue(item["scope"]),
-			Tokens:      jsonvalue.IntValue(item["tokens"]),
-			Count:       jsonvalue.IntValue(item["count"]),
-			Percentage:  jsonvalue.FloatValue(item["percentage"]),
-			Raw:         item,
+			Name:       jsonvalue.StringValue(item["name"]),
+			Path:       jsonvalue.StringValue(item["path"]),
+			Type:       jsonvalue.StringValue(item["type"]),
+			ServerName: jsonvalue.StringValue(item["serverName"]),
+			IsLoaded:   jsonvalue.BoolValue(item["isLoaded"]),
+			AgentType:  jsonvalue.StringValue(item["agentType"]),
+			Source:     jsonvalue.StringValue(item["source"]),
+			Tokens:     jsonvalue.IntValue(item["tokens"]),
+			Raw:        item,
 		})
 	}
 	return result
@@ -415,13 +411,13 @@ func decodeContextUsageGridRows(raw any) [][]ContextUsageGridCell {
 				continue
 			}
 			row = append(row, ContextUsageGridCell{
-				Name:       jsonvalue.FirstNonEmptyString(cell["name"], cell["label"]),
-				Value:      jsonvalue.StringValue(cell["value"]),
-				Tokens:     jsonvalue.IntValue(cell["tokens"]),
-				Count:      jsonvalue.IntValue(cell["count"]),
-				Color:      jsonvalue.StringValue(cell["color"]),
-				Percentage: jsonvalue.FloatValue(cell["percentage"]),
-				Raw:        cell,
+				Color:          jsonvalue.StringValue(cell["color"]),
+				IsFilled:       jsonvalue.BoolValue(cell["isFilled"]),
+				CategoryName:   jsonvalue.StringValue(cell["categoryName"]),
+				Tokens:         jsonvalue.IntValue(cell["tokens"]),
+				Percentage:     jsonvalue.FloatValue(cell["percentage"]),
+				SquareFullness: jsonvalue.FloatValue(cell["squareFullness"]),
+				Raw:            cell,
 			})
 		}
 		result = append(result, row)
@@ -429,41 +425,14 @@ func decodeContextUsageGridRows(raw any) [][]ContextUsageGridCell {
 	return result
 }
 
-func decodeContextUsageSlashCommands(raw any) []ContextUsageSlashCommand {
-	objectValue := jsonvalue.MapValue(raw)
-	if len(objectValue) > 0 {
-		result := make([]ContextUsageSlashCommand, 0, len(objectValue))
-		for key, rawValue := range objectValue {
-			payload := jsonvalue.MapValue(rawValue)
-			if len(payload) == 0 {
-				payload = map[string]any{"name": key, "value": rawValue}
-			}
-			if payload["name"] == nil {
-				payload["name"] = key
-			}
-			result = append(result, ContextUsageSlashCommand{
-				Name:        jsonvalue.StringValue(payload["name"]),
-				Description: jsonvalue.StringValue(payload["description"]),
-				Tokens:      jsonvalue.IntValue(payload["tokens"]),
-				Count:       jsonvalue.IntValue(payload["count"]),
-				Raw:         payload,
-			})
-		}
-		return result
+func decodeContextUsageSlashCommands(raw any) ContextUsageSlashCommands {
+	payload := jsonvalue.MapValue(raw)
+	return ContextUsageSlashCommands{
+		TotalCommands:    jsonvalue.IntValue(payload["totalCommands"]),
+		IncludedCommands: jsonvalue.IntValue(payload["includedCommands"]),
+		Tokens:           jsonvalue.IntValue(payload["tokens"]),
+		Raw:              payload,
 	}
-
-	items := jsonvalue.MapSliceValue(raw)
-	result := make([]ContextUsageSlashCommand, 0, len(items))
-	for _, item := range items {
-		result = append(result, ContextUsageSlashCommand{
-			Name:        jsonvalue.FirstNonEmptyString(item["name"], item["command"]),
-			Description: jsonvalue.StringValue(item["description"]),
-			Tokens:      jsonvalue.IntValue(item["tokens"]),
-			Count:       jsonvalue.IntValue(item["count"]),
-			Raw:         item,
-		})
-	}
-	return result
 }
 
 func decodeContextUsageAPIUsage(raw any) ContextUsageAPIUsage {

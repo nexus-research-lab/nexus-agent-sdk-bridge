@@ -33,8 +33,8 @@ func TestOptionsTransportConfiguration(t *testing.T) {
 
 func TestOptionsDefaultRuntimeUsesNXSControlWire(t *testing.T) {
 	config := NewOptions().WithCLIPath("nxs").processConfig()
-	if config.ControlWireDialect != transport.ControlWireDialectSnake {
-		t.Fatalf("control wire dialect = %q, want snake", config.ControlWireDialect)
+	if config.ControlWireDialect != transport.ControlWireDialectNXS {
+		t.Fatalf("control wire dialect = %q, want nxs", config.ControlWireDialect)
 	}
 }
 
@@ -247,15 +247,22 @@ func TestProcessOptionsExposeOfficialCLIFlags(t *testing.T) {
 func TestSettingsObjectAndSandboxBecomeInlineSettings(t *testing.T) {
 	enabled := true
 	allowLocalBinding := true
+	allowAppleEvents := true
+	allowGitConfig := true
 	options := NewOptions().
 		WithCLIPath("nxs").
 		WithSettingsObject(map[string]any{
 			"model": "sonnet",
 		}).
 		WithSandbox(SandboxSettings{
-			Enabled: &enabled,
+			Enabled:          &enabled,
+			EnabledPlatforms: []string{"macos"},
+			AllowAppleEvents: &allowAppleEvents,
+			Filesystem:       &SandboxFilesystemConfig{AllowGitConfig: &allowGitConfig},
 			Network: &SandboxNetworkConfig{
+				DeniedDomains:     []string{"blocked.example"},
 				AllowLocalBinding: &allowLocalBinding,
+				AllowMachLookup:   []string{"com.example.service*"},
 			},
 			Extra: map[string]any{"mode": "strict"},
 		})
@@ -275,12 +282,22 @@ func TestSettingsObjectAndSandboxBecomeInlineSettings(t *testing.T) {
 	if sandbox["enabled"] != true {
 		t.Fatalf("sandbox.enabled = %#v", sandbox["enabled"])
 	}
+	if sandbox["allowAppleEvents"] != true {
+		t.Fatalf("sandbox.allowAppleEvents = %#v", sandbox["allowAppleEvents"])
+	}
+	filesystem, ok := sandbox["filesystem"].(map[string]any)
+	if !ok || filesystem["allowGitConfig"] != true {
+		t.Fatalf("sandbox.filesystem.allowGitConfig = %#v, want true", sandbox["filesystem"])
+	}
 	if sandbox["mode"] != "strict" {
 		t.Fatalf("sandbox.mode = %#v", sandbox["mode"])
 	}
 	network, ok := sandbox["network"].(map[string]any)
 	if !ok || network["allowLocalBinding"] != true {
 		t.Fatalf("sandbox.network = %#v", sandbox["network"])
+	}
+	if network["deniedDomains"] == nil || network["allowMachLookup"] == nil {
+		t.Fatalf("sandbox.network missing complete fields: %#v", network)
 	}
 }
 
@@ -301,6 +318,50 @@ func TestInlineSettingsMergeSandbox(t *testing.T) {
 	}
 	if _, ok := settings["sandbox"].(map[string]any); !ok {
 		t.Fatalf("settings.sandbox = %#v", settings["sandbox"])
+	}
+}
+
+func TestSandboxPreservesExplicitEmptyEnabledPlatforms(t *testing.T) {
+	options := NewOptions().
+		WithCLIPath("nxs").
+		WithSandbox(SandboxSettings{EnabledPlatforms: []string{}})
+
+	raw := argValue(t, options.processConfig().Args, "--settings")
+	var settings map[string]any
+	if err := json.Unmarshal([]byte(raw), &settings); err != nil {
+		t.Fatalf("settings JSON decode: %v\nraw=%s", err, raw)
+	}
+	sandboxSettings, ok := settings["sandbox"].(map[string]any)
+	if !ok {
+		t.Fatalf("settings.sandbox = %#v", settings["sandbox"])
+	}
+	platforms, exists := sandboxSettings["enabledPlatforms"]
+	if !exists {
+		t.Fatal("sandbox.enabledPlatforms explicit empty list was omitted")
+	}
+	if values, ok := platforms.([]any); !ok || len(values) != 0 {
+		t.Fatalf("sandbox.enabledPlatforms = %#v, want []", platforms)
+	}
+}
+
+func TestSandboxNetworkPreservesExplicitEmptyDomainLists(t *testing.T) {
+	data, err := json.Marshal(SandboxNetworkConfig{})
+	if err != nil {
+		t.Fatalf("marshal network config: %v", err)
+	}
+	var network map[string]any
+	if err := json.Unmarshal(data, &network); err != nil {
+		t.Fatalf("unmarshal network config: %v", err)
+	}
+	for _, key := range []string{"allowedDomains", "deniedDomains"} {
+		value, ok := network[key]
+		if !ok {
+			t.Fatalf("network.%s was omitted: %#v", key, network)
+		}
+		items, ok := value.([]any)
+		if !ok || len(items) != 0 {
+			t.Fatalf("network.%s = %#v, want []", key, value)
+		}
 	}
 }
 

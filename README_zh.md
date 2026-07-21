@@ -241,6 +241,12 @@ options := client.NewOptions().
 
 bridge 运行期不下载 `nxs`，不扫描 app root，不读取缓存，也不回退到 PATH。`NEXUS_NXS_COMMAND_PATH` 缺失或不可执行时，会直接作为启动配置错误返回。
 
+原生 `nxs` 与 Claude Code 直接使用同一条 control wire。bridge 不再维护
+第二份 snake_case 表示，也不保留 casing 兼容层；字段严格按 Claude Code
+真实 schema 保持混合命名。例如 MCP status 使用 `mcpServers`/`inputSchema`，
+工具参数仍按各工具契约使用 `file_path` 等名字；provider 请求 schema 属于
+另一条协议，不在这里改写。
+
 Claude Code 仍作为显式兼容 runtime 保留：
 
 ```go
@@ -273,6 +279,8 @@ client.NewOptions().
     WithAppendSystemPrompt("始终用中文回答。")
 ```
 
+需要控制 prompt cache 边界时，可使用 `WithAppendSystemPromptParts(static, dynamic)`，将稳定的 Room 规则与每轮动态上下文分开。`nxs` runtime 会携带两个字段；Claude Code process runtime 会将它们展平成一个追加提示词。
+
 ### 运行时设置
 
 inline settings、sandbox、debug、固定 session ID 和 resume 截断点都通过 `client.Options` 设置，并会转成 process bridge 参数：
@@ -287,6 +295,8 @@ client.NewOptions().
     WithSandbox(client.SandboxSettings{Enabled: &enabled}).
     WithDebugFile("/tmp/nexus-agent-sdk.log")
 ```
+
+`SandboxSettings` 会完整转发 runtime 策略合同，包括文件读写 carve-out、域名/Unix socket 白名单、平台开关、托管策略限制、Git 配置开关和 macOS IPC 权限；具体隔离仍由目标 runtime 在对应平台执行。
 
 接入 OpenAI Responses 时，bridge 刻意保持 provider-neutral：宿主通过
 `WithEnv` 传入 runtime 配置，Responses 请求与流协议、Azure URL 归一化和缓存

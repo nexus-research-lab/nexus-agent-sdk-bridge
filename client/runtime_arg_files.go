@@ -33,8 +33,10 @@ func materializeProcessArgFilesForOS(goos string, options *Options) error {
 	if err := cleanupRuntimeArgFiles(options.Env); err != nil {
 		return err
 	}
-	if options.System.Append != "" {
-		path, err := writeRuntimeArgFile(options.Env, "append-system-prompt", ".txt", []byte(options.System.Append))
+	if appendPrompt := combinedSystemAppendPrompt(options.System); appendPrompt != "" {
+		preservePromptParts := normalizedRuntimeKind(options.Runtime.Kind) == RuntimeNXS &&
+			(strings.TrimSpace(options.System.AppendStatic) != "" || strings.TrimSpace(options.System.AppendDynamic) != "")
+		path, err := writeRuntimeArgFile(options.Env, "append-system-prompt", ".txt", []byte(appendPrompt))
 		if err != nil {
 			return fmt.Errorf("write append system prompt arg file: %w", err)
 		}
@@ -42,7 +44,12 @@ func materializeProcessArgFilesForOS(goos string, options *Options) error {
 			options.ExtraArgs = map[string]string{}
 		}
 		options.ExtraArgs["append-system-prompt-file"] = path
-		options.System.Append = ""
+		// nxs 仍需通过 initialize control 接收分段字段；Claude 只能使用扁平文件。
+		if !preservePromptParts {
+			options.System.Append = ""
+			options.System.AppendStatic = ""
+			options.System.AppendDynamic = ""
+		}
 	}
 	if len(options.resolvedMCPServers()) > 0 && strings.TrimSpace(options.MCP.Config) == "" {
 		payload, sdkServers, err := mcpwire.MarshalConfig(options.resolvedMCPServers())

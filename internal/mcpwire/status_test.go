@@ -4,20 +4,20 @@ import "testing"
 
 func TestDecodeStatusResponse(t *testing.T) {
 	got := DecodeStatusResponse(map[string]any{
-		"mcp_servers": []any{
+		"mcpServers": []any{
 			map[string]any{
 				"name":   "github",
 				"status": "connected",
-				"server_info": map[string]any{
+				"serverInfo": map[string]any{
 					"name":    "github-mcp",
 					"version": "1.0.0",
 				},
 				"tools": []any{
 					map[string]any{
-						"name":         "search",
-						"description":  "Search repositories",
-						"input_schema": map[string]any{"type": "object"},
-						"annotations":  map[string]any{"read_only": true, "open_world_hint": true},
+						"name":        "search",
+						"description": "Search repositories",
+						"inputSchema": map[string]any{"type": "object"},
+						"annotations": map[string]any{"readOnly": true, "openWorldHint": true},
 					},
 				},
 			},

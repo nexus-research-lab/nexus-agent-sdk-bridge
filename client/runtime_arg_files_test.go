@@ -63,6 +63,39 @@ func TestMaterializeProcessArgFilesForWindowsUsesStableFileName(t *testing.T) {
 	}
 }
 
+func TestMaterializeProcessArgFilesForWindowsKeepsNXSSystemPromptParts(t *testing.T) {
+	restore := overrideRuntimeArgFilesRoot(t.TempDir())
+	defer restore()
+
+	options := NewOptions().
+		WithRuntime(RuntimeNXS).
+		WithCLIPath("nxs")
+	options.System.AppendStatic = "stable Room rules"
+	options.System.AppendDynamic = "dynamic turn context"
+	if err := materializeProcessArgFilesForOS("windows", &options); err != nil {
+		t.Fatalf("materializeProcessArgFilesForOS() error = %v", err)
+	}
+	if options.System.AppendStatic != "stable Room rules" || options.System.AppendDynamic != "dynamic turn context" {
+		t.Fatalf("nxs prompt parts = %#v, want parts preserved", options.System)
+	}
+	resolved, err := options.buildResolvedOptions(false)
+	if err != nil {
+		t.Fatalf("buildResolvedOptions() error = %v", err)
+	}
+	if resolved.AppendSystemPrompt != "" {
+		t.Fatalf("resolved append prompt = %q, want no inline duplicate", resolved.AppendSystemPrompt)
+	}
+	args := buildProcessTransportArgs(resolved)
+	if got := argValue(t, args, "--append-system-prompt-file"); got == "" {
+		t.Fatalf("args = %#v, want append-system-prompt-file", args)
+	}
+	for _, arg := range args {
+		if arg == "--append-system-prompt" {
+			t.Fatalf("args = %#v, want no inline append prompt", args)
+		}
+	}
+}
+
 func TestMaterializeProcessArgFilesForWindowsUsesMCPConfigFile(t *testing.T) {
 	restore := overrideRuntimeArgFilesRoot(t.TempDir())
 	defer restore()

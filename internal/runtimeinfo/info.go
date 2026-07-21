@@ -25,22 +25,22 @@ type SlashCommandInfo struct {
 	Name          string         `json:"name,omitempty"`
 	Type          string         `json:"type,omitempty"`
 	Description   string         `json:"description,omitempty"`
-	ArgumentHint  string         `json:"argument_hint,omitempty"`
-	AllowedTools  []string       `json:"allowed_tools,omitempty"`
+	ArgumentHint  string         `json:"argumentHint,omitempty"`
+	AllowedTools  []string       `json:"allowedTools,omitempty"`
 	Category      string         `json:"category,omitempty"`
 	Source        string         `json:"source,omitempty"`
-	LoadedFrom    string         `json:"loaded_from,omitempty"`
+	LoadedFrom    string         `json:"loadedFrom,omitempty"`
 	Kind          string         `json:"kind,omitempty"`
-	UserInvocable *bool          `json:"user_invocable,omitempty"`
+	UserInvocable *bool          `json:"userInvocable,omitempty"`
 	Raw           map[string]any `json:"raw,omitempty"`
 }
 
 // ModelInfo 表示初始化响应中的模型信息。
 type ModelInfo struct {
-	ID          string         `json:"id,omitempty"`
+	ID          string         `json:"value,omitempty"`
 	Name        string         `json:"name,omitempty"`
-	DisplayName string         `json:"display_name,omitempty"`
-	Vendor      string         `json:"vendor,omitempty"`
+	DisplayName string         `json:"displayName,omitempty"`
+	Vendor      string         `json:"description,omitempty"`
 	Raw         map[string]any `json:"raw,omitempty"`
 }
 
@@ -55,18 +55,20 @@ type AgentInfo struct {
 
 // AccountInfo 表示初始化响应中的账号信息。
 type AccountInfo struct {
-	EmailAddress       string         `json:"email_address,omitempty"`
-	OrganizationName   string         `json:"organization_name,omitempty"`
-	Plan               string         `json:"plan,omitempty"`
-	SubscriptionStatus string         `json:"subscription_status,omitempty"`
-	Raw                map[string]any `json:"raw,omitempty"`
+	Email            string         `json:"email,omitempty"`
+	Organization     string         `json:"organization,omitempty"`
+	SubscriptionType string         `json:"subscriptionType,omitempty"`
+	TokenSource      string         `json:"tokenSource,omitempty"`
+	APIKeySource     string         `json:"apiKeySource,omitempty"`
+	APIProvider      string         `json:"apiProvider,omitempty"`
+	Raw              map[string]any `json:"raw,omitempty"`
 }
 
 // DecodeInitializeResponse 解析初始化响应。
 func DecodeInitializeResponse(payload map[string]any) InitializeResponse {
 	return InitializeResponse{
-		SessionID:             jsonvalue.FirstNonEmptyString(payload["session_id"], payload["sessionId"]),
-		ProtocolCapabilities:  jsonvalue.StringSliceValue(jsonvalue.FirstNonNil(payload["protocol_capabilities"], payload["protocolCapabilities"])),
+		SessionID:             jsonvalue.StringValue(payload["session_id"]),
+		ProtocolCapabilities:  jsonvalue.StringSliceValue(payload["protocol_capabilities"]),
 		Commands:              decodeSlashCommands(payload["commands"]),
 		Agents:                decodeAgents(payload["agents"]),
 		OutputStyle:           jsonvalue.StringValue(payload["output_style"]),
@@ -83,16 +85,16 @@ func decodeSlashCommands(raw any) []SlashCommandInfo {
 	result := make([]SlashCommandInfo, 0, len(items))
 	for _, item := range items {
 		result = append(result, SlashCommandInfo{
-			Name:          jsonvalue.FirstNonEmptyString(item["name"], item["command"]),
-			Type:          jsonvalue.FirstNonEmptyString(item["type"], item["command_type"]),
+			Name:          jsonvalue.StringValue(item["name"]),
+			Type:          jsonvalue.StringValue(item["type"]),
 			Description:   jsonvalue.StringValue(item["description"]),
-			ArgumentHint:  jsonvalue.StringValue(item["argument_hint"]),
-			AllowedTools:  parseSlashCommandTools(item["allowed_tools"]),
+			ArgumentHint:  jsonvalue.StringValue(item["argumentHint"]),
+			AllowedTools:  parseSlashCommandTools(item["allowedTools"]),
 			Category:      jsonvalue.StringValue(item["category"]),
 			Source:        jsonvalue.StringValue(item["source"]),
-			LoadedFrom:    jsonvalue.StringValue(item["loaded_from"]),
+			LoadedFrom:    jsonvalue.StringValue(item["loadedFrom"]),
 			Kind:          jsonvalue.StringValue(item["kind"]),
-			UserInvocable: parseOptionalBool(item["user_invocable"]),
+			UserInvocable: parseOptionalBool(item["userInvocable"]),
 			Raw:           item,
 		})
 	}
@@ -197,11 +199,12 @@ func decodeModels(raw any) []ModelInfo {
 	items := jsonvalue.MapSliceValue(raw)
 	result := make([]ModelInfo, 0, len(items))
 	for _, item := range items {
+		value := jsonvalue.StringValue(item["value"])
 		result = append(result, ModelInfo{
-			ID:          jsonvalue.FirstNonEmptyString(item["id"], item["name"]),
-			Name:        jsonvalue.StringValue(item["name"]),
-			DisplayName: jsonvalue.StringValue(item["display_name"]),
-			Vendor:      jsonvalue.StringValue(item["vendor"]),
+			ID:          value,
+			Name:        value,
+			DisplayName: jsonvalue.StringValue(item["displayName"]),
+			Vendor:      jsonvalue.StringValue(item["description"]),
 			Raw:         item,
 		})
 	}
@@ -226,10 +229,12 @@ func decodeAgents(raw any) []AgentInfo {
 func decodeAccountInfo(raw any) AccountInfo {
 	item := jsonvalue.MapValue(raw)
 	return AccountInfo{
-		EmailAddress:       jsonvalue.FirstNonEmptyString(item["email"], item["email_address"]),
-		OrganizationName:   jsonvalue.StringValue(item["organization_name"]),
-		Plan:               jsonvalue.FirstNonEmptyString(item["plan"], item["subscription_plan"]),
-		SubscriptionStatus: jsonvalue.StringValue(item["subscription_status"]),
-		Raw:                item,
+		Email:            jsonvalue.StringValue(item["email"]),
+		Organization:     jsonvalue.StringValue(item["organization"]),
+		SubscriptionType: jsonvalue.StringValue(item["subscriptionType"]),
+		TokenSource:      jsonvalue.StringValue(item["tokenSource"]),
+		APIKeySource:     jsonvalue.StringValue(item["apiKeySource"]),
+		APIProvider:      jsonvalue.StringValue(item["apiProvider"]),
+		Raw:              item,
 	}
 }

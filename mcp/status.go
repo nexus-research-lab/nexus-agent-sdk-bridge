@@ -2,20 +2,20 @@ package mcp
 
 // ToolStatusAnnotations 表示 MCP status 中的工具注解。
 type ToolStatusAnnotations struct {
-	ReadOnlyHint    bool `json:"read_only_hint,omitempty"`
-	DestructiveHint bool `json:"destructive_hint,omitempty"`
-	IdempotentHint  bool `json:"idempotent_hint,omitempty"`
-	OpenWorldHint   bool `json:"open_world_hint,omitempty"`
-	ReadOnly        bool `json:"read_only,omitempty"`
+	ReadOnlyHint    bool `json:"readOnlyHint,omitempty"`
+	DestructiveHint bool `json:"destructiveHint,omitempty"`
+	IdempotentHint  bool `json:"idempotentHint,omitempty"`
+	OpenWorldHint   bool `json:"openWorldHint,omitempty"`
+	ReadOnly        bool `json:"readOnly,omitempty"`
 	Destructive     bool `json:"destructive,omitempty"`
-	OpenWorld       bool `json:"open_world,omitempty"`
+	OpenWorld       bool `json:"openWorld,omitempty"`
 }
 
 // ToolInfo 表示 MCP status 中的工具信息。
 type ToolInfo struct {
 	Name        string                 `json:"name,omitempty"`
 	Description string                 `json:"description,omitempty"`
-	InputSchema map[string]any         `json:"input_schema,omitempty"`
+	InputSchema map[string]any         `json:"inputSchema,omitempty"`
 	Meta        map[string]any         `json:"_meta,omitempty"`
 	Annotations *ToolStatusAnnotations `json:"annotations,omitempty"`
 }
@@ -30,7 +30,7 @@ type ServerInfo struct {
 type ServerStatus struct {
 	Name       string         `json:"name,omitempty"`
 	Status     string         `json:"status,omitempty"`
-	ServerInfo *ServerInfo    `json:"server_info,omitempty"`
+	ServerInfo *ServerInfo    `json:"serverInfo,omitempty"`
 	Error      string         `json:"error,omitempty"`
 	Config     map[string]any `json:"config,omitempty"`
 	Scope      string         `json:"scope,omitempty"`
@@ -40,7 +40,7 @@ type ServerStatus struct {
 
 // StatusResponse 表示 MCP 状态响应。
 type StatusResponse struct {
-	MCPServers []ServerStatus `json:"mcp_servers,omitempty"`
+	MCPServers []ServerStatus `json:"mcpServers,omitempty"`
 	Raw        map[string]any `json:"raw,omitempty"`
 }
 

@@ -579,6 +579,10 @@ func (o Options) buildResolvedOptions(strictMCP bool) (resolvedOptions, error) {
 		return resolvedOptions{}, err
 	}
 
+	appendSystemPrompt := combinedSystemAppendPrompt(o.System)
+	if _, materialized := o.ExtraArgs["append-system-prompt-file"]; materialized {
+		appendSystemPrompt = ""
+	}
 	return resolvedOptions{
 		RuntimeKind:                     o.Runtime.Kind,
 		CommandPath:                     o.CLIPath,
@@ -591,7 +595,7 @@ func (o Options) buildResolvedOptions(strictMCP bool) (resolvedOptions, error) {
 		SystemPrompt:                    o.System.Text,
 		SystemPromptFile:                o.System.File,
 		SystemPromptPreset:              systemPromptPreset,
-		AppendSystemPrompt:              o.System.Append,
+		AppendSystemPrompt:              appendSystemPrompt,
 		Tools:                           append([]string(nil), o.Tools.Available...),
 		ToolsPreset:                     toolsPreset,
 		AllowedTools:                    append([]string(nil), o.Tools.Allow...),

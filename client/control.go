@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/agent"
@@ -44,8 +45,8 @@ func decodePermissionRuleValues(raw any) []permission.RuleValue {
 			continue
 		}
 		values = append(values, permission.RuleValue{
-			ToolName:    jsonvalue.StringValue(payload["tool_name"]),
-			RuleContent: jsonvalue.StringValue(payload["rule_content"]),
+			ToolName:    jsonvalue.StringValue(payload["toolName"]),
+			RuleContent: jsonvalue.StringValue(payload["ruleContent"]),
 		})
 	}
 	return values
@@ -85,11 +86,11 @@ func (c *sessionCore) resolvePermissionRequest(ctx context.Context, request map[
 			updatedInput = permissionRequest.Input
 		}
 		response := map[string]any{
-			"behavior":      "allow",
-			"updated_input": updatedInput,
+			"behavior":     "allow",
+			"updatedInput": updatedInput,
 		}
 		if len(decision.UpdatedPermissions) > 0 {
-			response["updated_permissions"] = append([]permission.Update(nil), decision.UpdatedPermissions...)
+			response["updatedPermissions"] = append([]permission.Update(nil), decision.UpdatedPermissions...)
 		}
 		return response
 	}
@@ -195,8 +196,16 @@ func (c *sessionCore) buildInitializeRequest() protocol.ControlRequest {
 	if c.options.System.Text != "" {
 		request.SystemPrompt = c.options.System.Text
 	}
-	if c.options.System.Append != "" {
-		request.AppendSystemPrompt = c.options.System.Append
+	if appendPrompt := combinedSystemAppendPrompt(c.options.System); appendPrompt != "" {
+		request.AppendSystemPrompt = appendPrompt
+	}
+	if normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS {
+		if staticPrompt := strings.TrimSpace(c.options.System.AppendStatic); staticPrompt != "" {
+			request.AppendSystemPromptStatic = staticPrompt
+		}
+		if dynamicPrompt := strings.TrimSpace(c.options.System.AppendDynamic); dynamicPrompt != "" {
+			request.AppendSystemPromptDynamic = dynamicPrompt
+		}
 	}
 	if c.options.System.ExcludeDynamicSections != nil {
 		request.ExcludeDynamicSections = c.options.System.ExcludeDynamicSections
@@ -233,7 +242,7 @@ func (c *sessionCore) buildHookInitialization() map[string]any {
 			}
 
 			encoded := map[string]any{
-				"hook_callback_ids": callbackIDs,
+				"hookCallbackIds": callbackIDs,
 			}
 			if matcher.Matcher != "" {
 				encoded["matcher"] = matcher.Matcher

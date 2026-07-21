@@ -70,6 +70,32 @@ func TestBuildInitializeRequestAdvertisesHookResponseAckOnlyToNXS(t *testing.T) 
 	}
 }
 
+func TestBuildInitializeRequestCarriesPromptPartsOnlyToNXS(t *testing.T) {
+	nxsRequest := newSessionCore(Options{
+		System: SystemOptions{
+			AppendStatic:  "stable Room rules",
+			AppendDynamic: "dynamic Agent context",
+		},
+	}).buildInitializeRequest()
+	if nxsRequest.AppendSystemPromptStatic != "stable Room rules" || nxsRequest.AppendSystemPromptDynamic != "dynamic Agent context" {
+		t.Fatalf("nxs prompt parts = %#v, want stable/dynamic fields", nxsRequest)
+	}
+	if nxsRequest.AppendSystemPrompt != "stable Room rules\n\ndynamic Agent context" {
+		t.Fatalf("nxs compatibility prompt = %q, want flattened prompt", nxsRequest.AppendSystemPrompt)
+	}
+
+	claudeRequest := newSessionCore(Options{
+		Runtime: RuntimeOptions{Kind: RuntimeClaude},
+		System:  SystemOptions{AppendStatic: "stable Room rules", AppendDynamic: "dynamic Agent context"},
+	}).buildInitializeRequest()
+	if claudeRequest.AppendSystemPrompt != "stable Room rules\n\ndynamic Agent context" {
+		t.Fatalf("claude compatibility prompt = %q, want flattened prompt", claudeRequest.AppendSystemPrompt)
+	}
+	if claudeRequest.AppendSystemPromptStatic != "" || claudeRequest.AppendSystemPromptDynamic != "" {
+		t.Fatalf("claude prompt parts = %#v, want no nxs-only fields", claudeRequest)
+	}
+}
+
 func TestHookResponseAppliedAckInvokesCallbackExactlyOnce(t *testing.T) {
 	transport := newScriptedTransport()
 	core := newSessionCoreWithTransport(Options{}, transport)

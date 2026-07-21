@@ -9,24 +9,24 @@ import (
 func TestDecodeContextUsageResponse(t *testing.T) {
 	payload := map[string]any{
 		"categories": []any{
-			map[string]any{"name": "system", "tokens": 120, "color": "blue", "is_deferred": true},
+			map[string]any{"name": "system", "tokens": 120, "color": "blue", "isDeferred": true},
 		},
-		"total_tokens":            500,
-		"max_tokens":              1000,
-		"raw_max_tokens":          1200,
-		"percentage":              50.5,
-		"model":                   "model-a",
-		"is_auto_compact_enabled": true,
-		"memory_files": []any{
-			map[string]any{"label": "memory", "file": "summary.md", "tokens": 42},
+		"totalTokens":          500,
+		"maxTokens":            1000,
+		"rawMaxTokens":         1200,
+		"percentage":           50.5,
+		"model":                "model-a",
+		"isAutoCompactEnabled": true,
+		"memoryFiles": []any{
+			map[string]any{"path": "summary.md", "type": "User", "tokens": 42},
 		},
-		"grid_rows": []any{
-			[]any{map[string]any{"label": "row", "value": "value", "tokens": 7}},
+		"gridRows": []any{
+			[]any{map[string]any{"categoryName": "system", "isFilled": true, "color": "blue", "tokens": 7}},
 		},
-		"slash_commands": map[string]any{
-			"plan": map[string]any{"description": "plan work", "tokens": 8},
+		"slashCommands": map[string]any{
+			"totalCommands": 4, "includedCommands": 2, "tokens": 8,
 		},
-		"api_usage": map[string]any{
+		"apiUsage": map[string]any{
 			"input_tokens":                10,
 			"output_tokens":               11,
 			"cache_creation_input_tokens": 12,
@@ -41,13 +41,13 @@ func TestDecodeContextUsageResponse(t *testing.T) {
 	if len(got.Categories) != 1 || got.Categories[0].Name != "system" || !got.Categories[0].IsDeferred {
 		t.Fatalf("categories = %#v", got.Categories)
 	}
-	if len(got.MemoryFiles) != 1 || got.MemoryFiles[0].Name != "memory" || got.MemoryFiles[0].Path != "summary.md" {
+	if len(got.MemoryFiles) != 1 || got.MemoryFiles[0].Path != "summary.md" || got.MemoryFiles[0].Type != "User" {
 		t.Fatalf("memory files = %#v", got.MemoryFiles)
 	}
-	if len(got.GridRows) != 1 || len(got.GridRows[0]) != 1 || got.GridRows[0][0].Name != "row" {
+	if len(got.GridRows) != 1 || len(got.GridRows[0]) != 1 || got.GridRows[0][0].CategoryName != "system" {
 		t.Fatalf("grid rows = %#v", got.GridRows)
 	}
-	if len(got.SlashCommands) != 1 || got.SlashCommands[0].Name != "plan" {
+	if got.SlashCommands.TotalCommands != 4 || got.SlashCommands.IncludedCommands != 2 {
 		t.Fatalf("slash commands = %#v", got.SlashCommands)
 	}
 	if got.APIUsage.CacheReadInputTokens != 13 {
@@ -60,10 +60,10 @@ func TestDecodeContextUsageResponse(t *testing.T) {
 
 func TestDecodeRewindFilesResult(t *testing.T) {
 	got := decodeRewindFilesResult(map[string]any{
-		"can_rewind":    true,
-		"files_changed": []any{"a.go", "b.go"},
-		"insertions":    3,
-		"deletions":     4,
+		"canRewind":    true,
+		"filesChanged": []any{"a.go", "b.go"},
+		"insertions":   3,
+		"deletions":    4,
 	})
 
 	if !got.CanRewind || got.Insertions != 3 || got.Deletions != 4 {
@@ -77,9 +77,9 @@ func TestDecodeRewindFilesResult(t *testing.T) {
 func TestDecodeSettingsResponse(t *testing.T) {
 	got := decodeSettingsResponse(map[string]any{
 		"effective": map[string]any{
-			"model":               "glm-5.1",
-			"permission_mode":     "acceptEdits",
-			"max_thinking_tokens": 512,
+			"model":             "glm-5.1",
+			"permissionMode":    "acceptEdits",
+			"maxThinkingTokens": 512,
 		},
 		"sources": []any{
 			map[string]any{
@@ -93,7 +93,7 @@ func TestDecodeSettingsResponse(t *testing.T) {
 		},
 	})
 
-	if got.Effective["model"] != "glm-5.1" || got.Effective["permission_mode"] != "acceptEdits" {
+	if got.Effective["model"] != "glm-5.1" || got.Effective["permissionMode"] != "acceptEdits" {
 		t.Fatalf("effective = %#v, want decoded settings", got.Effective)
 	}
 	if len(got.Sources) != 1 || got.Sources[0].Source != "project" || got.Sources[0].Settings["theme"] != "compact" {
@@ -143,13 +143,12 @@ func TestInitializationResultFromRuntimeFiltersAndMapsPublicSnapshot(t *testing.
 			{ID: "glm-5.1", Name: "glm-5.1", DisplayName: "GLM 5.1", Vendor: "zhipu"},
 		},
 		Account: runtimeinfo.AccountInfo{
-			EmailAddress:     "dev@example.com",
-			OrganizationName: "Nexus",
-			Plan:             "pro",
-			Raw: map[string]any{
-				"api_provider": "anthropic",
-				"token_source": "oauth",
-			},
+			Email:            "dev@example.com",
+			Organization:     "Nexus",
+			SubscriptionType: "pro",
+			APIProvider:      "anthropic",
+			TokenSource:      "oauth",
+			Raw:              map[string]any{"apiProvider": "anthropic", "tokenSource": "oauth"},
 		},
 		OutputStyle:           "default",
 		AvailableOutputStyles: []string{"default"},
