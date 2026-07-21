@@ -179,6 +179,26 @@ func TestBuildEnvironmentUsesRuntimeEntrypointEnv(t *testing.T) {
 	}
 }
 
+// TestBuildEnvironmentPreservesResponsesOverrides 验证进程边界不会丢失 Responses 与 Azure 配置。
+func TestBuildEnvironmentPreservesResponsesOverrides(t *testing.T) {
+	want := map[string]string{
+		"NEXUS_API_PROVIDER":             "openai",
+		"NEXUS_OPENAI_PROTOCOL":          "responses",
+		"NEXUS_OPENAI_PROMPT_CACHE":      "1",
+		"NEXUS_OPENAI_PROMPT_CACHE_MODE": "explicit",
+		"NEXUS_OPENAI_PROMPT_CACHE_TTL":  "30m",
+		"OPENAI_BASE_URL":                "https://sample.openai.azure.com/openai/",
+		"OPENAI_API_KEY":                 "test-key",
+		"OPENAI_MODEL":                   "gpt-test",
+	}
+	environment := buildEnvironment(want, "", ControlWireDialectSnake)
+	for key, value := range want {
+		if got := envValue(environment, key); got != value {
+			t.Fatalf("%s = %q, want %q", key, got, value)
+		}
+	}
+}
+
 func envValue(environment []string, key string) string {
 	prefix := key + "="
 	for _, entry := range environment {

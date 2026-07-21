@@ -281,6 +281,37 @@ client.NewOptions().
     WithDebugFile("/tmp/nexus-agent-sdk.log")
 ```
 
+For OpenAI Responses, the bridge is intentionally provider-neutral. Pass the
+runtime configuration through `WithEnv`; the native `nxs` runtime owns the
+Responses request and stream protocol, Azure URL normalization, and cache
+accounting:
+
+```go
+options := client.NewOptions().
+    WithRuntime(client.RuntimeNXS).
+    WithCLIPath("/path/to/nxs").
+    WithEnv(map[string]string{
+        "NEXUS_API_PROVIDER":    "openai",
+        "NEXUS_OPENAI_PROTOCOL": "responses",
+        "NEXUS_OPENAI_PROMPT_CACHE":      "1",
+        "NEXUS_OPENAI_PROMPT_CACHE_MODE": "explicit",
+        "NEXUS_OPENAI_PROMPT_CACHE_TTL":  "30m",
+        "OPENAI_BASE_URL":       "https://example.openai.azure.com/openai/",
+        "OPENAI_API_KEY":        os.Getenv("OPENAI_API_KEY"),
+        "OPENAI_MODEL":          "gpt-5.6",
+    })
+```
+
+These variables are preserved on initial process launch. For an active native
+`nxs` session, `Session.Reconfigure` sends only changed values through
+`update_environment_variables`, so switching between Chat Completions and
+Responses rebuilds the runtime provider without restarting the process. A
+Claude Code runtime still requires process replacement for environment changes.
+The bridge does not translate `/responses` payloads or cache headers itself.
+Prompt-cache variables are opaque bridge environment values; model/version
+validation, breakpoint placement, and legacy-retention exclusivity belong to
+`nxs`.
+
 ### Custom Tools
 
 Define tools in Go via the `tools` package. Registered tools are exposed as MCP tools for the agent to call:
@@ -404,6 +435,10 @@ session.MCP().SetServers(ctx, newServerConfig)
 session.MCP().Status(ctx)
 ```
 
+Hosts normally use `Session.Reconfigure` when applying a complete new option
+snapshot. `Session.Control().UpdateEnvironment` is available for an explicit
+native-runtime environment delta.
+
 ## Callbacks
 
 Wire up callbacks via `client.Options` to participate in the agent's decision-making process:
@@ -442,4 +477,12 @@ Session transcripts are stored under `~/.nexus/projects/` by default.
 
 ```bash
 go test ./...
+```
+
+To verify the full bridge process and control path against a locally built nxs
+without contacting a remote model service:
+
+```bash
+NEXUS_TEST_NXS_RESPONSES_COMMAND=/absolute/path/to/nxs-responses \
+  go test ./client -run TestNXSResponsesProtocolHotReconfigure -count=1 -v
 ```

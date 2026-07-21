@@ -86,6 +86,30 @@ func TestOptionsWithRuntimeNXSInjectsDefaultEnv(t *testing.T) {
 	}
 }
 
+// TestOptionsWithRuntimeNXSPreservesResponsesEnv 验证 bridge 不解释但完整透传 Responses provider 配置。
+func TestOptionsWithRuntimeNXSPreservesResponsesEnv(t *testing.T) {
+	want := map[string]string{
+		"NEXUS_API_PROVIDER":             "openai",
+		"NEXUS_OPENAI_PROTOCOL":          "responses",
+		"NEXUS_OPENAI_PROMPT_CACHE":      "1",
+		"NEXUS_OPENAI_PROMPT_CACHE_MODE": "explicit",
+		"NEXUS_OPENAI_PROMPT_CACHE_TTL":  "30m",
+		"OPENAI_BASE_URL":                "https://sample.openai.azure.com/openai/",
+		"OPENAI_API_KEY":                 "test-key",
+		"OPENAI_MODEL":                   "gpt-test",
+	}
+	config := NewOptions().
+		WithRuntime(RuntimeNXS).
+		WithCLIPath("nxs").
+		WithEnv(want).
+		processConfig()
+	for key, value := range want {
+		if config.Env[key] != value {
+			t.Fatalf("%s = %q, want %q", key, config.Env[key], value)
+		}
+	}
+}
+
 func TestRuntimeNXSCacheOptInDefaultsMatchClaude(t *testing.T) {
 	claudeConfig := NewOptions().WithRuntime(RuntimeClaude).WithCLIPath("claude").processConfig()
 	nxsConfig := NewOptions().WithRuntime(RuntimeNXS).WithCLIPath("nxs").processConfig()
