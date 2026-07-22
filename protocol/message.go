@@ -889,6 +889,7 @@ type ResultMessage struct {
 	PermissionDenials []PermissionDenial `json:"permission_denials,omitempty"`
 	Errors            []string           `json:"errors,omitempty"`
 	StructuredOutput  any                `json:"structured_output,omitempty"`
+	FastModeState     string             `json:"fast_mode_state,omitempty"`
 	Additional        map[string]any     `json:"additional,omitempty"`
 }
 
@@ -908,6 +909,7 @@ func decodeResultMessage(payload map[string]any) *ResultMessage {
 		PermissionDenials: decodePermissionDenials(payload["permission_denials"]),
 		Errors:            jsonvalue.StringSliceValue(payload["errors"]),
 		StructuredOutput:  payload["structured_output"],
+		FastModeState:     jsonvalue.StringValue(payload["fast_mode_state"]),
 		Additional:        payload,
 	}
 }

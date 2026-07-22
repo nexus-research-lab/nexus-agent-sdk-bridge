@@ -90,6 +90,7 @@ func TestParseResultMessage(t *testing.T) {
 		"result":"done",
 		"terminal_reason":"completed",
 		"total_cost_usd":1.25,
+		"fast_mode_state":"on",
 		"model_usage":{"nexus-sonnet":{"input_tokens":10,"output_tokens":20}},
 		"permission_denials":[{"tool_name":"Bash","tool_use_id":"tool-1","tool_input":{"command":"rm -rf /"}}]
 	}`))
@@ -107,6 +108,9 @@ func TestParseResultMessage(t *testing.T) {
 	}
 	if resultMessage.Result.TotalCostUSD != 1.25 {
 		t.Fatalf("total cost = %v, want 1.25", resultMessage.Result.TotalCostUSD)
+	}
+	if resultMessage.Result.FastModeState != "on" {
+		t.Fatalf("fast mode state = %q, want on", resultMessage.Result.FastModeState)
 	}
 	modelUsage := resultMessage.Result.ModelUsage["nexus-sonnet"].(map[string]any)
 	if got := modelUsage["input_tokens"]; got != float64(10) {

@@ -7,6 +7,7 @@ All notable changes to this project are documented in this file.
 ### Changed
 
 - Restart active nxs and Claude sessions when their Skill allowlist, setting sources, or additional discovery roots change, so Agent Skill installation takes effect without retaining stale runtime configuration.
+- Exposed the terminal runtime fast-mode state on parsed result messages for host-side projection.
 - Added stable and dynamic system-prompt append fields to the `nxs` initialize wire while flattening them for Claude Code process runtimes.
 
 ## [0.1.20] - 2026-07-19
