@@ -61,6 +61,23 @@ if err != nil {
 fmt.Println(result.Result)
 ```
 
+### Skill
+
+宿主可以只维护一份 Skill 资源根，并为每个会话指定名称白名单：
+
+```go
+options := client.NewOptions().
+    WithAdditionalDirectories("/opt/nexus/platform-skills").
+    WithSkills("imagegen", "ima-skill")
+```
+
+Claude adapter 会把资源根映射为 `--add-dir`，并通过 stream-json initialize
+的 `skills` 字段传递选择结果；同时保留 `Skill(name)` allow rule 作为 CLI
+权限兼容层。`--allowedTools` 只控制免确认执行，不负责 Skill 发现过滤。nxs
+adapter 则通过 initialize 合同传递同一目录和选择结果。已连接会话的 Skill
+白名单、setting source 或发现根发生变化时，`Reconfigure` 返回
+`ErrRestartRequired`，由宿主替换旧 runtime 进程。
+
 ### 运行时原语
 
 宿主可以给出站消息附加通用元数据，不影响普通 `Send` 行为：

@@ -86,6 +86,28 @@ func TestOptionsFingerprintChangesWhenRestartSensitiveOptionsChange(t *testing.T
 	}
 }
 
+func TestOptionsFingerprintChangesWhenSkillConfigChanges(t *testing.T) {
+	current, err := NewOptions().
+		WithCLIPath("nxs").
+		WithSkills("imagegen").
+		WithAdditionalDirectories("/tmp/platform-skills").
+		OptionsFingerprint()
+	if err != nil {
+		t.Fatalf("current fingerprint: %v", err)
+	}
+	next, err := NewOptions().
+		WithCLIPath("nxs").
+		WithSkills("imagegen", "ima-skill").
+		WithAdditionalDirectories("/tmp/platform-skills").
+		OptionsFingerprint()
+	if err != nil {
+		t.Fatalf("next fingerprint: %v", err)
+	}
+	if current.RestartSensitive == next.RestartSensitive {
+		t.Fatal("skill config should change restart-sensitive fingerprint")
+	}
+}
+
 func TestRuntimeLaunchSnapshotDirectConnectRedactsToken(t *testing.T) {
 	snapshot, err := NewOptions().
 		WithDirectConnect(DirectConnectOptions{

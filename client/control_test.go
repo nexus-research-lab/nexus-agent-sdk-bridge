@@ -70,6 +70,33 @@ func TestBuildInitializeRequestAdvertisesHookResponseAckOnlyToNXS(t *testing.T) 
 	}
 }
 
+func TestBuildInitializeRequestCarriesSelectedSkills(t *testing.T) {
+	request := newSessionCore(NewOptions().WithSkills("imagegen", "ima-skill")).buildInitializeRequest()
+	if request.Skills == nil {
+		t.Fatal("selected Skill filter should be present in initialize request")
+	}
+	if len(*request.Skills) != 2 || (*request.Skills)[0] != "imagegen" || (*request.Skills)[1] != "ima-skill" {
+		t.Fatalf("initialize skills = %#v, want selected names", request.Skills)
+	}
+}
+
+func TestBuildInitializeRequestSendsEmptySkillFilterWhenDisabled(t *testing.T) {
+	request := newSessionCore(NewOptions().WithoutSkills()).buildInitializeRequest()
+	if request.Skills == nil {
+		t.Fatal("disabled Skill filter should be present as an empty list")
+	}
+	if len(*request.Skills) != 0 {
+		t.Fatalf("initialize skills = %#v, want empty list", request.Skills)
+	}
+}
+
+func TestBuildInitializeRequestOmitsSkillFilterForAll(t *testing.T) {
+	request := newSessionCore(NewOptions().WithAllSkills()).buildInitializeRequest()
+	if request.Skills != nil {
+		t.Fatalf("initialize skills = %#v, want omitted for all", request.Skills)
+	}
+}
+
 func TestBuildInitializeRequestCarriesPromptPartsOnlyToNXS(t *testing.T) {
 	nxsRequest := newSessionCore(Options{
 		System: SystemOptions{

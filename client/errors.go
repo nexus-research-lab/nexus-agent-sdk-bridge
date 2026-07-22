@@ -33,6 +33,8 @@ const (
 	RestartReasonProcessEnvChanged RestartReason = "process_env_changed"
 	// RestartReasonToolPolicyChanged 表示启动期工具策略变化。
 	RestartReasonToolPolicyChanged RestartReason = "tool_policy_changed"
+	// RestartReasonSkillConfigChanged 表示 Skill 白名单或发现目录变化。
+	RestartReasonSkillConfigChanged RestartReason = "skill_config_changed"
 	// RestartReasonMCPControlUnsupported 表示当前 runtime 不支持 MCP 热更新控制面。
 	RestartReasonMCPControlUnsupported RestartReason = "mcp_control_unsupported"
 )

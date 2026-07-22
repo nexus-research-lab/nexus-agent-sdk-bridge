@@ -120,6 +120,11 @@ func fingerprintResolvedOptions(o resolvedOptions) OptionsFingerprint {
 		"allowed_tools":    o.AllowedTools,
 		"disallowed_tools": o.DisallowedTools,
 	})
+	skillConfig := digestValue(map[string]any{
+		"skills":                 o.Skills,
+		"setting_sources":        o.SettingSources,
+		"additional_directories": o.AdditionalDirectories,
+	})
 	mcpServers := digestValue(o.MCPSerialized)
 	runtimeControls := digestValue(map[string]any{
 		"permission_mode":      string(o.PermissionMode),
@@ -130,8 +135,9 @@ func fingerprintResolvedOptions(o resolvedOptions) OptionsFingerprint {
 	})
 	launch := digestValue(runtimeLaunchFingerprintPayload(o))
 	restartSensitive := digestValue(map[string]any{
-		"process_env": processEnv,
-		"tool_policy": toolPolicy,
+		"process_env":  processEnv,
+		"tool_policy":  toolPolicy,
+		"skill_config": skillConfig,
 	})
 	full := digestValue(map[string]any{
 		"launch":            launch,

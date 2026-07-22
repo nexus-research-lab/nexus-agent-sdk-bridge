@@ -42,6 +42,35 @@ func TestMaterializeProcessArgFilesForWindowsMovesAppendPromptToFile(t *testing.
 	}
 }
 
+func TestClaudeTransportReceivesSelectedSkillAndAdditionalRoot(t *testing.T) {
+	root := filepath.Join(t.TempDir(), "platform-skills")
+	options := NewOptions().
+		WithRuntime(RuntimeClaude).
+		WithCLIPath("claude").
+		WithSkills("ima-skill").
+		WithAdditionalDirectories(root)
+	resolved, err := options.buildResolvedOptions(false)
+	if err != nil {
+		t.Fatalf("buildResolvedOptions() error = %v", err)
+	}
+	args := buildProcessTransportArgs(resolved)
+	if !containsArgPair(args, "--allowedTools", "Skill(ima-skill)") {
+		t.Fatalf("Claude args = %#v, want selected Skill allow rule", args)
+	}
+	if !containsArgPair(args, "--add-dir", root) {
+		t.Fatalf("Claude args = %#v, want platform Skill additional root", args)
+	}
+}
+
+func containsArgPair(args []string, key string, value string) bool {
+	for index := 0; index+1 < len(args); index++ {
+		if args[index] == key && args[index+1] == value {
+			return true
+		}
+	}
+	return false
+}
+
 func TestMaterializeProcessArgFilesForWindowsUsesStableFileName(t *testing.T) {
 	restore := overrideRuntimeArgFilesRoot(t.TempDir())
 	defer restore()

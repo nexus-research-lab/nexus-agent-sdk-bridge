@@ -53,6 +53,11 @@ func restartReasonForReconfigure(currentOptions Options, nextOptions Options) (R
 		!reflect.DeepEqual(currentOptions.Tools.Deny, nextOptions.Tools.Deny) {
 		return RestartReasonToolPolicyChanged, true
 	}
+	if !reflect.DeepEqual(currentOptions.Skills, nextOptions.Skills) ||
+		!reflect.DeepEqual(currentOptions.AdditionalDirectories, nextOptions.AdditionalDirectories) ||
+		!reflect.DeepEqual(currentOptions.SettingSources, nextOptions.SettingSources) {
+		return RestartReasonSkillConfigChanged, true
+	}
 	return "", false
 }
 

@@ -61,6 +61,26 @@ if err != nil {
 fmt.Println(result.Result)
 ```
 
+### Skills
+
+Hosts can keep Skill files in one shared resource root and select a per-session
+allowlist:
+
+```go
+options := client.NewOptions().
+    WithAdditionalDirectories("/opt/nexus/platform-skills").
+    WithSkills("imagegen", "ima-skill")
+```
+
+The Claude adapter maps the root to `--add-dir` and sends the selected names in
+the stream-json initialize `skills` field. It also emits `Skill(name)` allow
+rules for CLI permission compatibility; `--allowedTools` controls approval and
+is not the Skill discovery filter. The nxs adapter forwards the same directory
+and selection through its initialize contract. Reconfiguring a connected
+session with a different Skill allowlist, setting source, or discovery root
+returns `ErrRestartRequired`, allowing the host to replace the stale runtime
+process.
+
 ### Streaming Output
 
 Use `stream.Recv()` to read messages one by one and handle text, tool calls, and other content in real time:

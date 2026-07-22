@@ -81,6 +81,37 @@ func TestRestartReasonForReconfigureDetectsToolPolicyChange(t *testing.T) {
 	}
 }
 
+func TestRestartReasonForReconfigureDetectsSkillConfigChange(t *testing.T) {
+	currentOptions, err := NewOptions().
+		WithCLIPath("nxs").
+		WithSkills("imagegen").
+		WithAdditionalDirectories("/tmp/platform-skills").
+		normalized()
+	if err != nil {
+		t.Fatalf("normalize current options: %v", err)
+	}
+	nextOptions, err := currentOptions.WithSkills("imagegen", "ima-skill").normalized()
+	if err != nil {
+		t.Fatalf("normalize next options: %v", err)
+	}
+
+	reason, ok := restartReasonForReconfigure(currentOptions, nextOptions)
+	if !ok || reason != RestartReasonSkillConfigChanged {
+		t.Fatalf("restart reason = %q, %v; want skill config changed", reason, ok)
+	}
+
+	nextOptions, err = currentOptions.
+		WithAdditionalDirectories("/tmp/platform-skills-v2").
+		normalized()
+	if err != nil {
+		t.Fatalf("normalize directory options: %v", err)
+	}
+	reason, ok = restartReasonForReconfigure(currentOptions, nextOptions)
+	if !ok || reason != RestartReasonSkillConfigChanged {
+		t.Fatalf("directory restart reason = %q, %v; want skill config changed", reason, ok)
+	}
+}
+
 func TestReconfigureAppliesRuntimeControls(t *testing.T) {
 	transport := newScriptedTransport()
 	core := newSessionCoreWithTransport(
