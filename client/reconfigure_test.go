@@ -65,6 +65,68 @@ func TestRestartReasonForReconfigureAllowsNXSProcessEnvChange(t *testing.T) {
 	}
 }
 
+// TestReconfigureNXSUpdatesResponsesEnvironment 验证协议切换通过 nxs control wire 热更新而非重启。
+func TestReconfigureNXSUpdatesResponsesEnvironment(t *testing.T) {
+	transport := newScriptedTransport()
+	currentEnv := map[string]string{
+		"NEXUS_API_PROVIDER":    "openai",
+		"NEXUS_OPENAI_PROTOCOL": "chat_completions",
+		"OPENAI_BASE_URL":       "https://provider.example.test/v1",
+		"OPENAI_API_KEY":        "test-key",
+		"OPENAI_MODEL":          "gpt-test",
+	}
+	core := newSessionCoreWithTransport(Options{
+		Transport: transport,
+		Runtime: RuntimeOptions{
+			Kind:              RuntimeNXS,
+			InitializeTimeout: time.Second,
+		},
+		Env: currentEnv,
+	}, transport)
+
+	connectDone := make(chan error, 1)
+	go func() { connectDone <- core.Connect(context.Background()) }()
+	assertInitializeRequest(t, receiveWrite(t, transport))
+	transport.pushRead(successfulInitializeResponse(map[string]any{"session_id": "session-1"}))
+	if err := receiveDone(t, connectDone); err != nil {
+		t.Fatalf("Connect() error = %v", err)
+	}
+	defer func() { _ = core.Disconnect(context.Background()) }()
+
+	nextEnv := map[string]string{}
+	for key, value := range currentEnv {
+		nextEnv[key] = value
+	}
+	nextEnv["NEXUS_OPENAI_PROTOCOL"] = "responses"
+	reconfigureDone := make(chan error, 1)
+	go func() {
+		reconfigureDone <- core.reconfigure(context.Background(), NewOptions().
+			WithTransport(transport).
+			WithRuntime(RuntimeNXS).
+			WithEnv(nextEnv))
+	}()
+	payload := receiveWrite(t, transport)
+	assertControlRequest(t, payload, "update_environment_variables")
+	request := payload["request"].(map[string]any)
+	variables, ok := request["variables"].(map[string]any)
+	if !ok || len(variables) != 1 || variables["NEXUS_OPENAI_PROTOCOL"] != "responses" {
+		t.Fatalf("environment delta = %#v, want protocol-only update", request["variables"])
+	}
+	requestID, _ := payload["request_id"].(string)
+	transport.pushRead(map[string]any{
+		"type": "control_response",
+		"response": map[string]any{
+			"subtype": "success", "request_id": requestID,
+		},
+	})
+	if err := receiveDone(t, reconfigureDone); err != nil {
+		t.Fatalf("reconfigure() error = %v", err)
+	}
+	if core.options.Env["NEXUS_OPENAI_PROTOCOL"] != "responses" {
+		t.Fatalf("updated env = %#v", core.options.Env)
+	}
+}
+
 func TestRestartReasonForReconfigureDetectsToolPolicyChange(t *testing.T) {
 	currentOptions, err := NewOptions().WithCLIPath("nxs").WithAllowedTools("Read", "create_goal").normalized()
 	if err != nil {

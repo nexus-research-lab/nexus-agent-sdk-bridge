@@ -315,6 +315,34 @@ client.NewOptions().
 
 `SandboxSettings` 会完整转发 runtime 策略合同，包括文件读写 carve-out、域名/Unix socket 白名单、平台开关、托管策略限制、Git 配置开关和 macOS IPC 权限；具体隔离仍由目标 runtime 在对应平台执行。
 
+接入 OpenAI Responses 时，bridge 刻意保持 provider-neutral：宿主通过
+`WithEnv` 传入 runtime 配置，Responses 请求与流协议、Azure URL 归一化和缓存
+计量均由原生 `nxs` runtime 负责：
+
+```go
+options := client.NewOptions().
+    WithRuntime(client.RuntimeNXS).
+    WithCLIPath("/path/to/nxs").
+    WithEnv(map[string]string{
+        "NEXUS_API_PROVIDER":    "openai",
+        "NEXUS_OPENAI_PROTOCOL": "responses",
+        "NEXUS_OPENAI_PROMPT_CACHE":      "1",
+        "NEXUS_OPENAI_PROMPT_CACHE_MODE": "explicit",
+        "NEXUS_OPENAI_PROMPT_CACHE_TTL":  "30m",
+        "OPENAI_BASE_URL":       "https://example.openai.azure.com/openai/",
+        "OPENAI_API_KEY":        os.Getenv("OPENAI_API_KEY"),
+        "OPENAI_MODEL":          "gpt-5.6",
+    })
+```
+
+上述变量会原样进入首次启动的子进程。对于运行中的原生 `nxs` 会话，
+`Session.Reconfigure` 只把变更值通过 `update_environment_variables` control
+请求发给 runtime，因此 Chat Completions 与 Responses 之间的切换会重建 provider，
+但不需要重启进程。Claude Code runtime 的环境变更仍需替换进程。bridge 本身不
+转换 `/responses` payload，也不解析缓存响应头。
+Prompt cache 变量对 bridge 是不透明的进程环境；模型版本校验、breakpoint 放置与旧
+retention 互斥都由 `nxs` 负责。
+
 ### 自定义工具
 
 通过 `tools` 包以纯 Go 定义工具，注册后作为 MCP 工具供 Agent 调用：
@@ -436,6 +464,9 @@ session.MCP().SetServers(ctx, newServerConfig)
 session.MCP().Status(ctx)
 ```
 
+宿主应用完整配置快照时通常调用 `Session.Reconfigure`；如果明确只更新原生
+runtime 的环境增量，也可以使用 `Session.Control().UpdateEnvironment`。
+
 ## 回调接口
 
 通过 `client.Options` 的回调方法接入 Agent 运行过程中的外部交互：
@@ -474,4 +505,11 @@ client.NewOptions().
 
 ```bash
 go test ./...
+```
+
+如需在不访问远端模型服务的情况下验证完整 bridge 子进程与 control 路径，可指定本地构建的 nxs：
+
+```bash
+NEXUS_TEST_NXS_RESPONSES_COMMAND=/absolute/path/to/nxs-responses \
+  go test ./client -run TestNXSResponsesProtocolHotReconfigure -count=1 -v
 ```
