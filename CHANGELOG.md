@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.1.21] - 2026-07-23
+
 ### Changed
 
 - Restart active nxs and Claude sessions when their Skill allowlist, setting sources, or additional discovery roots change, so Agent Skill installation takes effect without retaining stale runtime configuration.
