@@ -15,6 +15,8 @@ func TestClassifyTerminal(t *testing.T) {
 		{name: "limit", terminalReason: "max_output_tokens", want: TerminalCategoryLimit},
 		{name: "cancelled", subtype: "cancelled", want: TerminalCategoryCancelled},
 		{name: "error", subtype: "error", want: TerminalCategoryError},
+		{name: "CC execution error", subtype: "error_during_execution", want: TerminalCategoryError},
+		{name: "CC turn limit", subtype: "error_max_turns", want: TerminalCategoryLimit},
 		{name: "unknown", subtype: "mystery", want: TerminalCategoryUnknown},
 	}
 
@@ -31,6 +33,10 @@ func TestResultMessageTerminalCategoryUsesIsErrorFallback(t *testing.T) {
 	result := ResultMessage{Subtype: "mystery", IsError: true}
 	if got := result.TerminalCategory(); got != TerminalCategoryError {
 		t.Fatalf("TerminalCategory() = %q, want error", got)
+	}
+	result = ResultMessage{Subtype: "success", IsError: true}
+	if got := result.TerminalCategory(); got != TerminalCategoryError {
+		t.Fatalf("TerminalCategory(success + is_error) = %q, want error", got)
 	}
 	if !TerminalCategoryInterrupted.IsUserInterrupted() {
 		t.Fatal("interrupted IsUserInterrupted() = false, want true")

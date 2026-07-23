@@ -131,6 +131,12 @@ for {
 }
 ```
 
+消息解码器会在 runtime 字段确实不同时，同时接受 `nxs` 规范字段和 Claude Code
+公开协议里的 mixed-case 字段，包括 result 的模型用量、init 元数据、status、
+replay 与认证状态。兼容项逐字段声明，不会全局改写工具输入或 Provider payload
+的字段名。`ResultMessage.TerminalCategory()` 按有效终态判断，因此 `error_*`
+subtype，以及携带 `is_error: true` 的 `success` result 都会归为失败。
+
 Task 事件使用强类型消息：`protocol.MessageTypeTaskStarted`、
 `protocol.MessageTypeTaskProgress` 和 `protocol.MessageTypeTaskNotification`。
 官方 system subtype 形态仍可从 `msg.System.Task*` 读取，包括

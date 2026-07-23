@@ -9,6 +9,11 @@ All notable changes to this project are documented in this file.
 - Restart active nxs and Claude sessions when their Skill allowlist, setting sources, or additional discovery roots change, so Agent Skill installation takes effect without retaining stale runtime configuration.
 - Exposed the terminal runtime fast-mode state on parsed result messages for host-side projection.
 - Added stable and dynamic system-prompt append fields to the `nxs` initialize wire while flattening them for Claude Code process runtimes.
+- Decoded the canonical `nxs` message fields and Claude Code's public mixed-case fields into one typed message surface without applying a global casing transform.
+
+### Fixed
+
+- Classified Claude Code `error_*` results and `success` results carrying `is_error: true` by their effective terminal outcome.
 
 ## [0.1.20] - 2026-07-19
 

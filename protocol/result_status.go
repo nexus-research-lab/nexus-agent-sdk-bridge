@@ -18,6 +18,14 @@ const (
 func ClassifyTerminal(subtype string, terminalReason string) TerminalCategory {
 	candidates := []string{normalizeTerminalText(subtype), normalizeTerminalText(terminalReason)}
 	for _, candidate := range candidates {
+		if strings.HasPrefix(candidate, "error_") {
+			switch candidate {
+			case "error_max_turns", "error_max_budget_usd":
+				return TerminalCategoryLimit
+			default:
+				return TerminalCategoryError
+			}
+		}
 		switch candidate {
 		case "success", "completed", "complete", "end_turn", "stop":
 			return TerminalCategorySuccess
@@ -47,7 +55,7 @@ func (c TerminalCategory) IsUserInterrupted() bool {
 // TerminalCategory 返回 result 的归一化终止分类。
 func (m ResultMessage) TerminalCategory() TerminalCategory {
 	category := ClassifyTerminal(m.Subtype, m.TerminalReason)
-	if category == TerminalCategoryUnknown && m.IsError {
+	if m.IsError && (category == TerminalCategoryUnknown || category == TerminalCategorySuccess) {
 		return TerminalCategoryError
 	}
 	return category

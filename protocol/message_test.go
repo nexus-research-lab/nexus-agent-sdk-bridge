@@ -121,22 +121,61 @@ func TestParseResultMessage(t *testing.T) {
 	}
 }
 
-func TestParseResultMessageIgnoresLegacyAliases(t *testing.T) {
+func TestParseResultMessageAcceptsClaudeCodeModelUsage(t *testing.T) {
 	resultMessage, err := ParseMessage([]byte(`{
 		"type":"result",
 		"subtype":"success",
 		"session_id":"session-1",
-		"uuid":"uuid-result-legacy",
+		"uuid":"uuid-result-cc",
 		"modelUsage":{"nexus-sonnet":{"input_tokens":10}}
 	}`))
 	if err != nil {
-		t.Fatalf("ParseMessage(result legacy aliases) error = %v", err)
+		t.Fatalf("ParseMessage(result Claude Code wire) error = %v", err)
 	}
 	if resultMessage.Result == nil {
 		t.Fatal("resultMessage.Result is nil")
 	}
-	if len(resultMessage.Result.ModelUsage) != 0 {
-		t.Fatalf("ModelUsage = %#v, want legacy alias ignored", resultMessage.Result.ModelUsage)
+	usage, _ := resultMessage.Result.ModelUsage["nexus-sonnet"].(map[string]any)
+	if usage["input_tokens"] != float64(10) {
+		t.Fatalf("ModelUsage = %#v, want Claude Code modelUsage decoded", resultMessage.Result.ModelUsage)
+	}
+}
+
+func TestParseClaudeCodePublicMessageFields(t *testing.T) {
+	initMessage, err := ParseMessage([]byte(`{
+		"type":"system",
+		"subtype":"init",
+		"apiKeySource":"ANTHROPIC_API_KEY",
+		"claude_code_version":"2.1.88",
+		"permissionMode":"acceptEdits",
+		"plugins":[{"name":"demo","path":"/tmp/demo","source":"demo@inline"}],
+		"fast_mode_state":"on"
+	}`))
+	if err != nil {
+		t.Fatalf("ParseMessage(init) error = %v", err)
+	}
+	init := initMessage.System.Init
+	if init.APIKeySource != "ANTHROPIC_API_KEY" || init.PermissionMode != "acceptEdits" {
+		t.Fatalf("init CC fields = %#v", init)
+	}
+	if init.ClaudeCodeVersion != "2.1.88" || init.RuntimeVersion != "2.1.88" || init.FastModeState != "on" {
+		t.Fatalf("init version/state = %#v", init)
+	}
+	if len(init.Plugins) != 1 || init.Plugins[0].Source != "demo@inline" {
+		t.Fatalf("init plugins = %#v", init.Plugins)
+	}
+
+	userMessage, err := ParseMessage([]byte(`{
+		"type":"user",
+		"isReplay":true,
+		"isSynthetic":true,
+		"message":{"role":"user","content":"resume"}
+	}`))
+	if err != nil {
+		t.Fatalf("ParseMessage(user) error = %v", err)
+	}
+	if !userMessage.User.IsReplay || !userMessage.User.IsSynthetic {
+		t.Fatalf("user CC fields = %#v", userMessage.User)
 	}
 }
 

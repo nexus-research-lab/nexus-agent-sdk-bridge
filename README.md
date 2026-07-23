@@ -112,6 +112,14 @@ for {
 }
 ```
 
+The message decoder accepts both the canonical `nxs` fields and Claude Code's
+public mixed-case fields where the runtimes differ, including result model
+usage, init metadata, status, replay, and authentication state. These aliases
+are declared field by field; tool input and provider payload casing is never
+rewritten globally. `ResultMessage.TerminalCategory()` also uses the effective
+outcome, so `error_*` subtypes and `success` results with `is_error: true` are
+reported as failures.
+
 Task events are strongly typed as `protocol.MessageTypeTaskStarted`,
 `protocol.MessageTypeTaskProgress`, and `protocol.MessageTypeTaskNotification`.
 Official system-subtype task events remain available under `msg.System.Task*`,

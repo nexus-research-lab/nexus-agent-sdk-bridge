@@ -895,17 +895,19 @@ type ResultMessage struct {
 
 func decodeResultMessage(payload map[string]any) *ResultMessage {
 	return &ResultMessage{
-		Subtype:           jsonvalue.StringValue(payload["subtype"]),
-		DurationMS:        jsonvalue.IntValue(payload["duration_ms"]),
-		DurationAPIMS:     jsonvalue.IntValue(payload["duration_api_ms"]),
-		IsError:           jsonvalue.BoolValue(payload["is_error"]),
-		NumTurns:          jsonvalue.IntValue(payload["num_turns"]),
-		Result:            jsonvalue.StringValue(payload["result"]),
-		StopReason:        payload["stop_reason"],
-		TerminalReason:    jsonvalue.StringValue(payload["terminal_reason"]),
-		TotalCostUSD:      jsonvalue.FloatValue(payload["total_cost_usd"]),
-		Usage:             jsonvalue.MapValue(payload["usage"]),
-		ModelUsage:        jsonvalue.MapValue(payload["model_usage"]),
+		Subtype:        jsonvalue.StringValue(payload["subtype"]),
+		DurationMS:     jsonvalue.IntValue(payload["duration_ms"]),
+		DurationAPIMS:  jsonvalue.IntValue(payload["duration_api_ms"]),
+		IsError:        jsonvalue.BoolValue(payload["is_error"]),
+		NumTurns:       jsonvalue.IntValue(payload["num_turns"]),
+		Result:         jsonvalue.StringValue(payload["result"]),
+		StopReason:     payload["stop_reason"],
+		TerminalReason: jsonvalue.StringValue(payload["terminal_reason"]),
+		TotalCostUSD:   jsonvalue.FloatValue(payload["total_cost_usd"]),
+		Usage:          jsonvalue.MapValue(payload["usage"]),
+		// nxs 使用 canonical snake_case，Claude Code 的公开 SDK 协议使用
+		// modelUsage。这里只对公共字段显式兼容，避免全局键名转换污染控制协议。
+		ModelUsage:        jsonvalue.MapValue(jsonvalue.FirstNonNil(payload["model_usage"], payload["modelUsage"])),
 		PermissionDenials: decodePermissionDenials(payload["permission_denials"]),
 		Errors:            jsonvalue.StringSliceValue(payload["errors"]),
 		StructuredOutput:  payload["structured_output"],
@@ -937,21 +939,31 @@ type InitMCPServerStatus struct {
 	Status string `json:"status,omitempty"`
 }
 
+// InitPlugin 表示 init 消息中已加载的插件。
+type InitPlugin struct {
+	Name   string `json:"name,omitempty"`
+	Path   string `json:"path,omitempty"`
+	Source string `json:"source,omitempty"`
+}
+
 // InitSystemMessage 表示 `system/init` 消息。
 type InitSystemMessage struct {
-	Agents         []string              `json:"agents,omitempty"`
-	APIKeySource   string                `json:"api_key_source,omitempty"`
-	Betas          []string              `json:"betas,omitempty"`
-	RuntimeVersion string                `json:"runtime_version,omitempty"`
-	CWD            string                `json:"cwd,omitempty"`
-	Tools          []string              `json:"tools,omitempty"`
-	MCPServers     []InitMCPServerStatus `json:"mcp_servers,omitempty"`
-	Model          string                `json:"model,omitempty"`
-	PermissionMode permission.Mode       `json:"permission_mode,omitempty"`
-	SlashCommands  []string              `json:"slash_commands,omitempty"`
-	OutputStyle    string                `json:"output_style,omitempty"`
-	Skills         []string              `json:"skills,omitempty"`
-	Additional     map[string]any        `json:"additional,omitempty"`
+	Agents            []string              `json:"agents,omitempty"`
+	APIKeySource      string                `json:"api_key_source,omitempty"`
+	Betas             []string              `json:"betas,omitempty"`
+	RuntimeVersion    string                `json:"runtime_version,omitempty"`
+	ClaudeCodeVersion string                `json:"claude_code_version,omitempty"`
+	CWD               string                `json:"cwd,omitempty"`
+	Tools             []string              `json:"tools,omitempty"`
+	MCPServers        []InitMCPServerStatus `json:"mcp_servers,omitempty"`
+	Model             string                `json:"model,omitempty"`
+	PermissionMode    permission.Mode       `json:"permission_mode,omitempty"`
+	SlashCommands     []string              `json:"slash_commands,omitempty"`
+	OutputStyle       string                `json:"output_style,omitempty"`
+	Skills            []string              `json:"skills,omitempty"`
+	Plugins           []InitPlugin          `json:"plugins,omitempty"`
+	FastModeState     string                `json:"fast_mode_state,omitempty"`
+	Additional        map[string]any        `json:"additional,omitempty"`
 }
 
 // StatusSystemMessage 表示 `system/status` 消息。
@@ -1073,25 +1085,29 @@ func decodeSystemMessage(payload map[string]any) *SystemMessage {
 
 	switch system.Subtype {
 	case "init":
+		claudeCodeVersion := jsonvalue.StringValue(payload["claude_code_version"])
 		system.Init = &InitSystemMessage{
-			Agents:         jsonvalue.StringSliceValue(payload["agents"]),
-			APIKeySource:   jsonvalue.StringValue(payload["api_key_source"]),
-			Betas:          jsonvalue.StringSliceValue(payload["betas"]),
-			RuntimeVersion: jsonvalue.StringValue(payload["runtime_version"]),
-			CWD:            jsonvalue.StringValue(payload["cwd"]),
-			Tools:          jsonvalue.StringSliceValue(payload["tools"]),
-			MCPServers:     decodeMCPServerStatus(payload["mcp_servers"]),
-			Model:          jsonvalue.StringValue(payload["model"]),
-			PermissionMode: permission.Mode(jsonvalue.StringValue(payload["permission_mode"])),
-			SlashCommands:  jsonvalue.StringSliceValue(payload["slash_commands"]),
-			OutputStyle:    jsonvalue.StringValue(payload["output_style"]),
-			Skills:         jsonvalue.StringSliceValue(payload["skills"]),
-			Additional:     payload,
+			Agents:            jsonvalue.StringSliceValue(payload["agents"]),
+			APIKeySource:      jsonvalue.FirstNonEmptyString(payload["api_key_source"], payload["apiKeySource"]),
+			Betas:             jsonvalue.StringSliceValue(payload["betas"]),
+			RuntimeVersion:    jsonvalue.FirstNonEmptyString(payload["runtime_version"], claudeCodeVersion),
+			ClaudeCodeVersion: claudeCodeVersion,
+			CWD:               jsonvalue.StringValue(payload["cwd"]),
+			Tools:             jsonvalue.StringSliceValue(payload["tools"]),
+			MCPServers:        decodeMCPServerStatus(payload["mcp_servers"]),
+			Model:             jsonvalue.StringValue(payload["model"]),
+			PermissionMode:    permission.Mode(jsonvalue.FirstNonEmptyString(payload["permission_mode"], payload["permissionMode"])),
+			SlashCommands:     jsonvalue.StringSliceValue(payload["slash_commands"]),
+			OutputStyle:       jsonvalue.StringValue(payload["output_style"]),
+			Skills:            jsonvalue.StringSliceValue(payload["skills"]),
+			Plugins:           decodeInitPlugins(payload["plugins"]),
+			FastModeState:     jsonvalue.StringValue(payload["fast_mode_state"]),
+			Additional:        payload,
 		}
 	case "status":
 		system.Status = &StatusSystemMessage{
 			Status:         jsonvalue.StringValue(payload["status"]),
-			PermissionMode: permission.Mode(jsonvalue.StringValue(payload["permission_mode"])),
+			PermissionMode: permission.Mode(jsonvalue.FirstNonEmptyString(payload["permission_mode"], payload["permissionMode"])),
 			Additional:     payload,
 		}
 	case "informational":
@@ -1119,6 +1135,23 @@ func decodeSystemMessage(payload map[string]any) *SystemMessage {
 	}
 
 	return system
+}
+
+func decodeInitPlugins(raw any) []InitPlugin {
+	items := jsonvalue.SliceValue(raw)
+	plugins := make([]InitPlugin, 0, len(items))
+	for _, item := range items {
+		payload := jsonvalue.MapValue(item)
+		if len(payload) == 0 {
+			continue
+		}
+		plugins = append(plugins, InitPlugin{
+			Name:   jsonvalue.StringValue(payload["name"]),
+			Path:   jsonvalue.StringValue(payload["path"]),
+			Source: jsonvalue.StringValue(payload["source"]),
+		})
+	}
+	return plugins
 }
 
 func normalizeSDKAssistantMessageError(raw string, status *int) string {
@@ -1289,11 +1322,12 @@ func DecodeMessage(payload map[string]any) (ReceivedMessage, error) {
 
 	switch message.Type {
 	case MessageTypeUser:
+		isMeta := jsonvalue.BoolValue(payload["is_meta"])
 		message.User = &UserMessage{
 			Message:         decodeConversationEnvelope(payload["message"]),
-			IsMeta:          jsonvalue.BoolValue(payload["is_meta"]),
-			IsReplay:        jsonvalue.BoolValue(payload["is_replay"]),
-			IsSynthetic:     jsonvalue.BoolValue(payload["is_synthetic"]) || jsonvalue.BoolValue(payload["is_meta"]),
+			IsMeta:          isMeta,
+			IsReplay:        jsonvalue.BoolValue(payload["is_replay"]) || jsonvalue.BoolValue(payload["isReplay"]),
+			IsSynthetic:     jsonvalue.BoolValue(payload["is_synthetic"]) || jsonvalue.BoolValue(payload["isSynthetic"]) || isMeta,
 			ToolUseResult:   payload["tool_use_result"],
 			Priority:        jsonvalue.StringValue(payload["priority"]),
 			Timestamp:       jsonvalue.StringValue(payload["timestamp"]),
