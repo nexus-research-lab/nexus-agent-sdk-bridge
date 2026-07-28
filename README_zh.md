@@ -68,14 +68,17 @@ fmt.Println(result.Result)
 ```go
 options := client.NewOptions().
     WithAdditionalDirectories("/opt/nexus/platform-skills").
-    WithSkills("imagegen", "ima-skill")
+    WithSkills("imagegen", "ima-skill").
+    WithDisabledSkills("workspace-review")
 ```
 
 Claude adapter 会把资源根映射为 `--add-dir`，并通过 stream-json initialize
-的 `skills` 字段传递选择结果；同时保留 `Skill(name)` allow rule 作为 CLI
-权限兼容层。`--allowedTools` 只控制免确认执行，不负责 Skill 发现过滤。nxs
-adapter 则通过 initialize 合同传递同一目录和选择结果。已连接会话的 Skill
-白名单、setting source 或发现根发生变化时，`Reconfigure` 返回
+的 `skills` 字段传递选择结果；同时生成 `Skill(name)` allow/deny rule 作为
+CLI 权限兼容层。`--allowedTools` 只控制免确认执行，不负责 Skill 发现过滤。
+nxs adapter 则通过 initialize 合同传递同一目录、选择结果和显式停用名称。
+`WithSkills` 只选择 bundled、共享和 additional root 中的名称，项目 workspace
+Skill 仍保持动态发现；使用 `WithDisabledSkills` 可为当前 Agent 停用项目 Skill。
+已连接会话的 Skill 选择、停用集合、setting source 或发现根发生变化时，`Reconfigure` 返回
 `ErrRestartRequired`，由宿主替换旧 runtime 进程。
 
 ### 运行时原语

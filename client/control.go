@@ -193,6 +193,10 @@ func (c *sessionCore) buildInitializeRequest() protocol.ControlRequest {
 	if skills := c.options.Skills.controlValue(); skills != nil {
 		request.Skills = skills
 	}
+	request.DisabledSkills = append(
+		[]string(nil),
+		c.options.Skills.DisabledNames...,
+	)
 	if c.options.System.Text != "" {
 		request.SystemPrompt = c.options.System.Text
 	}

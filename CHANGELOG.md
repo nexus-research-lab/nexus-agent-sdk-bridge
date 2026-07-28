@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Added an explicit disabled-Skill runtime signal and Claude `Skill(name)` deny projection, keeping Agent-level Skill switches effective while project Skills remain dynamically discoverable.
+
 ## [0.1.21] - 2026-07-23
 
 ### Changed

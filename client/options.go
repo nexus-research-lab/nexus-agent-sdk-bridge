@@ -340,8 +340,9 @@ const (
 
 // SkillOptions 表示主会话 Skill 工具可见的 skill 集合。
 type SkillOptions struct {
-	Mode  SkillMode
-	Names []string
+	Mode          SkillMode
+	Names         []string
+	DisabledNames []string
 }
 
 // SessionOptions 表示 transcript 恢复、继续、fork 与持久化配置。

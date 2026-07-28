@@ -71,12 +71,19 @@ func TestBuildInitializeRequestAdvertisesHookResponseAckOnlyToNXS(t *testing.T) 
 }
 
 func TestBuildInitializeRequestCarriesSelectedSkills(t *testing.T) {
-	request := newSessionCore(NewOptions().WithSkills("imagegen", "ima-skill")).buildInitializeRequest()
+	request := newSessionCore(
+		NewOptions().
+			WithSkills("imagegen", "ima-skill").
+			WithDisabledSkills("workspace-review"),
+	).buildInitializeRequest()
 	if request.Skills == nil {
 		t.Fatal("selected Skill filter should be present in initialize request")
 	}
 	if len(*request.Skills) != 2 || (*request.Skills)[0] != "imagegen" || (*request.Skills)[1] != "ima-skill" {
 		t.Fatalf("initialize skills = %#v, want selected names", request.Skills)
+	}
+	if len(request.DisabledSkills) != 1 || request.DisabledSkills[0] != "workspace-review" {
+		t.Fatalf("initialize disabled skills = %#v, want explicit disabled name", request.DisabledSkills)
 	}
 }
 

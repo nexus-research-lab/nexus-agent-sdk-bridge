@@ -298,9 +298,11 @@ func hasExplicitRuntimeCommand(o Options) bool {
 
 func (s SkillOptions) normalized() (SkillOptions, error) {
 	result := SkillOptions{
-		Mode:  s.Mode,
-		Names: normalizeSkillNames(s.Names),
+		Mode:          s.Mode,
+		Names:         normalizeSkillNames(s.Names),
+		DisabledNames: normalizeSkillNames(s.DisabledNames),
 	}
+	result.Names = removeDisabledSkillNames(result.Names, result.DisabledNames)
 	if result.Mode == SkillModeDefault && len(result.Names) > 0 {
 		result.Mode = SkillModeOnly
 	}
@@ -321,6 +323,23 @@ func (s SkillOptions) normalized() (SkillOptions, error) {
 		return SkillOptions{}, fmt.Errorf("client: unsupported skills mode %q", result.Mode)
 	}
 	return result, nil
+}
+
+func removeDisabledSkillNames(names []string, disabledNames []string) []string {
+	if len(names) == 0 || len(disabledNames) == 0 {
+		return names
+	}
+	disabled := make(map[string]struct{}, len(disabledNames))
+	for _, name := range disabledNames {
+		disabled[strings.ToLower(strings.TrimSpace(name))] = struct{}{}
+	}
+	result := make([]string, 0, len(names))
+	for _, name := range names {
+		if _, blocked := disabled[strings.ToLower(strings.TrimSpace(name))]; !blocked {
+			result = append(result, name)
+		}
+	}
+	return result
 }
 
 func (s SkillOptions) controlValue() *[]string {

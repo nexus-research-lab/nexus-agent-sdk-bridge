@@ -150,27 +150,37 @@ func (o Options) AddDisallowedTool(tool string) Options {
 	return o
 }
 
-// WithSkills 只允许本会话使用指定 skills；不传名称表示关闭 skills。
+// WithSkills 选择 bundled、共享和 additional roots 中允许的 Skill。
+//
+// 项目 workspace Skill 保持动态发现；不传名称会关闭整个 Skill 入口。
 func (o Options) WithSkills(names ...string) Options {
-	o.Skills = SkillOptions{
-		Mode:  SkillModeOnly,
-		Names: normalizeSkillNames(names),
-	}
+	o.Skills.Mode = SkillModeOnly
+	o.Skills.Names = normalizeSkillNames(names)
 	if len(o.Skills.Names) == 0 {
 		o.Skills.Mode = SkillModeNone
 	}
 	return o
 }
 
+// WithDisabledSkills 显式停用当前会话中的指定 skills。
+//
+// 项目级 Skill 可以在会话期间动态出现，因此停用集合不能由启动时允许列表推导。
+func (o Options) WithDisabledSkills(names ...string) Options {
+	o.Skills.DisabledNames = normalizeSkillNames(names)
+	return o
+}
+
 // WithAllSkills 允许本会话使用所有已发现 skills。
 func (o Options) WithAllSkills() Options {
-	o.Skills = SkillOptions{Mode: SkillModeAll}
+	o.Skills.Mode = SkillModeAll
+	o.Skills.Names = nil
 	return o
 }
 
 // WithoutSkills 关闭本会话 skills。
 func (o Options) WithoutSkills() Options {
-	o.Skills = SkillOptions{Mode: SkillModeNone}
+	o.Skills.Mode = SkillModeNone
+	o.Skills.Names = nil
 	return o
 }
 

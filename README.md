@@ -69,17 +69,21 @@ allowlist:
 ```go
 options := client.NewOptions().
     WithAdditionalDirectories("/opt/nexus/platform-skills").
-    WithSkills("imagegen", "ima-skill")
+    WithSkills("imagegen", "ima-skill").
+    WithDisabledSkills("workspace-review")
 ```
 
 The Claude adapter maps the root to `--add-dir` and sends the selected names in
 the stream-json initialize `skills` field. It also emits `Skill(name)` allow
-rules for CLI permission compatibility; `--allowedTools` controls approval and
-is not the Skill discovery filter. The nxs adapter forwards the same directory
-and selection through its initialize contract. Reconfiguring a connected
-session with a different Skill allowlist, setting source, or discovery root
-returns `ErrRestartRequired`, allowing the host to replace the stale runtime
-process.
+rules and explicit `Skill(name)` deny rules for CLI permission compatibility;
+`--allowedTools` controls approval and is not the Skill discovery filter. The
+nxs adapter forwards the same directory, selection, and explicit disabled names
+through its initialize contract. `WithSkills` selects bundled, shared, and
+additional-root names while project workspace Skills remain dynamically
+discoverable. Use `WithDisabledSkills` to turn off a project Skill for the
+current Agent. Reconfiguring a connected session with a different Skill
+selection, disabled set, setting source, or discovery root returns
+`ErrRestartRequired`, allowing the host to replace the stale runtime process.
 
 ### Streaming Output
 

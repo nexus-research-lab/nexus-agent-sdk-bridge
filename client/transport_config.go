@@ -60,7 +60,7 @@ func buildProcessTransportArgs(o resolvedOptions) []string {
 		"--verbose",
 		"--input-format", "stream-json",
 	)
-	effectiveAllowedTools, effectiveSettingSources := processTransportSkillDefaults(o)
+	effectiveAllowedTools, effectiveDisallowedTools, effectiveSettingSources := processTransportSkillDefaults(o)
 
 	switch {
 	case strings.TrimSpace(o.SystemPromptFile) != "":
@@ -84,8 +84,8 @@ func buildProcessTransportArgs(o resolvedOptions) []string {
 	if len(effectiveAllowedTools) > 0 {
 		args = append(args, "--allowedTools", strings.Join(effectiveAllowedTools, ","))
 	}
-	if len(o.DisallowedTools) > 0 {
-		args = append(args, "--disallowedTools", strings.Join(o.DisallowedTools, ","))
+	if len(effectiveDisallowedTools) > 0 {
+		args = append(args, "--disallowedTools", strings.Join(effectiveDisallowedTools, ","))
 	}
 	if o.MaxTurns > 0 {
 		args = append(args, "--max-turns", strconv.Itoa(o.MaxTurns))
@@ -225,9 +225,16 @@ func processClaudeCodeScriptPath(o resolvedOptions) string {
 	return o.CommandPath
 }
 
-func processTransportSkillDefaults(o resolvedOptions) ([]string, []string) {
+func processTransportSkillDefaults(o resolvedOptions) ([]string, []string, []string) {
 	allowedTools := append([]string(nil), o.AllowedTools...)
+	disallowedTools := append([]string(nil), o.DisallowedTools...)
 	settingSources := append([]string(nil), o.SettingSources...)
+	for _, name := range o.Skills.DisabledNames {
+		if name == "" {
+			continue
+		}
+		disallowedTools = appendStringOnce(disallowedTools, "Skill("+name+")")
+	}
 
 	switch o.Skills.Mode {
 	case SkillModeAll:
@@ -241,13 +248,13 @@ func processTransportSkillDefaults(o resolvedOptions) ([]string, []string) {
 		}
 	case SkillModeNone:
 	default:
-		return allowedTools, settingSources
+		return allowedTools, disallowedTools, settingSources
 	}
 
 	if len(settingSources) == 0 {
 		settingSources = []string{"user", "project"}
 	}
-	return allowedTools, settingSources
+	return allowedTools, disallowedTools, settingSources
 }
 
 func appendStringOnce(values []string, value string) []string {

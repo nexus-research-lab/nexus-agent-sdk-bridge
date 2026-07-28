@@ -34,6 +34,7 @@ type ControlRequest struct {
 	ExcludeDynamicSections    *bool               `json:"excludeDynamicSections,omitempty"`
 	AgentProgressSummaries    *bool               `json:"agentProgressSummaries,omitempty"`
 	Skills                    *[]string           `json:"skills,omitempty"`
+	DisabledSkills            []string            `json:"disabledSkills,omitempty"`
 	ToolName                  string              `json:"tool_name,omitempty"`
 	Input                     map[string]any      `json:"input,omitempty"`
 	PermissionSuggestions     []permission.Update `json:"permission_suggestions,omitempty"`

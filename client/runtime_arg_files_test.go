@@ -48,6 +48,7 @@ func TestClaudeTransportReceivesSelectedSkillAndAdditionalRoot(t *testing.T) {
 		WithRuntime(RuntimeClaude).
 		WithCLIPath("claude").
 		WithSkills("ima-skill").
+		WithDisabledSkills("workspace-review").
 		WithAdditionalDirectories(root)
 	resolved, err := options.buildResolvedOptions(false)
 	if err != nil {
@@ -57,8 +58,31 @@ func TestClaudeTransportReceivesSelectedSkillAndAdditionalRoot(t *testing.T) {
 	if !containsArgPair(args, "--allowedTools", "Skill(ima-skill)") {
 		t.Fatalf("Claude args = %#v, want selected Skill allow rule", args)
 	}
+	if !containsArgPair(args, "--disallowedTools", "Skill(workspace-review)") {
+		t.Fatalf("Claude args = %#v, want disabled Skill deny rule", args)
+	}
 	if !containsArgPair(args, "--add-dir", root) {
 		t.Fatalf("Claude args = %#v, want platform Skill additional root", args)
+	}
+}
+
+func TestClaudeTransportKeepsDynamicSkillsAndDeniesUnboundGlobals(t *testing.T) {
+	options := NewOptions().
+		WithRuntime(RuntimeClaude).
+		WithCLIPath("claude").
+		WithAllSkills().
+		WithDisabledSkills("unused-global", "workspace-off")
+	resolved, err := options.buildResolvedOptions(false)
+	if err != nil {
+		t.Fatalf("buildResolvedOptions() error = %v", err)
+	}
+	args := buildProcessTransportArgs(resolved)
+	if !containsArgPair(args, "--allowedTools", "Skill") {
+		t.Fatalf("Claude args = %#v, want dynamic Skill allow rule", args)
+	}
+	if got := argValue(t, args, "--disallowedTools"); got !=
+		"Skill(unused-global),Skill(workspace-off)" {
+		t.Fatalf("Claude disabled Skill rules = %q", got)
 	}
 }
 

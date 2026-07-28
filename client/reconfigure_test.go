@@ -172,6 +172,17 @@ func TestRestartReasonForReconfigureDetectsSkillConfigChange(t *testing.T) {
 	if !ok || reason != RestartReasonSkillConfigChanged {
 		t.Fatalf("directory restart reason = %q, %v; want skill config changed", reason, ok)
 	}
+
+	nextOptions, err = currentOptions.
+		WithDisabledSkills("workspace-review").
+		normalized()
+	if err != nil {
+		t.Fatalf("normalize disabled Skill options: %v", err)
+	}
+	reason, ok = restartReasonForReconfigure(currentOptions, nextOptions)
+	if !ok || reason != RestartReasonSkillConfigChanged {
+		t.Fatalf("disabled Skill restart reason = %q, %v; want skill config changed", reason, ok)
+	}
 }
 
 func TestReconfigureAppliesRuntimeControls(t *testing.T) {
