@@ -151,6 +151,11 @@ task progress 和 notification 共用 `protocol.TaskUsage`。`agent_id`、
 `output_file` 和 `transcript_path` 这类 subagent 元数据会在适用的消息上
 暴露为强类型字段，同时完整 wire payload 仍保留在 `Additional`。
 
+runtime 的 `attachment` 消息通过 `protocol.MessageTypeAttachment` 和
+`msg.Attachment` 暴露。结构化工具结果保留在 `AttachmentMessage.Data`，
+`Additional` 则保留完整附件 payload，宿主可以据此投影 runtime 专属证据，
+无需改写原始字段大小写。
+
 宿主界面暴露任务控制前应调用 `session.Supports`。原生 `nxs` 和 Claude Code
 会话都支持 `CapabilityStopTask`；只有 `nxs` 支持
 `CapabilitySendTaskMessage`，可在同一个已完成或已停止的 task thread 上继续

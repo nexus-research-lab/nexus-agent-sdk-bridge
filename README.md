@@ -136,6 +136,12 @@ top-level task events use `msg.TaskStarted`, `msg.TaskProgress`, or
 and `transcript_path` are exposed as typed fields where they apply, while the
 full wire payload remains available in `Additional`.
 
+Runtime `attachment` messages are exposed as
+`protocol.MessageTypeAttachment` with `msg.Attachment`. Structured tool output
+remains in `AttachmentMessage.Data`, while `Additional` preserves the complete
+attachment payload so hosts can project runtime-specific evidence without
+rewriting its field casing.
+
 Use `session.Supports` before exposing task controls in a host UI. Both native
 `nxs` and Claude Code sessions support `CapabilityStopTask`. Only `nxs`
 supports `CapabilitySendTaskMessage`, which can continue the same completed or
