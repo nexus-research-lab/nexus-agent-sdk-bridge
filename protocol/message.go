@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/hook"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/jsonvalue"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/permission"
 )
@@ -742,6 +743,8 @@ const (
 	MessageTypeUser MessageType = "user"
 	// MessageTypeAssistant 表示助手消息。
 	MessageTypeAssistant MessageType = "assistant"
+	// MessageTypeAttachment 表示 runtime transcript/stream 附件消息。
+	MessageTypeAttachment MessageType = "attachment"
 	// MessageTypeResult 表示结果消息。
 	MessageTypeResult MessageType = "result"
 	// MessageTypeStreamEvent 表示流式事件。
@@ -801,6 +804,32 @@ type AssistantMessage struct {
 	ParentToolUseID *string              `json:"parent_tool_use_id,omitempty"`
 }
 
+// AttachmentMessage 表示 runtime 附件消息。
+// Data 和 Additional 保留工具结构化结果的原始字段，宿主按附件类型解释其语义。
+type AttachmentMessage struct {
+	Type        string         `json:"type,omitempty"`
+	Content     any            `json:"content,omitempty"`
+	Data        any            `json:"data,omitempty"`
+	Message     string         `json:"message,omitempty"`
+	Prompt      string         `json:"prompt,omitempty"`
+	PromptRaw   any            `json:"prompt_raw,omitempty"`
+	SourceUUID  string         `json:"source_uuid,omitempty"`
+	ToolUseID   string         `json:"tool_use_id,omitempty"`
+	HookName    string         `json:"hook_name,omitempty"`
+	HookEvent   hook.Event     `json:"hook_event,omitempty"`
+	Command     string         `json:"command,omitempty"`
+	CommandMode string         `json:"command_mode,omitempty"`
+	Stdout      string         `json:"stdout,omitempty"`
+	Stderr      string         `json:"stderr,omitempty"`
+	ExitCode    *int           `json:"exit_code,omitempty"`
+	DurationMS  *int           `json:"duration_ms,omitempty"`
+	TurnCount   int            `json:"turn_count,omitempty"`
+	MaxTurns    int            `json:"max_turns,omitempty"`
+	IsMeta      bool           `json:"is_meta,omitempty"`
+	Origin      map[string]any `json:"origin,omitempty"`
+	Additional  map[string]any `json:"additional,omitempty"`
+}
+
 // StreamEvent 表示流式事件。
 type StreamEvent struct {
 	Event any            `json:"event,omitempty"`
@@ -851,6 +880,7 @@ type ReceivedMessage struct {
 	ParentToolUseID  *string                  `json:"parent_tool_use_id,omitempty"`
 	User             *UserMessage             `json:"user,omitempty"`
 	Assistant        *AssistantMessage        `json:"assistant,omitempty"`
+	Attachment       *AttachmentMessage       `json:"attachment,omitempty"`
 	System           *SystemMessage           `json:"system,omitempty"`
 	Result           *ResultMessage           `json:"result,omitempty"`
 	Stream           *StreamEvent             `json:"stream,omitempty"`
@@ -1352,6 +1382,8 @@ func DecodeMessage(payload map[string]any) (ReceivedMessage, error) {
 			IsAPIError:      jsonvalue.BoolValue(payload["is_api_error_message"]),
 			ParentToolUseID: message.ParentToolUseID,
 		}
+	case MessageTypeAttachment:
+		message.Attachment = decodeAttachmentMessage(payload)
 	case MessageTypeSystem:
 		message.System = decodeSystemMessage(payload)
 	case MessageTypeResult:
@@ -1409,6 +1441,7 @@ func normalizeMessageType(messageType MessageType) MessageType {
 	case MessageTypeSystem,
 		MessageTypeUser,
 		MessageTypeAssistant,
+		MessageTypeAttachment,
 		MessageTypeResult,
 		MessageTypeStreamEvent,
 		MessageTypeStreamRequestStart,
@@ -1423,6 +1456,36 @@ func normalizeMessageType(messageType MessageType) MessageType {
 		return messageType
 	default:
 		return messageType
+	}
+}
+
+func decodeAttachmentMessage(payload map[string]any) *AttachmentMessage {
+	attachmentPayload := jsonvalue.MapValue(payload["attachment"])
+	if len(attachmentPayload) == 0 {
+		attachmentPayload = payload
+	}
+	return &AttachmentMessage{
+		Type:        jsonvalue.StringValue(attachmentPayload["type"]),
+		Content:     attachmentPayload["content"],
+		Data:        attachmentPayload["data"],
+		Message:     jsonvalue.StringValue(attachmentPayload["message"]),
+		Prompt:      jsonvalue.StringValue(attachmentPayload["prompt"]),
+		PromptRaw:   attachmentPayload["prompt"],
+		SourceUUID:  jsonvalue.StringValue(attachmentPayload["source_uuid"]),
+		ToolUseID:   jsonvalue.StringValue(attachmentPayload["tool_use_id"]),
+		HookName:    jsonvalue.StringValue(attachmentPayload["hook_name"]),
+		HookEvent:   hook.Event(jsonvalue.StringValue(attachmentPayload["hook_event"])),
+		Command:     jsonvalue.StringValue(attachmentPayload["command"]),
+		CommandMode: jsonvalue.StringValue(attachmentPayload["command_mode"]),
+		Stdout:      jsonvalue.StringValue(attachmentPayload["stdout"]),
+		Stderr:      jsonvalue.StringValue(attachmentPayload["stderr"]),
+		ExitCode:    jsonvalue.IntPointer(attachmentPayload["exit_code"]),
+		DurationMS:  jsonvalue.IntPointer(attachmentPayload["duration_ms"]),
+		TurnCount:   jsonvalue.IntValue(attachmentPayload["turn_count"]),
+		MaxTurns:    jsonvalue.IntValue(attachmentPayload["max_turns"]),
+		IsMeta:      jsonvalue.BoolValue(attachmentPayload["is_meta"]),
+		Origin:      jsonvalue.CloneMapOrEmpty(jsonvalue.MapValue(attachmentPayload["origin"])),
+		Additional:  jsonvalue.CloneMapOrEmpty(attachmentPayload),
 	}
 }
 

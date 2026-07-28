@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Exposed runtime `attachment` messages as a typed protocol surface while preserving structured tool output in `AttachmentMessage.Data` and the complete attachment payload in `Additional`.
+
 ## [0.1.21] - 2026-07-23
 
 ### Changed

@@ -221,6 +221,40 @@ func TestParseTaskProgressMessage(t *testing.T) {
 	}
 }
 
+func TestParseStructuredOutputAttachmentMessage(t *testing.T) {
+	message, err := ParseMessage([]byte(`{
+		"type":"attachment",
+		"session_id":"session-1",
+		"uuid":"attachment-1",
+		"attachment":{
+			"type":"structured_output",
+			"data":{
+				"agentId":"agent-child-1",
+				"agentType":"Explore",
+				"description":"调研产品规格",
+				"status":"completed",
+				"toolUseId":"call-agent"
+			}
+		}
+	}`))
+	if err != nil {
+		t.Fatalf("ParseMessage(attachment) error = %v", err)
+	}
+	if message.Type != MessageTypeAttachment || message.Attachment == nil {
+		t.Fatalf("attachment message = %#v", message)
+	}
+	if message.Attachment.Type != "structured_output" {
+		t.Fatalf("Attachment.Type = %q, want structured_output", message.Attachment.Type)
+	}
+	data, ok := message.Attachment.Data.(map[string]any)
+	if !ok || data["agentId"] != "agent-child-1" || data["toolUseId"] != "call-agent" {
+		t.Fatalf("Attachment.Data = %#v", message.Attachment.Data)
+	}
+	if message.Attachment.Additional["data"] == nil {
+		t.Fatalf("Attachment.Additional = %#v, want raw data", message.Attachment.Additional)
+	}
+}
+
 func TestParseTaskStartedMessage(t *testing.T) {
 	message, err := ParseMessage([]byte(`{
 		"type":"task_started",
