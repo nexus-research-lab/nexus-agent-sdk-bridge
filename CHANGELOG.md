@@ -4,12 +4,6 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
-## [0.1.23] - 2026-07-29
-
-### Changed
-
-- Republished the bridge release line alongside nxs 0.1.19 without changing the existing stream-json protocol.
-
 ## [0.1.22] - 2026-07-29
 
 ### Changed
