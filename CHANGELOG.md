@@ -4,11 +4,13 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.1.22] - 2026-07-29
+
 ### Changed
 
-- Added an explicit disabled-Skill runtime signal and Claude `Skill(name)` deny projection, keeping Agent-level Skill switches effective while project Skills remain dynamically discoverable.
-  Selected model is at capacity. Please try a different model.
-- 
+- Exposed runtime attachment messages through a typed protocol surface while preserving their complete payload for host projections.
+- Added an explicit disabled-Skill runtime signal so Agent-level Skill switches remain effective during dynamic project Skill discovery.
+
 ## [0.1.21] - 2026-07-23
 
 ### Changed
