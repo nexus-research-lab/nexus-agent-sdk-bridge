@@ -88,7 +88,7 @@ type RewindFilesResult struct {
 	Raw          map[string]any `json:"raw,omitempty"`
 }
 
-// SlashCommand 表示当前会话可调用的 slash command。
+// SlashCommand 对齐 Claude Agent SDK 初始化控制面公开的命令描述。
 type SlashCommand struct {
 	Name         string         `json:"name,omitempty"`
 	Description  string         `json:"description,omitempty"`

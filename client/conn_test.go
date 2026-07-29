@@ -176,6 +176,30 @@ func TestSendUsesExplicitSessionIDOption(t *testing.T) {
 	}
 }
 
+func TestSendSlashCommandUsesNormalUserMessage(t *testing.T) {
+	transport := &capturingTransport{}
+	core := newSessionCoreWithTransport(NewOptions().WithSessionID("session-slash"), transport)
+	core.lifecycleState().setConnected(true)
+
+	if err := core.Send(context.Background(), "/review target", nil, ""); err != nil {
+		t.Fatalf("Send() error = %v", err)
+	}
+	if len(transport.writes) != 1 {
+		t.Fatalf("writes = %#v, want one user message", transport.writes)
+	}
+	payload := transport.writes[0]
+	if payload["type"] != "user" || payload["session_id"] != "session-slash" {
+		t.Fatalf("payload = %#v, want normal user envelope", payload)
+	}
+	message, ok := payload["message"].(map[string]any)
+	if !ok || message["role"] != "user" || message["content"] != "/review target" {
+		t.Fatalf("message = %#v, want slash text as ordinary user content", payload["message"])
+	}
+	if _, hasControlSubtype := payload["subtype"]; hasControlSubtype {
+		t.Fatalf("payload = %#v, slash commands must not use control subtype", payload)
+	}
+}
+
 func TestReadLoopEmitsMessageStopDiagnostics(t *testing.T) {
 	transport := newScriptedTransport()
 	events := make(chan DiagnosticEvent, 4)

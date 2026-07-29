@@ -443,6 +443,25 @@ _ = commands
 _ = session.MCP().Reconnect(ctx, "github")
 ```
 
+### Slash 命令
+
+runtime 初始化快照就是命令目录。当前 wire 暴露 canonical `Name`、`Description`
+和 `ArgumentHint`；runtime 私有元数据仅保留在 bridge 兼容快照中。新版 Agent SDK
+还可能声明 aliases，后续可以增量接入而不改变派发方式。执行目录中的命令时，仍发送
+普通用户消息，不新增独立 slash RPC：
+
+```go
+commands, err := session.Control().SupportedCommands(ctx)
+if err != nil {
+    return err
+}
+_ = commands
+
+_, err = session.Send(ctx, "/review src/auth")
+```
+
+`SetModel` 等强类型控制接口继续与 prompt 派发分离。
+
 ### Hook
 
 支持在 Agent 生命周期的关键节点注册回调，包括工具调用前后、会话开关、上下文压缩等：

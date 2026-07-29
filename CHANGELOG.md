@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Clarified `SupportedCommands` against the runtime initialization contract: the runtime owns headless dispatchability, while the current product-facing projection uses the canonical name, description, and argument hint.
+
 ## [0.1.22] - 2026-07-29
 
 ### Changed

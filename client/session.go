@@ -407,7 +407,7 @@ func (c *SessionControl) GetSettings(ctx context.Context) (SettingsResponse, err
 	return core.getSettings(ctx)
 }
 
-// SupportedCommands 返回当前会话可调用的 slash command。
+// SupportedCommands 返回 runtime 初始化时声明可由普通用户消息派发的 slash command。
 func (c *SessionControl) SupportedCommands(ctx context.Context) ([]SlashCommand, error) {
 	core, err := c.activeCore()
 	if err != nil {

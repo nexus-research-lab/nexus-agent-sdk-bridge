@@ -449,6 +449,27 @@ _ = commands
 _ = session.MCP().Reconnect(ctx, "github")
 ```
 
+### Slash Commands
+
+The runtime initialization snapshot is the command catalog. The current wire
+exposes the canonical `Name`, `Description`, and `ArgumentHint`;
+runtime-private metadata remains inside the bridge compatibility snapshot.
+Newer Agent SDK versions may also advertise aliases, which can be added
+without changing dispatch. Execute a listed command as an ordinary user
+message—there is no separate slash-command RPC:
+
+```go
+commands, err := session.Control().SupportedCommands(ctx)
+if err != nil {
+    return err
+}
+_ = commands
+
+_, err = session.Send(ctx, "/review src/auth")
+```
+
+Typed controls such as `SetModel` remain separate from prompt dispatch.
+
 ### Hooks
 
 Register callbacks at key points in the agent lifecycle — before/after tool calls, session start/end, context compaction, and more:

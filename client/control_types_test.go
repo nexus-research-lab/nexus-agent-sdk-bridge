@@ -133,7 +133,11 @@ func TestInitializationResultFromRuntimeFiltersAndMapsPublicSnapshot(t *testing.
 	hidden := false
 	got := initializationResultFromRuntime(runtimeinfo.InitializeResponse{
 		Commands: []runtimeinfo.SlashCommandInfo{
-			{Name: "visible", Description: "Run visible command", ArgumentHint: "<target>"},
+			{
+				Name:         "visible",
+				Description:  "Run visible command",
+				ArgumentHint: "<target>",
+			},
 			{Name: "hidden", Description: "Hidden", UserInvocable: &hidden},
 		},
 		Agents: []runtimeinfo.AgentInfo{
@@ -157,6 +161,10 @@ func TestInitializationResultFromRuntimeFiltersAndMapsPublicSnapshot(t *testing.
 
 	if len(got.Commands) != 1 || got.Commands[0].Name != "visible" {
 		t.Fatalf("commands = %#v, want only user-invocable command", got.Commands)
+	}
+	if got.Commands[0].Description != "Run visible command" ||
+		got.Commands[0].ArgumentHint != "<target>" {
+		t.Fatalf("command = %#v, want Claude SDK public fields", got.Commands[0])
 	}
 	if len(got.Agents) != 1 || got.Agents[0].Name != "reviewer" {
 		t.Fatalf("agents = %#v, want reviewer", got.Agents)
