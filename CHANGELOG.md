@@ -9,6 +9,11 @@ All notable changes to this project are documented in this file.
 - Added `Session.Control().ClearNextTurnContext` so hosts can send atomic Slash text without
   leaking a stale one-shot internal context block from an interrupted turn.
 
+### Fixed
+
+- Added Claude Code's required headless `--print` flag when launching a `stream-json`
+  process, allowing initialization and Slash command execution to complete on current releases.
+
 ## [0.1.23] - 2026-07-29
 
 ### Changed

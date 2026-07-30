@@ -64,6 +64,23 @@ func TestClaudeTransportReceivesSelectedSkillAndAdditionalRoot(t *testing.T) {
 	if !containsArgPair(args, "--add-dir", root) {
 		t.Fatalf("Claude args = %#v, want platform Skill additional root", args)
 	}
+	if !containsArg(args, "--print") {
+		t.Fatalf("Claude args = %#v, want headless print mode", args)
+	}
+}
+
+func TestNXSTransportDoesNotReceiveClaudePrintMode(t *testing.T) {
+	options := NewOptions().
+		WithRuntime(RuntimeNXS).
+		WithCLIPath("nxs")
+	resolved, err := options.buildResolvedOptions(false)
+	if err != nil {
+		t.Fatalf("buildResolvedOptions() error = %v", err)
+	}
+	args := buildProcessTransportArgs(resolved)
+	if containsArg(args, "--print") {
+		t.Fatalf("nxs args = %#v, want no Claude-only print mode", args)
+	}
 }
 
 func TestClaudeTransportKeepsDynamicSkillsAndDeniesUnboundGlobals(t *testing.T) {
@@ -89,6 +106,15 @@ func TestClaudeTransportKeepsDynamicSkillsAndDeniesUnboundGlobals(t *testing.T) 
 func containsArgPair(args []string, key string, value string) bool {
 	for index := 0; index+1 < len(args); index++ {
 		if args[index] == key && args[index+1] == value {
+			return true
+		}
+	}
+	return false
+}
+
+func containsArg(args []string, want string) bool {
+	for _, arg := range args {
+		if arg == want {
 			return true
 		}
 	}

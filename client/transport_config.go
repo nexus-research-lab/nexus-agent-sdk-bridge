@@ -55,6 +55,11 @@ func buildProcessTransportArgs(o resolvedOptions) []string {
 			args = append(args, scriptPath)
 		}
 	}
+	if normalizedRuntimeKind(o.RuntimeKind) == RuntimeClaude {
+		// Claude Code 的 stream-json stdin 是 headless print 模式的一部分；
+		// 显式携带该标记，避免 CLI 在读取 initialize control 前直接退出。
+		args = append(args, "--print")
+	}
 	args = append(args,
 		"--output-format", "stream-json",
 		"--verbose",
