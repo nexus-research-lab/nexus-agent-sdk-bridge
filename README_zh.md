@@ -411,6 +411,10 @@ client.NewOptions().
     WithSDKMCPServer("internal", myInProcessServer)
 ```
 
+对于进程方式启动的 runtime，自动生成的 MCP 配置以及通过 `WithMCPConfig`
+传入的内联 JSON 都会写入权限受限的参数文件，进程参数中只保留文件路径。
+显式传入的 MCP 配置文件路径保持不变。
+
 Go 原生进程内 server 通过 `tools` 包构造：
 
 ```go
