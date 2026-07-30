@@ -4,6 +4,11 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Added `Session.Control().ClearNextTurnContext` so hosts can send atomic Slash text without
+  leaking a stale one-shot internal context block from an interrupted turn.
+
 ## [0.1.23] - 2026-07-29
 
 ### Changed

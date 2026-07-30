@@ -470,6 +470,14 @@ _, err = session.Send(ctx, "/review src/auth")
 
 Typed controls such as `SetModel` remain separate from prompt dispatch.
 
+When a host is about to send an atomic Slash input after staging optional next-turn
+context, it can clear that one-shot context first:
+
+```go
+_ = session.Control().ClearNextTurnContext(ctx)
+_, err = session.Send(ctx, "/model sonnet")
+```
+
 ### Hooks
 
 Register callbacks at key points in the agent lifecycle — before/after tool calls, session start/end, context compaction, and more:

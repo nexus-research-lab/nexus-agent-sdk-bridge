@@ -107,6 +107,30 @@ func TestNextTurnContextPrependsStructuredContentBlock(t *testing.T) {
 	}
 }
 
+func TestClearNextTurnContextKeepsAtomicUserInputUntouched(t *testing.T) {
+	transport := &capturingTransport{}
+	core := newSessionCoreWithTransport(Options{}, transport)
+	core.lifecycleState().setConnected(true)
+
+	if err := core.setNextTurnContext(context.Background(), []InternalContextBlock{{
+		Name:    "goal",
+		Content: "must not reach the command",
+	}}); err != nil {
+		t.Fatalf("setNextTurnContext() error = %v", err)
+	}
+	if err := core.clearNextTurnContext(context.Background()); err != nil {
+		t.Fatalf("clearNextTurnContext() error = %v", err)
+	}
+	if err := core.Send(context.Background(), "/model sonnet", nil, "session-1"); err != nil {
+		t.Fatalf("Send() error = %v", err)
+	}
+
+	content := transport.writes[0]["message"].(map[string]any)["content"].(string)
+	if content != "/model sonnet" {
+		t.Fatalf("atomic command content = %q, want unchanged slash input", content)
+	}
+}
+
 type capturingTransport struct {
 	writes []map[string]any
 }

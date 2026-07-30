@@ -462,6 +462,14 @@ _, err = session.Send(ctx, "/review src/auth")
 
 `SetModel` 等强类型控制接口继续与 prompt 派发分离。
 
+如果宿主在上一轮暂存过下一轮隐藏上下文，准备发送原子 Slash 输入时可以先清理
+这段一次性上下文，避免它泄漏到命令参数：
+
+```go
+_ = session.Control().ClearNextTurnContext(ctx)
+_, err = session.Send(ctx, "/model sonnet")
+```
+
 ### Hook
 
 支持在 Agent 生命周期的关键节点注册回调，包括工具调用前后、会话开关、上下文压缩等：

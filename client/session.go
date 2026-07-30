@@ -470,6 +470,18 @@ func (c *SessionControl) SetNextTurnContext(ctx context.Context, blocks []Intern
 	return core.setNextTurnContext(ctx, blocks)
 }
 
+// ClearNextTurnContext 清除尚未消费的下一轮内部上下文。
+//
+// Slash command 等原子输入在发送前调用此方法，避免上一轮在设置上下文后中断时，
+// 遗留内容被拼入本轮用户文本。
+func (c *SessionControl) ClearNextTurnContext(ctx context.Context) error {
+	core, err := c.activeCore()
+	if err != nil {
+		return err
+	}
+	return core.clearNextTurnContext(ctx)
+}
+
 // SessionMCP 承载会话 MCP 控制能力。
 type SessionMCP struct {
 	session *Session

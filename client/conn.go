@@ -431,6 +431,21 @@ func (c *sessionCore) setNextTurnContext(ctx context.Context, blocks []InternalC
 	return nil
 }
 
+func (c *sessionCore) clearNextTurnContext(ctx context.Context) error {
+	if !c.isConnected() {
+		return ErrNotConnected
+	}
+	if ctx != nil {
+		select {
+		case <-ctx.Done():
+			return abortError(ctx.Err())
+		default:
+		}
+	}
+	c.nextTurnContextBuffer().set(nil)
+	return nil
+}
+
 // ReceiveMessages 返回消息流。
 func (c *sessionCore) ReceiveMessages(ctx context.Context) <-chan protocol.ReceivedMessage {
 	return c.streamState().messages
