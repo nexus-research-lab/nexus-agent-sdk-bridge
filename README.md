@@ -85,6 +85,17 @@ current Agent. Reconfiguring a connected session with a different Skill
 selection, disabled set, setting source, or discovery root returns
 `ErrRestartRequired`, allowing the host to replace the stale runtime process.
 
+### Runtime Primitives
+
+When a host wraps a user turn with application context, it can preserve the
+original intent for native memory recall:
+
+```go
+stream, err := session.SendWithOptions(ctx, wrappedPrompt, protocol.OutboundMessageOptions{
+    RecallQuery: originalUserText,
+})
+```
+
 ### Streaming Output
 
 Use `stream.Recv()` to read messages one by one and handle text, tool calls, and other content in real time:

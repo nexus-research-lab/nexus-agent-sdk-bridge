@@ -4,6 +4,11 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Added an optional `recall_query` outbound-message field so hosts can pass the
+  user's unwrapped intent to native runtime memory recall.
+
 ## [0.1.24] - 2026-07-31
 
 ### Added

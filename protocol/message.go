@@ -382,6 +382,7 @@ type OutboundMessageOptions struct {
 	Meta           bool              `json:"is_meta,omitempty"`
 	Synthetic      bool              `json:"is_synthetic,omitempty"`
 	HiddenFromUser bool              `json:"hidden_from_user,omitempty"`
+	RecallQuery    string            `json:"recall_query,omitempty"`
 	Purpose        string            `json:"purpose,omitempty"`
 	Priority       string            `json:"priority,omitempty"`
 	Metadata       map[string]string `json:"metadata,omitempty"`
@@ -696,6 +697,9 @@ func ApplyOutboundMessageOptions(payload map[string]any, options OutboundMessage
 	if options.HiddenFromUser {
 		result["hidden_from_user"] = true
 	}
+	if options.RecallQuery != "" {
+		result["recall_query"] = options.RecallQuery
+	}
 	if options.Purpose != "" {
 		result["purpose"] = options.Purpose
 	}
@@ -724,6 +728,7 @@ func buildUserOutboundMessage(sessionID string, parentToolUseID *string, content
 }
 
 func (o OutboundMessageOptions) normalized() OutboundMessageOptions {
+	o.RecallQuery = strings.TrimSpace(o.RecallQuery)
 	o.Purpose = strings.TrimSpace(o.Purpose)
 	o.Priority = strings.TrimSpace(o.Priority)
 	o.Metadata = jsonvalue.CloneStringMap(o.Metadata)

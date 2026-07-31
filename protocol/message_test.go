@@ -36,6 +36,7 @@ func TestEncodeOutboundMessageWithOptions(t *testing.T) {
 	message := NewUserTextMessageWithOptions("continue", OutboundMessageOptions{
 		Meta:           true,
 		HiddenFromUser: true,
+		RecallQuery:    "original user intent",
 		Purpose:        "host_continuation",
 		Priority:       "internal",
 		Metadata:       map[string]string{"task_id": "task-1"},
@@ -47,6 +48,9 @@ func TestEncodeOutboundMessageWithOptions(t *testing.T) {
 	}
 	if payload["purpose"] != "host_continuation" || payload["priority"] != "internal" {
 		t.Fatalf("payload purpose/priority = %#v, want host continuation", payload)
+	}
+	if payload["recall_query"] != "original user intent" {
+		t.Fatalf("payload recall_query = %#v, want original user intent", payload["recall_query"])
 	}
 	metadata := payload["metadata"].(map[string]string)
 	if metadata["task_id"] != "task-1" {

@@ -94,6 +94,15 @@ stream, err := session.SendWithOptions(ctx, "继续内部任务。", protocol.Ou
 })
 ```
 
+宿主给用户输入附加 Room 上下文等包装时，可通过 `RecallQuery` 单独传递原始用户意图，
+避免原生记忆召回搜索包装文本：
+
+```go
+stream, err := session.SendWithOptions(ctx, wrappedPrompt, protocol.OutboundMessageOptions{
+    RecallQuery: originalUserText,
+})
+```
+
 `ResultMessage` 提供 host 编排可用的 helper：
 
 ```go
