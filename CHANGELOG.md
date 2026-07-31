@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.1.24] - 2026-07-31
+
 ### Added
 
 - Added `Session.Control().ClearNextTurnContext` so hosts can send atomic Slash text without
