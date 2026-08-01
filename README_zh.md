@@ -10,9 +10,11 @@ go get github.com/nexus-research-lab/nexus-agent-sdk-bridge@latest
 
 要求 Go 1.24 及以上版本。
 
-Windows 下支持发现 npm 安装生成的 PowerShell shim。发现或显式配置的
-`claude.ps1` 会通过 `pwsh` 启动，并在不可用时回退到 Windows PowerShell。
-可通过 `NEXUS_CLAUDE_COMMAND_PATH` 覆盖自动发现的 Claude Code 命令。
+Windows 下会优先发现原生可执行文件，其次是 npm 安装生成的 PowerShell
+shim。发现或显式配置的 `claude.ps1` 会通过 `pwsh` 启动，并在不可用时回退
+到 Windows PowerShell。`.cmd` 或 `.bat` shim 不会被直接启动：bridge 会改用
+同名的 `.ps1` 文件；若安全入口不存在，则返回启动错误。可通过
+`NEXUS_CLAUDE_COMMAND_PATH` 覆盖自动发现的 Claude Code 命令。
 
 ## 快速开始
 

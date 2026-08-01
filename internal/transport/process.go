@@ -475,9 +475,29 @@ func resolveProcessCommandWith(
 		path:       resolvedPath,
 		executable: resolvedPath,
 	}
-	if resolver.goos != "windows" || !strings.EqualFold(filepath.Ext(resolvedPath), ".ps1") {
+	if resolver.goos != "windows" {
 		return command, nil
 	}
+
+	scriptPath := resolvedPath
+	switch strings.ToLower(filepath.Ext(resolvedPath)) {
+	case ".cmd", ".bat":
+		// 批处理会通过 cmd.exe 再解释 SDK 参数，无法安全承载 prompt、JSON
+		// 与路径中的 shell 元字符。标准 npm 安装同时提供同名 PowerShell
+		// shim；只允许转到这个无二次 shell 解析的入口。
+		scriptPath = strings.TrimSuffix(resolvedPath, filepath.Ext(resolvedPath)) + ".ps1"
+		if !resolver.fileExists(scriptPath) {
+			return processCommand{}, fmt.Errorf(
+				"process: Windows batch cli shim %q cannot safely receive SDK arguments; install or configure sibling PowerShell shim %q or a native executable",
+				resolvedPath,
+				scriptPath,
+			)
+		}
+	case ".ps1":
+	default:
+		return command, nil
+	}
+
 	for _, name := range []string{"pwsh.exe", "pwsh", "powershell.exe", "powershell"} {
 		launcherPath, err := resolver.lookPath(name)
 		if err != nil || strings.TrimSpace(launcherPath) == "" {
@@ -490,13 +510,13 @@ func resolveProcessCommandWith(
 			"-ExecutionPolicy",
 			"Bypass",
 			"-File",
-			resolvedPath,
+			scriptPath,
 		}
 		return command, nil
 	}
 	return processCommand{}, fmt.Errorf(
 		"process: PowerShell launcher for cli script %q not found: %w",
-		resolvedPath,
+		scriptPath,
 		exec.ErrNotFound,
 	)
 }
@@ -558,8 +578,8 @@ func normalizeProcessCommandResolver(resolver processCommandResolver) processCom
 
 func commandNames(goos string) []string {
 	if goos == "windows" {
-		// Windows 的 npm 全局安装通常只暴露 claude.cmd/claude.ps1。
-		return []string{"claude.exe", "claude.cmd", "claude.ps1", "claude"}
+		// PowerShell shim 保留 argv 边界；批处理只能作为同名 ps1 的发现线索。
+		return []string{"claude.exe", "claude.ps1", "claude.cmd", "claude"}
 	}
 	return []string{"claude"}
 }

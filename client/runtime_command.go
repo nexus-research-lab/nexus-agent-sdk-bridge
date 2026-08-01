@@ -57,8 +57,8 @@ func (r runtimeCommandResolver) resolveClaudeCommandPath() string {
 
 func claudeCommandNames(goos string) []string {
 	if goos == "windows" {
-		// Windows 的 npm 全局安装通常只提供 claude.cmd/claude.ps1。
-		return []string{"claude.exe", "claude.cmd", "claude.ps1", "claude"}
+		// PowerShell shim 不会把 SDK 参数重新交给 cmd.exe 解释。
+		return []string{"claude.exe", "claude.ps1", "claude.cmd", "claude"}
 	}
 	return []string{"claude"}
 }
@@ -181,7 +181,7 @@ func knownClaudeCommandPathGlobs(
 }
 
 func appendWindowsClaudeNames(candidates []string, dir string) []string {
-	for _, name := range []string{"claude.exe", "claude.cmd", "claude.ps1", "claude"} {
+	for _, name := range []string{"claude.exe", "claude.ps1", "claude.cmd", "claude"} {
 		candidates = append(candidates, filepath.Join(dir, name))
 	}
 	return candidates

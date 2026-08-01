@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -59,6 +60,32 @@ func TestResolveCommandPathPrefersWindowsNPMShimOnPath(t *testing.T) {
 	}
 }
 
+func TestResolveCommandPathPrefersWindowsPowerShellShimOnPath(t *testing.T) {
+	powerShellPath := `C:\Users\lee\AppData\Roaming\npm\claude.ps1`
+	batchPath := `C:\Users\lee\AppData\Roaming\npm\claude.cmd`
+	got, err := resolveCommandPathWith("", processCommandResolver{
+		goos:   "windows",
+		getenv: fakeProcessCommandEnv(nil),
+		lookPath: func(name string) (string, error) {
+			switch name {
+			case "claude.ps1":
+				return powerShellPath, nil
+			case "claude.cmd":
+				return batchPath, nil
+			default:
+				return "", exec.ErrNotFound
+			}
+		},
+		fileExists: func(string) bool { return false },
+	})
+	if err != nil {
+		t.Fatalf("resolve PATH PowerShell shim command path: %v", err)
+	}
+	if got != powerShellPath {
+		t.Fatalf("command path = %q, want PowerShell shim %q", got, powerShellPath)
+	}
+}
+
 func TestResolveCommandPathUsesWindowsNPMShim(t *testing.T) {
 	appData := `C:\Users\lee\AppData\Roaming`
 	expected := filepath.Join(appData, "npm", "claude.cmd")
@@ -106,6 +133,67 @@ func TestResolveProcessCommandWrapsWindowsPowerShellScript(t *testing.T) {
 	}, "|")
 	if got := strings.Join(command.arguments([]string{"-v"}), "|"); got != wantArgs {
 		t.Fatalf("PowerShell args = %q, want %q", got, wantArgs)
+	}
+}
+
+func TestResolveProcessCommandUsesPowerShellSiblingForWindowsBatch(t *testing.T) {
+	for _, extension := range []string{".cmd", ".bat", ".CMD", ".BAT"} {
+		t.Run(extension, func(t *testing.T) {
+			batchPath := `C:\tools\claude` + extension
+			scriptPath := `C:\tools\claude.ps1`
+			launcherPath := `C:\Program Files\PowerShell\7\pwsh.exe`
+			command, err := resolveProcessCommandWith(batchPath, processCommandResolver{
+				goos:       "windows",
+				getenv:     fakeProcessCommandEnv(nil),
+				fileExists: func(path string) bool { return path == scriptPath },
+				lookPath: func(name string) (string, error) {
+					if name == "pwsh.exe" {
+						return launcherPath, nil
+					}
+					return "", exec.ErrNotFound
+				},
+			})
+			if err != nil {
+				t.Fatalf("resolve Windows batch shim: %v", err)
+			}
+			if command.path != batchPath || command.executable != launcherPath {
+				t.Fatalf("resolved command = %#v", command)
+			}
+			wantArgs := strings.Join([]string{
+				"-NoProfile",
+				"-NonInteractive",
+				"-ExecutionPolicy",
+				"Bypass",
+				"-File",
+				scriptPath,
+				`SAFE&echo injected`,
+			}, "|")
+			if got := strings.Join(command.arguments([]string{`SAFE&echo injected`}), "|"); got != wantArgs {
+				t.Fatalf("PowerShell sibling args = %q, want %q", got, wantArgs)
+			}
+		})
+	}
+}
+
+func TestResolveProcessCommandRejectsWindowsBatchWithoutPowerShellSibling(t *testing.T) {
+	for _, extension := range []string{".cmd", ".bat", ".CMD", ".BAT"} {
+		t.Run(extension, func(t *testing.T) {
+			batchPath := `C:\tools\claude` + extension
+			scriptPath := `C:\tools\claude.ps1`
+			_, err := resolveProcessCommandWith(batchPath, processCommandResolver{
+				goos:       "windows",
+				getenv:     fakeProcessCommandEnv(nil),
+				lookPath:   func(string) (string, error) { return "", exec.ErrNotFound },
+				fileExists: func(string) bool { return false },
+			})
+			if err == nil {
+				t.Fatal("resolve Windows batch shim succeeded without a PowerShell sibling")
+			}
+			if !strings.Contains(err.Error(), "cannot safely receive SDK arguments") ||
+				!strings.Contains(err.Error(), strconv.Quote(scriptPath)) {
+				t.Fatalf("resolve Windows batch shim error = %q", err)
+			}
+		})
 	}
 }
 
@@ -200,6 +288,119 @@ if ($args -contains '-v') {
 	}
 	if !sawVersionDiagnostic || !sawLauncherDiagnostic {
 		t.Fatalf("PowerShell diagnostics = %#v", diagnostics)
+	}
+}
+
+func TestProcessManagerRedirectsWindowsBatchShimToPowerShell(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("Windows batch shim redirection is Windows-only")
+	}
+	launcherDir := filepath.Join(
+		os.Getenv("SystemRoot"),
+		"System32",
+		"WindowsPowerShell",
+		"v1.0",
+	)
+	launcherPath := filepath.Join(launcherDir, "powershell.exe")
+	if _, err := os.Stat(launcherPath); err != nil {
+		t.Skipf("Windows PowerShell is unavailable: %v", err)
+	}
+	t.Setenv("PATH", launcherDir)
+	t.Setenv(skipVersionCheckEnv, "")
+
+	temporaryRoot := t.TempDir()
+	batchPath := filepath.Join(temporaryRoot, "claude shim.cmd")
+	scriptPath := filepath.Join(temporaryRoot, "claude shim.ps1")
+	batchMarkerPath := filepath.Join(temporaryRoot, "batch-ran.txt")
+	powerShellMarkerPath := filepath.Join(temporaryRoot, "powershell-args.txt")
+	injectedMarkerPath := filepath.Join(temporaryRoot, "injected-marker.txt")
+	batch := `@echo off
+> "%NEXUS_BRIDGE_BATCH_MARKER%" echo batch-ran
+exit /b 97
+`
+	script := `
+if ($args -contains '-v') {
+    [Console]::Out.WriteLine('1.0.0')
+    exit 0
+}
+[IO.File]::WriteAllText($env:NEXUS_BRIDGE_PS1_MARKER, ($args -join [char]31))
+`
+	if err := os.WriteFile(batchPath, []byte(batch), 0o600); err != nil {
+		t.Fatalf("write batch shim: %v", err)
+	}
+	if err := os.WriteFile(scriptPath, []byte(script), 0o600); err != nil {
+		t.Fatalf("write PowerShell shim: %v", err)
+	}
+
+	hostileArgs := []string{
+		"",
+		`SAFE&ver`,
+		`SAFE|ver`,
+		`SAFE<input`,
+		`SAFE>output`,
+		`SAFE^caret`,
+		`SAFE;Write-Output INJECTED`,
+		`%PATH%`,
+		`{"key":"value&still-data"}`,
+		`two words`,
+		"embedded \"quote\"",
+		"line1\r\nline2",
+		`SAFE&echo.INJECTED>injected-marker.txt`,
+		`$([IO.File]::WriteAllText($env:NEXUS_BRIDGE_INJECTED_MARKER,'powershell'))`,
+	}
+	var diagnostics []ProcessDiagnosticEvent
+	manager := NewProcessManager(ProcessConfig{
+		CommandPath: batchPath,
+		CWD:         temporaryRoot,
+		Args:        hostileArgs,
+		Env: map[string]string{
+			"NEXUS_BRIDGE_BATCH_MARKER":    batchMarkerPath,
+			"NEXUS_BRIDGE_INJECTED_MARKER": injectedMarkerPath,
+			"NEXUS_BRIDGE_PS1_MARKER":      powerShellMarkerPath,
+		},
+		Diagnostics: func(event ProcessDiagnosticEvent) {
+			diagnostics = append(diagnostics, event)
+		},
+	})
+	if err := manager.Start(t.Context()); err != nil {
+		t.Fatalf("Start() Windows batch shim: %v", err)
+	}
+	if err := manager.Wait(); err != nil {
+		t.Fatalf("Wait() Windows batch shim: %v", err)
+	}
+
+	args, err := os.ReadFile(powerShellMarkerPath)
+	if err != nil {
+		t.Fatalf("read PowerShell runtime marker: %v", err)
+	}
+	if got, want := string(args), strings.Join(hostileArgs, string(rune(31))); got != want {
+		t.Fatalf("PowerShell runtime args = %q, want %q", got, want)
+	}
+	for description, path := range map[string]string{
+		"batch shim":       batchMarkerPath,
+		"injected command": injectedMarkerPath,
+	} {
+		if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("%s marker exists or cannot be checked: %v", description, err)
+		}
+	}
+
+	var sawVersionDiagnostic bool
+	var sawLauncherDiagnostic bool
+	for _, event := range diagnostics {
+		switch event.Event {
+		case "cli_version_unsupported":
+			sawVersionDiagnostic = event.Attributes["command_path"] == batchPath
+		case "process_start":
+			sawLauncherDiagnostic = event.Attributes["command_path"] == batchPath &&
+				strings.EqualFold(
+					strings.TrimSpace(fmt.Sprint(event.Attributes["launcher_path"])),
+					launcherPath,
+				)
+		}
+	}
+	if !sawVersionDiagnostic || !sawLauncherDiagnostic {
+		t.Fatalf("Windows batch shim diagnostics = %#v", diagnostics)
 	}
 }
 

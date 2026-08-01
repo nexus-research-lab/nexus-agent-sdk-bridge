@@ -11,6 +11,9 @@ All notable changes to this project are documented in this file.
 
 ### Fixed
 
+- Prevented Windows batch runtime shims from reinterpreting SDK arguments as
+  shell commands by routing them through a sibling PowerShell shim or rejecting
+  them when no safe launcher exists.
 - Launched Windows `claude.ps1` shims through PowerShell for both runtime
   startup and CLI version checks.
 - Made Windows child-process environment overrides case-insensitive, preventing

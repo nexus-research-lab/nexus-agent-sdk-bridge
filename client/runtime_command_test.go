@@ -3,6 +3,7 @@ package client
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -35,10 +36,29 @@ func TestRuntimeCommandResolverResolveClaudeCommandPath(t *testing.T) {
 			want:   filepath.Join(appData, "npm", "claude.cmd"),
 		},
 		{
+			name: "windows prefers PowerShell shim",
+			goos: "windows",
+			env:  map[string]string{"APPDATA": appData},
+			exists: map[string]bool{
+				filepath.Join(appData, "npm", "claude.ps1"): true,
+				filepath.Join(appData, "npm", "claude.cmd"): true,
+			},
+			want: filepath.Join(appData, "npm", "claude.ps1"),
+		},
+		{
 			name:     "look path",
 			goos:     "windows",
 			lookPath: map[string]string{"claude.cmd": `C:\Users\lee\AppData\Roaming\npm\claude.cmd`},
 			want:     `C:\Users\lee\AppData\Roaming\npm\claude.cmd`,
+		},
+		{
+			name: "look path prefers PowerShell shim",
+			goos: "windows",
+			lookPath: map[string]string{
+				"claude.ps1": `C:\Users\lee\AppData\Roaming\npm\claude.ps1`,
+				"claude.cmd": `C:\Users\lee\AppData\Roaming\npm\claude.cmd`,
+			},
+			want: `C:\Users\lee\AppData\Roaming\npm\claude.ps1`,
 		},
 		{
 			name:   "nvm install",
@@ -69,6 +89,14 @@ func TestRuntimeCommandResolverResolveClaudeCommandPath(t *testing.T) {
 				t.Fatalf("resolveClaudeCommandPath() = %q, want %q", got, test.want)
 			}
 		})
+	}
+}
+
+func TestClaudeCommandNamesOnWindowsAreSafestFirst(t *testing.T) {
+	want := []string{"claude.exe", "claude.ps1", "claude.cmd", "claude"}
+	got := claudeCommandNames("windows")
+	if strings.Join(got, "|") != strings.Join(want, "|") {
+		t.Fatalf("claudeCommandNames(windows) = %q, want %q", got, want)
 	}
 }
 

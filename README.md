@@ -10,10 +10,12 @@ go get github.com/nexus-research-lab/nexus-agent-sdk-bridge@latest
 
 Requires Go 1.24 or later.
 
-On Windows, Claude Code discovery supports npm PowerShell shims. A discovered
-or explicitly configured `claude.ps1` is launched through `pwsh`, with Windows
-PowerShell used as a fallback. Set `NEXUS_CLAUDE_COMMAND_PATH` to override the
-discovered Claude Code command.
+On Windows, Claude Code discovery prefers a native executable, then an npm
+PowerShell shim. A discovered or explicitly configured `claude.ps1` is launched
+through `pwsh`, with Windows PowerShell used as a fallback. A `.cmd` or `.bat`
+shim is never launched directly: the bridge uses its same-name `.ps1` sibling,
+or returns a startup error when no safe sibling exists. Set
+`NEXUS_CLAUDE_COMMAND_PATH` to override the discovered Claude Code command.
 
 ## Quick Start
 
