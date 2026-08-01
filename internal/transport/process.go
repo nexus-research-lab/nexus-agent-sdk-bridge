@@ -334,7 +334,18 @@ func (m *ProcessManager) Interrupt() error {
 	if m.cmd == nil || m.cmd.Process == nil {
 		return nil
 	}
-	return m.cmd.Process.Signal(os.Interrupt)
+	signal, err := processInterruptSignal(runtime.GOOS)
+	if err != nil {
+		return err
+	}
+	return m.cmd.Process.Signal(signal)
+}
+
+func processInterruptSignal(goos string) (os.Signal, error) {
+	if goos == "windows" {
+		return nil, ErrInterruptUnsupported
+	}
+	return os.Interrupt, nil
 }
 
 func terminateProcess(process *os.Process) error {

@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	transportpkg "github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/transport"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/mcp"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/permission"
 )
@@ -460,6 +461,51 @@ func TestInterruptWithReasonSendsControlRequest(t *testing.T) {
 	})
 	if err := receiveDone(t, interruptDone); err != nil {
 		t.Fatalf("interruptWithReason() error = %v", err)
+	}
+}
+
+type interruptUnsupportedTransport struct {
+	*scriptedTransport
+}
+
+func (t *interruptUnsupportedTransport) Interrupt() error {
+	return transportpkg.ErrInterruptUnsupported
+}
+
+func TestInterruptFallsBackToControlRequestWhenSignalUnsupported(t *testing.T) {
+	scripted := newScriptedTransport()
+	transport := &interruptUnsupportedTransport{scriptedTransport: scripted}
+	core := newSessionCoreWithTransport(
+		Options{
+			Transport: transport,
+			Runtime:   RuntimeOptions{InitializeTimeout: time.Second},
+		},
+		transport,
+	)
+
+	connectDone := make(chan error, 1)
+	go func() {
+		connectDone <- core.Connect(context.Background())
+	}()
+	assertInitializeRequest(t, receiveWrite(t, scripted))
+	scripted.pushRead(successfulInitializeResponse(map[string]any{"session_id": "session-1"}))
+	if err := receiveDone(t, connectDone); err != nil {
+		t.Fatalf("Connect() error = %v", err)
+	}
+	defer func() {
+		_ = core.Disconnect(context.Background())
+	}()
+
+	interruptDone := make(chan error, 1)
+	go func() {
+		interruptDone <- core.interrupt(context.Background())
+	}()
+	payload := receiveWrite(t, scripted)
+	assertControlRequest(t, payload, "interrupt")
+	requestID, _ := payload["request_id"].(string)
+	scripted.pushRead(successfulControlResponse(requestID, nil))
+	if err := receiveDone(t, interruptDone); err != nil {
+		t.Fatalf("interrupt() error = %v", err)
 	}
 }
 

@@ -1,6 +1,7 @@
 package transport
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -158,6 +159,26 @@ func TestProcessCommandVersionCheckSkipsNXSRuntime(t *testing.T) {
 	manager := NewProcessManager(ProcessConfig{ControlWireDialect: ControlWireDialectNXS})
 	if manager.shouldCheckCommandVersion() {
 		t.Fatal("shouldCheckCommandVersion() = true, want false for nxs runtime")
+	}
+}
+
+func TestProcessInterruptSignalFallsBackOnWindows(t *testing.T) {
+	signal, err := processInterruptSignal("windows")
+	if signal != nil {
+		t.Fatalf("processInterruptSignal(windows) signal = %v, want nil", signal)
+	}
+	if !errors.Is(err, ErrInterruptUnsupported) {
+		t.Fatalf("processInterruptSignal(windows) error = %v, want ErrInterruptUnsupported", err)
+	}
+}
+
+func TestProcessInterruptSignalUsesOSInterruptElsewhere(t *testing.T) {
+	signal, err := processInterruptSignal("linux")
+	if err != nil {
+		t.Fatalf("processInterruptSignal(linux) error = %v", err)
+	}
+	if signal != os.Interrupt {
+		t.Fatalf("processInterruptSignal(linux) signal = %v, want os.Interrupt", signal)
 	}
 }
 

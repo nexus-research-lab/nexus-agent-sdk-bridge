@@ -9,6 +9,12 @@ All notable changes to this project are documented in this file.
 - Added an optional `recall_query` outbound-message field so hosts can pass the
   user's unwrapped intent to native runtime memory recall.
 
+### Fixed
+
+- Routed Windows process interrupts through the runtime control protocol when
+  the operating system cannot deliver `os.Interrupt`, preserving live sessions
+  after users stop an active turn.
+
 ## [0.1.24] - 2026-07-31
 
 ### Added
