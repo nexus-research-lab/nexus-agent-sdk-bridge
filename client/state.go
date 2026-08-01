@@ -176,6 +176,8 @@ type sessionStreams struct {
 	messages            chan protocol.ReceivedMessage
 	readStop            chan struct{}
 	readDone            chan struct{}
+	transportCloseDone  chan struct{}
+	transportCloseErr   error
 	firstResult         chan struct{}
 	initialSessionReady chan struct{}
 	inputClosed         chan struct{}
@@ -194,6 +196,8 @@ func (s *sessionStreams) reset() {
 	s.messages = make(chan protocol.ReceivedMessage, s.buffer)
 	s.readStop = make(chan struct{})
 	s.readDone = make(chan struct{})
+	s.transportCloseDone = make(chan struct{})
+	s.transportCloseErr = nil
 	s.firstResult = make(chan struct{})
 	s.initialSessionReady = make(chan struct{})
 	s.inputClosed = make(chan struct{})

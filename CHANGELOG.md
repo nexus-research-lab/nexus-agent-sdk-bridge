@@ -11,6 +11,8 @@ All notable changes to this project are documented in this file.
 
 ### Fixed
 
+- Made runtime transport shutdown obey the disconnect context even when the
+  transport's own close operation is still blocked.
 - Prevented disconnect from deadlocking behind a full inbound message buffer,
   and made its read-loop wait honor the caller's context.
 - Routed Windows process interrupts through the runtime control protocol when

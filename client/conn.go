@@ -163,20 +163,27 @@ func (c *sessionCore) Disconnect(ctx context.Context) error {
 		ctx = context.Background()
 	}
 	streams := c.streamState()
-	var disconnectErr error
 	c.lifecycleState().closeOnceDo(func() {
 		c.lifecycleState().setConnected(false)
 		close(streams.readStop)
-
-		if c.transport != nil {
-			disconnectErr = joinErrors(disconnectErr, c.transport.Close())
-		}
+		activeTransport := c.transport
+		go func() {
+			if activeTransport != nil {
+				streams.transportCloseErr = activeTransport.Close()
+			}
+			close(streams.transportCloseDone)
+		}()
 	})
 	select {
-	case <-streams.readDone:
-		return joinErrors(disconnectErr, c.getReadError())
+	case <-streams.transportCloseDone:
 	case <-ctx.Done():
-		return joinErrors(disconnectErr, ctx.Err())
+		return ctx.Err()
+	}
+	select {
+	case <-streams.readDone:
+		return joinErrors(streams.transportCloseErr, c.getReadError())
+	case <-ctx.Done():
+		return joinErrors(streams.transportCloseErr, ctx.Err())
 	}
 }
 

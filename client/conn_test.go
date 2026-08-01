@@ -356,6 +356,55 @@ func TestDisconnectReadLoopWaitHonorsContext(t *testing.T) {
 	}
 }
 
+func TestDisconnectTransportCloseHonorsContext(t *testing.T) {
+	transport := newBlockingCloseTransport()
+	core := newSessionCoreWithTransport(
+		Options{
+			Transport: transport,
+			Runtime:   RuntimeOptions{InitializeTimeout: time.Second},
+		},
+		transport,
+	)
+	connectDone := make(chan error, 1)
+	go func() { connectDone <- core.Connect(context.Background()) }()
+	assertInitializeRequest(t, receiveWrite(t, transport.scriptedTransport))
+	transport.pushRead(successfulInitializeResponse(map[string]any{"session_id": "session-blocking-close"}))
+	if err := receiveDone(t, connectDone); err != nil {
+		t.Fatalf("Connect() error = %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+	disconnectDone := make(chan error, 1)
+	go func() { disconnectDone <- core.Disconnect(ctx) }()
+	select {
+	case <-transport.closeStarted:
+	case <-time.After(time.Second):
+		t.Fatal("transport Close 未启动")
+	}
+	select {
+	case err := <-disconnectDone:
+		if !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("Disconnect() error = %v, want context deadline exceeded", err)
+		}
+	case <-time.After(250 * time.Millisecond):
+		close(transport.closeRelease)
+		t.Fatal("Disconnect() blocked inside transport Close")
+	}
+
+	close(transport.closeRelease)
+	select {
+	case <-core.streamState().transportCloseDone:
+	case <-time.After(time.Second):
+		t.Fatal("释放 transport 后 Close 未结束")
+	}
+	select {
+	case <-core.streamState().readDone:
+	case <-time.After(time.Second):
+		t.Fatal("释放 transport 后 readLoop 未结束")
+	}
+}
+
 type observedReadTransport struct {
 	*scriptedTransport
 	assistantRead chan struct{}
@@ -382,6 +431,26 @@ type nonClosingScriptedTransport struct {
 }
 
 func (t *nonClosingScriptedTransport) Close() error { return nil }
+
+type blockingCloseTransport struct {
+	*scriptedTransport
+	closeStarted chan struct{}
+	closeRelease chan struct{}
+}
+
+func newBlockingCloseTransport() *blockingCloseTransport {
+	return &blockingCloseTransport{
+		scriptedTransport: newScriptedTransport(),
+		closeStarted:      make(chan struct{}),
+		closeRelease:      make(chan struct{}),
+	}
+}
+
+func (t *blockingCloseTransport) Close() error {
+	close(t.closeStarted)
+	<-t.closeRelease
+	return t.scriptedTransport.Close()
+}
 
 type scriptedTransport struct {
 	reads      chan map[string]any
