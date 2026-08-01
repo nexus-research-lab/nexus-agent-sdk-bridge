@@ -11,6 +11,8 @@ All notable changes to this project are documented in this file.
 
 ### Fixed
 
+- Prevented disconnect from deadlocking behind a full inbound message buffer,
+  and made its read-loop wait honor the caller's context.
 - Routed Windows process interrupts through the runtime control protocol when
   the operating system cannot deliver `os.Interrupt`, preserving live sessions
   after users stop an active turn.

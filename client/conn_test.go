@@ -9,6 +9,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/protocol"
 )
 
 func TestConnectWithPromptAllowsClaudePromptBeforeSystemInit(t *testing.T) {
@@ -274,6 +276,112 @@ func TestReadLoopEmitsMessageStopDiagnostics(t *testing.T) {
 		t.Fatal("timed out waiting for bridge.stream message_stop diagnostic")
 	}
 }
+
+func TestDisconnectUnblocksReadLoopWhenMessageBufferIsFull(t *testing.T) {
+	transport := newObservedReadTransport()
+	core := newSessionCoreWithTransport(
+		Options{
+			Transport: transport,
+			Runtime:   RuntimeOptions{InitializeTimeout: time.Second},
+		},
+		transport,
+	)
+	connectDone := make(chan error, 1)
+	go func() { connectDone <- core.Connect(context.Background()) }()
+	assertInitializeRequest(t, receiveWrite(t, transport.scriptedTransport))
+	transport.pushRead(successfulInitializeResponse(map[string]any{"session_id": "session-full-buffer"}))
+	if err := receiveDone(t, connectDone); err != nil {
+		t.Fatalf("Connect() error = %v", err)
+	}
+
+	streams := core.streamState()
+	for len(streams.messages) < cap(streams.messages) {
+		streams.messages <- protocol.ReceivedMessage{}
+	}
+	transport.pushRead(map[string]any{
+		"type":       "assistant",
+		"session_id": "session-full-buffer",
+		"message": map[string]any{
+			"role":    "assistant",
+			"content": []any{},
+		},
+	})
+	select {
+	case <-transport.assistantRead:
+	case <-time.After(time.Second):
+		t.Fatal("readLoop 未读取用于填塞 emit 的消息")
+	}
+
+	disconnectDone := make(chan error, 1)
+	go func() { disconnectDone <- core.Disconnect(context.Background()) }()
+	select {
+	case err := <-disconnectDone:
+		if err != nil {
+			t.Fatalf("Disconnect() error = %v", err)
+		}
+	case <-time.After(time.Second):
+		// 给旧实现释放一个槽位，避免失败测试遗留永久阻塞的 goroutine。
+		<-streams.messages
+		t.Fatal("Disconnect() blocked behind the full message buffer")
+	}
+}
+
+func TestDisconnectReadLoopWaitHonorsContext(t *testing.T) {
+	transport := &nonClosingScriptedTransport{scriptedTransport: newScriptedTransport()}
+	core := newSessionCoreWithTransport(
+		Options{
+			Transport: transport,
+			Runtime:   RuntimeOptions{InitializeTimeout: time.Second},
+		},
+		transport,
+	)
+	connectDone := make(chan error, 1)
+	go func() { connectDone <- core.Connect(context.Background()) }()
+	assertInitializeRequest(t, receiveWrite(t, transport.scriptedTransport))
+	transport.pushRead(successfulInitializeResponse(map[string]any{"session_id": "session-context-close"}))
+	if err := receiveDone(t, connectDone); err != nil {
+		t.Fatalf("Connect() error = %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+	if err := core.Disconnect(ctx); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("Disconnect() error = %v, want context deadline exceeded", err)
+	}
+	_ = transport.scriptedTransport.Close()
+	select {
+	case <-core.streamState().readDone:
+	case <-time.After(time.Second):
+		t.Fatal("测试 transport 释放后 readLoop 未结束")
+	}
+}
+
+type observedReadTransport struct {
+	*scriptedTransport
+	assistantRead chan struct{}
+	readOnce      sync.Once
+}
+
+func newObservedReadTransport() *observedReadTransport {
+	return &observedReadTransport{
+		scriptedTransport: newScriptedTransport(),
+		assistantRead:     make(chan struct{}),
+	}
+}
+
+func (t *observedReadTransport) ReadJSON() (map[string]any, error) {
+	payload, err := t.scriptedTransport.ReadJSON()
+	if err == nil && payload["type"] == "assistant" {
+		t.readOnce.Do(func() { close(t.assistantRead) })
+	}
+	return payload, err
+}
+
+type nonClosingScriptedTransport struct {
+	*scriptedTransport
+}
+
+func (t *nonClosingScriptedTransport) Close() error { return nil }
 
 type scriptedTransport struct {
 	reads      chan map[string]any

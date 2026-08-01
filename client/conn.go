@@ -159,19 +159,25 @@ func (c *sessionCore) Disconnect(ctx context.Context) error {
 	if !c.isConnected() && c.transport == nil {
 		return nil
 	}
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	streams := c.streamState()
 	var disconnectErr error
 	c.lifecycleState().closeOnceDo(func() {
 		c.lifecycleState().setConnected(false)
+		close(streams.readStop)
 
 		if c.transport != nil {
 			disconnectErr = joinErrors(disconnectErr, c.transport.Close())
 		}
-
-		<-streams.readDone
-		disconnectErr = joinErrors(disconnectErr, c.getReadError())
 	})
-	return disconnectErr
+	select {
+	case <-streams.readDone:
+		return joinErrors(disconnectErr, c.getReadError())
+	case <-ctx.Done():
+		return joinErrors(disconnectErr, ctx.Err())
+	}
 }
 
 // SessionID 返回当前会话 ID。
@@ -537,7 +543,9 @@ func (c *sessionCore) readLoop() {
 				c.signalFirstResult()
 			}
 			c.emitStreamDiagnostic(streamStop)
-			c.emitMessage(message)
+			if !c.emitMessage(message) {
+				return
+			}
 		}
 	}
 }
@@ -584,12 +592,17 @@ func (c *sessionCore) sendInternalRawMessage(message map[string]any, sessionID s
 	return nil
 }
 
-func (c *sessionCore) emitMessage(message protocol.ReceivedMessage) {
+func (c *sessionCore) emitMessage(message protocol.ReceivedMessage) bool {
 	streams := c.streamState()
 	if message.Type == protocol.MessageTypeResult {
 		c.signalFirstResult()
 	}
-	streams.messages <- message
+	select {
+	case streams.messages <- message:
+		return true
+	case <-streams.readStop:
+		return false
+	}
 }
 
 func (c *sessionCore) withAPIRetryStderrMessages(options Options) Options {
@@ -614,6 +627,7 @@ func (c *sessionCore) tryEmitMessage(message protocol.ReceivedMessage) {
 	}()
 	select {
 	case streams.messages <- message:
+	case <-streams.readStop:
 	case <-streams.readDone:
 	default:
 	}
