@@ -200,6 +200,67 @@ func TestBuildEnvironmentUsesRuntimeEntrypointEnv(t *testing.T) {
 	}
 }
 
+func TestBuildEnvironmentForPlatformMergesWindowsKeysCaseInsensitively(t *testing.T) {
+	environment := buildEnvironmentForPlatform(
+		[]string{
+			`Path=C:\Windows\System32`,
+			`=C:=C:\work`,
+			`=D:=D:\tmp`,
+			"ClaudeCode=parent-session",
+			"Claude_Code_Entrypoint=parent-entrypoint",
+		},
+		map[string]string{
+			"":     "invalid-empty-key",
+			"   ":  "invalid-blank-key",
+			"Path": `D:\mixed-case\bin`,
+			"PATH": `D:\runtime\bin`,
+		},
+		"",
+		ControlWireDialectNXS,
+		"windows",
+	)
+
+	if value, count := foldedEnvValue(environment, "PATH"); count != 1 || value != `D:\runtime\bin` {
+		t.Fatalf("Windows PATH entries = %d value=%q, want one override: %#v", count, value, environment)
+	}
+	if _, count := foldedEnvValue(environment, "CLAUDECODE"); count != 0 {
+		t.Fatalf("Windows inherited CLAUDECODE should be removed: %#v", environment)
+	}
+	if _, count := foldedEnvValue(environment, "CLAUDE_CODE_ENTRYPOINT"); count != 0 {
+		t.Fatalf("NXS env should remove inherited Claude entrypoint case-insensitively: %#v", environment)
+	}
+	if value, count := foldedEnvValue(environment, "NEXUS_ENTRYPOINT"); count != 1 || value != "sdk-go" {
+		t.Fatalf("NXS entrypoint entries = %d value=%q: %#v", count, value, environment)
+	}
+	if got := envValue(environment, "=C:"); got != `C:\work` {
+		t.Fatalf("Windows hidden =C: entry = %q: %#v", got, environment)
+	}
+	if got := envValue(environment, "=D:"); got != `D:\tmp` {
+		t.Fatalf("Windows hidden =D: entry = %q: %#v", got, environment)
+	}
+	for _, entry := range environment {
+		if entry == "=invalid-empty-key" || entry == "   =invalid-blank-key" {
+			t.Fatalf("invalid empty override key leaked into environment: %#v", environment)
+		}
+	}
+}
+
+func TestBuildEnvironmentForPlatformPreservesUnixKeyCasing(t *testing.T) {
+	environment := buildEnvironmentForPlatform(
+		[]string{"Path=/base/bin"},
+		map[string]string{"PATH": "/override/bin"},
+		"",
+		ControlWireDialectNXS,
+		"linux",
+	)
+	if got := envValue(environment, "Path"); got != "/base/bin" {
+		t.Fatalf("Unix Path = %q, want inherited value: %#v", got, environment)
+	}
+	if got := envValue(environment, "PATH"); got != "/override/bin" {
+		t.Fatalf("Unix PATH = %q, want override value: %#v", got, environment)
+	}
+}
+
 // TestBuildEnvironmentPreservesResponsesOverrides 验证进程边界不会丢失 Responses 与 Azure 配置。
 func TestBuildEnvironmentPreservesResponsesOverrides(t *testing.T) {
 	want := map[string]string{
@@ -228,6 +289,20 @@ func envValue(environment []string, key string) string {
 		}
 	}
 	return ""
+}
+
+func foldedEnvValue(environment []string, key string) (string, int) {
+	value := ""
+	count := 0
+	for _, entry := range environment {
+		parts := strings.SplitN(entry, "=", 2)
+		if len(parts) != 2 || !strings.EqualFold(parts[0], key) {
+			continue
+		}
+		value = parts[1]
+		count++
+	}
+	return value, count
 }
 
 func newExitedProcessManagerWithOpenStderr(t *testing.T) (*ProcessManager, func()) {

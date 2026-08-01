@@ -11,6 +11,9 @@ All notable changes to this project are documented in this file.
 
 ### Fixed
 
+- Made Windows child-process environment overrides case-insensitive, preventing
+  duplicate `Path` and `PATH` entries from nondeterministically hiding the
+  configured runtime path.
 - Made runtime transport shutdown obey the disconnect context even when the
   transport's own close operation is still blocked.
 - Kept timed-out transport cleanup scoped to its session generation and delayed

@@ -15,6 +15,7 @@ import (
 	"reflect"
 	"regexp"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -860,39 +861,125 @@ func (m *ProcessManager) emitDiagnostic(event string, attributes map[string]any)
 }
 
 func buildEnvironment(overrides map[string]string, cwd string, dialect ControlWireDialect) []string {
-	environment := map[string]string{}
-	for _, entry := range os.Environ() {
-		parts := strings.SplitN(entry, "=", 2)
-		if len(parts) != 2 {
+	return buildEnvironmentForPlatform(os.Environ(), overrides, cwd, dialect, runtime.GOOS)
+}
+
+type processEnvironmentEntry struct {
+	key   string
+	value string
+}
+
+func buildEnvironmentForPlatform(
+	baseEnvironment []string,
+	overrides map[string]string,
+	cwd string,
+	dialect ControlWireDialect,
+	platform string,
+) []string {
+	environment := map[string]processEnvironmentEntry{}
+	setEnvironment := func(key string, value string) {
+		environment[processEnvironmentKey(key, platform)] = processEnvironmentEntry{key: key, value: value}
+	}
+	deleteEnvironment := func(key string) {
+		delete(environment, processEnvironmentKey(key, platform))
+	}
+
+	for _, entry := range baseEnvironment {
+		key, value, ok := splitProcessEnvironmentEntry(entry)
+		if !ok {
 			continue
 		}
-		if parts[0] == "CLAUDECODE" {
+		if processEnvironmentKey(key, platform) == processEnvironmentKey("CLAUDECODE", platform) {
 			continue
 		}
-		environment[parts[0]] = parts[1]
+		setEnvironment(key, value)
 	}
 
 	if dialect == ControlWireDialectNXS {
-		environment["NEXUS_ENTRYPOINT"] = "sdk-go"
+		setEnvironment("NEXUS_ENTRYPOINT", "sdk-go")
 		// 宿主可能是 cc 会话，剥掉继承的 cc 入口标记，避免误导下游诊断。
-		delete(environment, "CLAUDE_CODE_ENTRYPOINT")
+		deleteEnvironment("CLAUDE_CODE_ENTRYPOINT")
 	} else {
 		// cc 方言：CLAUDE_* 是 Claude Code CLI 的契约变量，保持原名。
-		environment["CLAUDE_CODE_ENTRYPOINT"] = "sdk-go"
-		environment["CLAUDE_AGENT_SDK_VERSION"] = "dev"
+		setEnvironment("CLAUDE_CODE_ENTRYPOINT", "sdk-go")
+		setEnvironment("CLAUDE_AGENT_SDK_VERSION", "dev")
 	}
 	if cwd != "" {
-		environment["PWD"] = cwd
+		setEnvironment("PWD", cwd)
 	}
-	for key, value := range overrides {
-		environment[key] = value
+	for _, entry := range selectProcessEnvironmentOverrides(overrides, platform) {
+		setEnvironment(entry.key, entry.value)
 	}
 
 	results := make([]string, 0, len(environment))
-	for key, value := range environment {
-		results = append(results, fmt.Sprintf("%s=%s", key, value))
+	keys := make([]string, 0, len(environment))
+	for key := range environment {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		entry := environment[key]
+		results = append(results, fmt.Sprintf("%s=%s", entry.key, entry.value))
 	}
 	return results
+}
+
+func processEnvironmentKey(key string, platform string) string {
+	if platform == "windows" {
+		return strings.ToUpper(key)
+	}
+	return key
+}
+
+func splitProcessEnvironmentEntry(entry string) (string, string, bool) {
+	separatorStart := 0
+	if strings.HasPrefix(entry, "=") {
+		// Windows 的隐藏盘符当前目录键形如 =C:=C:\work；首个等号属于键。
+		separatorStart = 1
+	}
+	separator := strings.Index(entry[separatorStart:], "=")
+	if separator < 0 {
+		return "", "", false
+	}
+	separator += separatorStart
+	key := entry[:separator]
+	if strings.TrimSpace(key) == "" {
+		return "", "", false
+	}
+	return key, entry[separator+1:], true
+}
+
+func selectProcessEnvironmentOverrides(overrides map[string]string, platform string) []processEnvironmentEntry {
+	selected := make(map[string]processEnvironmentEntry, len(overrides))
+	for key, value := range overrides {
+		if strings.TrimSpace(key) == "" {
+			continue
+		}
+		normalizedKey := processEnvironmentKey(key, platform)
+		current, exists := selected[normalizedKey]
+		if !exists || preferProcessEnvironmentKey(key, current.key, normalizedKey) {
+			selected[normalizedKey] = processEnvironmentEntry{key: key, value: value}
+		}
+	}
+	keys := make([]string, 0, len(selected))
+	for key := range selected {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	result := make([]processEnvironmentEntry, 0, len(keys))
+	for _, key := range keys {
+		result = append(result, selected[key])
+	}
+	return result
+}
+
+func preferProcessEnvironmentKey(candidate string, current string, normalized string) bool {
+	candidateCanonical := candidate == normalized
+	currentCanonical := current == normalized
+	if candidateCanonical != currentCanonical {
+		return candidateCanonical
+	}
+	return candidate > current
 }
 
 func normalizeExitError(err error) error {
