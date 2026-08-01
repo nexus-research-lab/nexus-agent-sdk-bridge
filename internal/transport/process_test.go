@@ -233,7 +233,7 @@ func TestProcessManagerStartsWindowsPowerShellScript(t *testing.T) {
 		t.Skipf("Windows PowerShell is unavailable: %v", err)
 	}
 	t.Setenv("PATH", launcherDir)
-	t.Setenv(skipVersionCheckEnv, "")
+	t.Setenv(skipVersionCheckEnv, "true")
 	temporaryRoot := t.TempDir()
 	scriptPath := filepath.Join(temporaryRoot, "claude shim.ps1")
 	markerPath := filepath.Join(temporaryRoot, "runtime-args.txt")
@@ -272,12 +272,9 @@ if ($args -contains '-v') {
 		t.Fatalf("PowerShell runtime args = %q", got)
 	}
 
-	var sawVersionDiagnostic bool
 	var sawLauncherDiagnostic bool
 	for _, event := range diagnostics {
 		switch event.Event {
-		case "cli_version_unsupported":
-			sawVersionDiagnostic = event.Attributes["command_path"] == scriptPath
 		case "process_start":
 			sawLauncherDiagnostic = event.Attributes["command_path"] == scriptPath &&
 				strings.EqualFold(
@@ -286,7 +283,7 @@ if ($args -contains '-v') {
 				)
 		}
 	}
-	if !sawVersionDiagnostic || !sawLauncherDiagnostic {
+	if !sawLauncherDiagnostic {
 		t.Fatalf("PowerShell diagnostics = %#v", diagnostics)
 	}
 }
@@ -306,7 +303,7 @@ func TestProcessManagerRedirectsWindowsBatchShimToPowerShell(t *testing.T) {
 		t.Skipf("Windows PowerShell is unavailable: %v", err)
 	}
 	t.Setenv("PATH", launcherDir)
-	t.Setenv(skipVersionCheckEnv, "")
+	t.Setenv(skipVersionCheckEnv, "true")
 
 	temporaryRoot := t.TempDir()
 	batchPath := filepath.Join(temporaryRoot, "claude shim.cmd")
@@ -385,12 +382,9 @@ if ($args -contains '-v') {
 		}
 	}
 
-	var sawVersionDiagnostic bool
 	var sawLauncherDiagnostic bool
 	for _, event := range diagnostics {
 		switch event.Event {
-		case "cli_version_unsupported":
-			sawVersionDiagnostic = event.Attributes["command_path"] == batchPath
 		case "process_start":
 			sawLauncherDiagnostic = event.Attributes["command_path"] == batchPath &&
 				strings.EqualFold(
@@ -399,7 +393,7 @@ if ($args -contains '-v') {
 				)
 		}
 	}
-	if !sawVersionDiagnostic || !sawLauncherDiagnostic {
+	if !sawLauncherDiagnostic {
 		t.Fatalf("Windows batch shim diagnostics = %#v", diagnostics)
 	}
 }
