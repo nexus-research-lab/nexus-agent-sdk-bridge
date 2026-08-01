@@ -41,7 +41,22 @@ jobs:
         run: go mod download
 
       - name: Test
+        if: runner.os != 'Windows'
         run: go test ./...
+
+      - name: Test
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $output = & go test ./... 2>&1
+          $exitCode = $LASTEXITCODE
+          $output | ForEach-Object { Write-Host $_ }
+          if ($exitCode -ne 0) {
+            $detail = ($output | Select-Object -Last 200) -join "`n"
+            $detail = $detail.Replace("%", "%25").Replace("`r", "%0D").Replace("`n", "%0A")
+            Write-Host "::error title=Windows Go tests failed::$detail"
+            exit $exitCode
+          }
 
       - name: Build package tests
         run: go test -c ./internal/transport
