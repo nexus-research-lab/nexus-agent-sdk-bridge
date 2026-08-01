@@ -391,10 +391,15 @@ func TestDisconnectTransportCloseHonorsContext(t *testing.T) {
 		close(transport.closeRelease)
 		t.Fatal("Disconnect() blocked inside transport Close")
 	}
+	closeState := core.streamState().closeState
+	if closeState == nil {
+		close(transport.closeRelease)
+		t.Fatal("Disconnect() 未发布本代 close state")
+	}
 
 	close(transport.closeRelease)
 	select {
-	case <-core.streamState().transportCloseDone:
+	case <-closeState.done:
 	case <-time.After(time.Second):
 		t.Fatal("释放 transport 后 Close 未结束")
 	}
@@ -402,6 +407,161 @@ func TestDisconnectTransportCloseHonorsContext(t *testing.T) {
 	case <-core.streamState().readDone:
 	case <-time.After(time.Second):
 		t.Fatal("释放 transport 后 readLoop 未结束")
+	}
+}
+
+func TestConnectWaitsForPreviousCloseGenerationWithoutBlockingReadLoop(t *testing.T) {
+	firstTransport := newBlockingCloseTransport()
+	secondTransport := newScriptedTransport()
+	transportQueue := make(chan Transport, 2)
+	transportQueue <- firstTransport
+	transportQueue <- secondTransport
+	factoryCalls := make(chan Transport, 2)
+	core := &sessionCore{runner: newRunner(
+		Options{
+			Transport: firstTransport,
+			Runtime:   RuntimeOptions{InitializeTimeout: time.Second},
+		},
+		nil,
+		func(Options) Transport {
+			transport := <-transportQueue
+			factoryCalls <- transport
+			return transport
+		},
+		false,
+	)}
+
+	firstConnectDone := make(chan error, 1)
+	go func() { firstConnectDone <- core.Connect(context.Background()) }()
+	select {
+	case transport := <-factoryCalls:
+		if transport != firstTransport {
+			t.Fatalf("首次 transport = %T, want firstTransport", transport)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("首次 Connect 未创建 transport")
+	}
+	assertInitializeRequest(t, receiveWrite(t, firstTransport.scriptedTransport))
+	firstTransport.pushRead(successfulInitializeResponse(map[string]any{"session_id": "session-first"}))
+	if err := receiveDone(t, firstConnectDone); err != nil {
+		t.Fatalf("首次 Connect() error = %v", err)
+	}
+
+	oldStreams := core.streamState()
+	oldReadDone := oldStreams.readDone
+	releasedFirstClose := false
+	defer func() {
+		if !releasedFirstClose {
+			close(firstTransport.closeRelease)
+		}
+		_ = secondTransport.Close()
+	}()
+	disconnectCtx, cancelDisconnect := context.WithCancel(context.Background())
+	disconnectDone := make(chan error, 1)
+	go func() { disconnectDone <- core.Disconnect(disconnectCtx) }()
+	select {
+	case <-firstTransport.closeStarted:
+	case <-time.After(time.Second):
+		t.Fatal("旧 transport Close 未启动")
+	}
+	oldCloseState := oldStreams.closeState
+	if oldCloseState == nil {
+		t.Fatal("Disconnect() 未发布旧代 close state")
+	}
+	cancelDisconnect()
+	if err := receiveDone(t, disconnectDone); !errors.Is(err, context.Canceled) {
+		t.Fatalf("超时前代 Disconnect() error = %v, want context canceled", err)
+	}
+
+	reconnectParent, cancelReconnect := context.WithCancel(context.Background())
+	defer cancelReconnect()
+	waitContext := newObservedDoneContext(reconnectParent)
+	reconnectDone := make(chan error, 1)
+	go func() { reconnectDone <- core.Connect(waitContext) }()
+	select {
+	case <-waitContext.observed:
+	case <-time.After(time.Second):
+		t.Fatal("Connect 未进入前代 close 等待")
+	}
+	select {
+	case transport := <-factoryCalls:
+		t.Fatalf("前代 close 完成前创建了新 transport: %T", transport)
+	default:
+	}
+	select {
+	case payload := <-firstTransport.writes:
+		t.Fatalf("前代 close 完成前向旧 transport 写入: %#v", payload)
+	default:
+	}
+
+	// 先让旧 readLoop 退出；若 Connect 持有 connectedMu 等待 Close，这里会死锁。
+	_ = firstTransport.scriptedTransport.Close()
+	select {
+	case <-oldReadDone:
+	case <-time.After(time.Second):
+		t.Fatal("等待前代 close 的 Connect 阻塞了旧 readLoop 退出")
+	}
+	close(firstTransport.closeRelease)
+	releasedFirstClose = true
+	select {
+	case <-oldCloseState.done:
+	case <-time.After(time.Second):
+		t.Fatal("旧代 close state 未完成")
+	}
+
+	select {
+	case transport := <-factoryCalls:
+		if transport != secondTransport {
+			t.Fatalf("重连 transport = %T, want secondTransport", transport)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("前代 close 完成后未创建新 transport")
+	}
+	assertInitializeRequestWithID(t, receiveWrite(t, secondTransport), "req_2")
+	secondTransport.pushRead(successfulInitializeResponseWithID(
+		"req_2",
+		map[string]any{"session_id": "session-second"},
+	))
+	if err := receiveDone(t, reconnectDone); err != nil {
+		t.Fatalf("前代 close 完成后 Connect() error = %v", err)
+	}
+	if core.streamState().closeState != nil {
+		t.Fatal("新 generation 不应继承旧 close state")
+	}
+
+	if err := core.Disconnect(context.Background()); err != nil {
+		t.Fatalf("新 generation Disconnect() error = %v", err)
+	}
+	newCloseState := core.streamState().closeState
+	if newCloseState == nil || newCloseState == oldCloseState {
+		t.Fatal("新 generation 应持有独立 close state")
+	}
+}
+
+func TestDisconnectAfterTransportStartFailureCompletes(t *testing.T) {
+	startErr := errors.New("transport start failed")
+	transport := &startFailTransport{
+		scriptedTransport: newScriptedTransport(),
+		startErr:          startErr,
+		closeCalled:       make(chan struct{}, 1),
+	}
+	core := newSessionCoreWithTransport(
+		Options{
+			Transport: transport,
+			Runtime:   RuntimeOptions{InitializeTimeout: time.Second},
+		},
+		transport,
+	)
+	if err := core.Connect(context.Background()); !errors.Is(err, startErr) {
+		t.Fatalf("Connect() error = %v, want start error", err)
+	}
+	if err := core.Disconnect(context.Background()); err != nil {
+		t.Fatalf("Start 失败后的 Disconnect() error = %v", err)
+	}
+	select {
+	case <-transport.closeCalled:
+	default:
+		t.Fatal("Start 失败后的 transport 未关闭")
 	}
 }
 
@@ -438,6 +598,24 @@ type blockingCloseTransport struct {
 	closeRelease chan struct{}
 }
 
+type observedDoneContext struct {
+	context.Context
+	observed chan struct{}
+	once     sync.Once
+}
+
+func newObservedDoneContext(parent context.Context) *observedDoneContext {
+	return &observedDoneContext{
+		Context:  parent,
+		observed: make(chan struct{}),
+	}
+}
+
+func (c *observedDoneContext) Done() <-chan struct{} {
+	c.once.Do(func() { close(c.observed) })
+	return c.Context.Done()
+}
+
 func newBlockingCloseTransport() *blockingCloseTransport {
 	return &blockingCloseTransport{
 		scriptedTransport: newScriptedTransport(),
@@ -449,6 +627,21 @@ func newBlockingCloseTransport() *blockingCloseTransport {
 func (t *blockingCloseTransport) Close() error {
 	close(t.closeStarted)
 	<-t.closeRelease
+	return t.scriptedTransport.Close()
+}
+
+type startFailTransport struct {
+	*scriptedTransport
+	startErr    error
+	closeCalled chan struct{}
+}
+
+func (t *startFailTransport) Start(context.Context) error {
+	return t.startErr
+}
+
+func (t *startFailTransport) Close() error {
+	t.closeCalled <- struct{}{}
 	return t.scriptedTransport.Close()
 }
 
@@ -525,19 +718,27 @@ func (t *scriptedTransport) pushRead(payload map[string]any) {
 }
 
 func successfulInitializeResponse(response map[string]any) map[string]any {
+	return successfulInitializeResponseWithID("req_1", response)
+}
+
+func successfulInitializeResponseWithID(requestID string, response map[string]any) map[string]any {
 	return map[string]any{
 		"type": "control_response",
 		"response": map[string]any{
 			"subtype":    "success",
-			"request_id": "req_1",
+			"request_id": requestID,
 			"response":   response,
 		},
 	}
 }
 
 func assertInitializeRequest(t *testing.T, payload map[string]any) {
+	assertInitializeRequestWithID(t, payload, "req_1")
+}
+
+func assertInitializeRequestWithID(t *testing.T, payload map[string]any, requestID string) {
 	t.Helper()
-	if payload["type"] != "control_request" || payload["request_id"] != "req_1" {
+	if payload["type"] != "control_request" || payload["request_id"] != requestID {
 		t.Fatalf("initialize request envelope = %#v", payload)
 	}
 	request, ok := payload["request"].(map[string]any)

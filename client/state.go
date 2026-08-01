@@ -15,7 +15,6 @@ type sessionLifecycle struct {
 	connectedMu sync.RWMutex
 	connected   bool
 
-	closeOnce        sync.Once
 	inputCloseOnce   sync.Once
 	firstResultOnce  sync.Once
 	sessionReadyOnce sync.Once
@@ -62,10 +61,6 @@ func (l *sessionLifecycle) setConnected(connected bool) {
 	l.connectedMu.Unlock()
 }
 
-func (l *sessionLifecycle) closeOnceDo(fn func()) {
-	l.closeOnce.Do(fn)
-}
-
 func (l *sessionLifecycle) inputCloseOnceDo(fn func()) {
 	l.inputCloseOnce.Do(fn)
 }
@@ -79,7 +74,6 @@ func (l *sessionLifecycle) sessionReadyOnceDo(fn func()) {
 }
 
 func (l *sessionLifecycle) resetRuntimeState(sessionID string) {
-	l.closeOnce = sync.Once{}
 	l.inputCloseOnce = sync.Once{}
 	l.firstResultOnce = sync.Once{}
 	l.sessionReadyOnce = sync.Once{}
@@ -176,11 +170,17 @@ type sessionStreams struct {
 	messages            chan protocol.ReceivedMessage
 	readStop            chan struct{}
 	readDone            chan struct{}
-	transportCloseDone  chan struct{}
-	transportCloseErr   error
+	closeState          *sessionCloseState
 	firstResult         chan struct{}
 	initialSessionReady chan struct{}
 	inputClosed         chan struct{}
+}
+
+// sessionCloseState 只属于创建它的 streams 代际。迟到的 Close 完成只写
+// 自己的状态，不能污染 reset 后的新会话。
+type sessionCloseState struct {
+	done chan struct{}
+	err  error
 }
 
 func newSessionStreams(buffer int) *sessionStreams {
@@ -196,8 +196,7 @@ func (s *sessionStreams) reset() {
 	s.messages = make(chan protocol.ReceivedMessage, s.buffer)
 	s.readStop = make(chan struct{})
 	s.readDone = make(chan struct{})
-	s.transportCloseDone = make(chan struct{})
-	s.transportCloseErr = nil
+	s.closeState = nil
 	s.firstResult = make(chan struct{})
 	s.initialSessionReady = make(chan struct{})
 	s.inputClosed = make(chan struct{})

@@ -15,39 +15,65 @@ import (
 )
 
 func (c *sessionCore) Connect(ctx context.Context) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	lifecycle := c.lifecycleState()
-	lifecycle.lockConnection()
-	if lifecycle.connectedLocked() {
-		lifecycle.unlockConnection()
-		return nil
-	}
-	c.resetLifecycleIfNeededLocked()
-
-	normalizedOptions, err := c.options.normalized()
-	if err != nil {
-		lifecycle.unlockConnection()
-		return err
-	}
-	c.options = c.withAPIRetryStderrMessages(normalizedOptions)
-	c.replaceSDKMCPServers(c.options.sdkMCPServerRegistry())
-
-	if c.transport == nil {
-		c.transport, err = c.buildTransport(c.options)
-		if err != nil {
-			lifecycle.setConnectedLocked(false)
+	var activeStreams *sessionStreams
+	var activeTransport Transport
+	for {
+		lifecycle.lockConnection()
+		if lifecycle.connectedLocked() {
+			lifecycle.unlockConnection()
+			return nil
+		}
+		if err := ctx.Err(); err != nil {
 			lifecycle.unlockConnection()
 			return err
 		}
-	}
-	lifecycle.setConnectedLocked(true)
-	lifecycle.unlockConnection()
+		streams := c.streamState()
+		if closeState := streams.closeState; closeState != nil && !transport.ChannelClosed(closeState.done) {
+			lifecycle.unlockConnection()
+			if err := waitForSessionClose(ctx, closeState); err != nil {
+				return err
+			}
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			continue
+		}
+		c.resetLifecycleIfNeededLocked()
 
-	if err := c.transport.Start(ctx); err != nil {
-		lifecycle.setConnected(false)
-		return c.runtimeStartupError(classifyTransportStartError(c.options, err))
+		normalizedOptions, err := c.options.normalized()
+		if err != nil {
+			lifecycle.unlockConnection()
+			return err
+		}
+		c.options = c.withAPIRetryStderrMessages(normalizedOptions)
+		c.replaceSDKMCPServers(c.options.sdkMCPServerRegistry())
+
+		if c.transport == nil {
+			c.transport, err = c.buildTransport(c.options)
+			if err != nil {
+				lifecycle.setConnectedLocked(false)
+				lifecycle.unlockConnection()
+				return err
+			}
+		}
+		activeStreams = streams
+		activeTransport = c.transport
+		lifecycle.setConnectedLocked(true)
+		lifecycle.unlockConnection()
+		break
 	}
 
-	go c.readLoop()
+	if err := activeTransport.Start(ctx); err != nil {
+		startupErr := c.runtimeStartupError(classifyTransportStartError(c.options, err))
+		c.finishReadLoop(activeStreams)
+		return startupErr
+	}
+
+	go c.readLoop(activeStreams, activeTransport)
 
 	response, err := c.sendControlRequest(
 		ctx,
@@ -156,35 +182,64 @@ func (c *sessionCore) Wait() error {
 
 // Disconnect 断开连接。
 func (c *sessionCore) Disconnect(ctx context.Context) error {
-	if !c.isConnected() && c.transport == nil {
-		return nil
-	}
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	lifecycle := c.lifecycleState()
+	lifecycle.lockConnection()
 	streams := c.streamState()
-	c.lifecycleState().closeOnceDo(func() {
-		c.lifecycleState().setConnected(false)
+	closeState := streams.closeState
+	var activeTransport Transport
+	var readDone <-chan struct{}
+	startClose := false
+	if closeState == nil {
+		if !lifecycle.connectedLocked() && c.transport == nil {
+			lifecycle.unlockConnection()
+			return nil
+		}
+		lifecycle.setConnectedLocked(false)
 		close(streams.readStop)
-		activeTransport := c.transport
-		go func() {
-			if activeTransport != nil {
-				streams.transportCloseErr = activeTransport.Close()
-			}
-			close(streams.transportCloseDone)
-		}()
-	})
+		closeState = &sessionCloseState{done: make(chan struct{})}
+		streams.closeState = closeState
+		activeTransport = c.transport
+		readDone = streams.readDone
+		startClose = true
+	}
+	lifecycle.unlockConnection()
+
+	if startClose {
+		go c.finishSessionClose(closeState, activeTransport, readDone)
+	}
+	if err := waitForSessionClose(ctx, closeState); err != nil {
+		return err
+	}
+	return closeState.err
+}
+
+func waitForSessionClose(ctx context.Context, closeState *sessionCloseState) error {
+	if closeState == nil {
+		return nil
+	}
 	select {
-	case <-streams.transportCloseDone:
+	case <-closeState.done:
+		return nil
 	case <-ctx.Done():
 		return ctx.Err()
 	}
-	select {
-	case <-streams.readDone:
-		return joinErrors(streams.transportCloseErr, c.getReadError())
-	case <-ctx.Done():
-		return joinErrors(streams.transportCloseErr, ctx.Err())
+}
+
+func (c *sessionCore) finishSessionClose(
+	closeState *sessionCloseState,
+	activeTransport Transport,
+	readDone <-chan struct{},
+) {
+	var closeErr error
+	if activeTransport != nil {
+		closeErr = activeTransport.Close()
 	}
+	<-readDone
+	closeState.err = joinErrors(closeErr, c.getReadError())
+	close(closeState.done)
 }
 
 // SessionID 返回当前会话 ID。
@@ -199,6 +254,9 @@ func (c *sessionCore) isConnected() bool {
 func (c *sessionCore) resetLifecycleIfNeededLocked() {
 	streams := c.streamState()
 	if !transport.ChannelClosed(streams.readDone) {
+		return
+	}
+	if streams.closeState != nil && !transport.ChannelClosed(streams.closeState.done) {
 		return
 	}
 	streams.reset()
@@ -501,16 +559,13 @@ func (c *sessionCore) CloseInput() error {
 	return c.transport.EndInput()
 }
 
-func (c *sessionCore) readLoop() {
-	streams := c.streamState()
-	defer c.markDisconnected()
-	defer close(streams.readDone)
-	defer close(streams.messages)
+func (c *sessionCore) readLoop(streams *sessionStreams, activeTransport Transport) {
+	defer c.finishReadLoop(streams)
 
 	messagesSeen := 0
 	streamDiagnostics := streamDiagnosticsTracker{}
 	for {
-		payload, err := c.transport.ReadJSON()
+		payload, err := activeTransport.ReadJSON()
 		if err != nil {
 			if !errors.Is(err, io.EOF) {
 				c.setReadError(fmt.Errorf("client: read message failed: %w", err))
@@ -555,6 +610,18 @@ func (c *sessionCore) readLoop() {
 			}
 		}
 	}
+}
+
+func (c *sessionCore) finishReadLoop(streams *sessionStreams) {
+	// connected=false 与 readDone 关闭必须作为一个原子状态对外可见，否则新一代
+	// Connect 可能在旧 readLoop 完全退出前复用 transport。
+	lifecycle := c.lifecycleState()
+	lifecycle.lockConnection()
+	lifecycle.setConnectedLocked(false)
+	c.hookAppliedAckRegistry().reset()
+	close(streams.messages)
+	close(streams.readDone)
+	lifecycle.unlockConnection()
 }
 
 func (c *sessionCore) emitStreamDiagnostic(streamStop StreamStopDiagnostics) {

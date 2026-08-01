@@ -13,6 +13,8 @@ All notable changes to this project are documented in this file.
 
 - Made runtime transport shutdown obey the disconnect context even when the
   transport's own close operation is still blocked.
+- Kept timed-out transport cleanup scoped to its session generation and delayed
+  reconnect until the prior transport and read loop have fully exited.
 - Prevented disconnect from deadlocking behind a full inbound message buffer,
   and made its read-loop wait honor the caller's context.
 - Routed Windows process interrupts through the runtime control protocol when
