@@ -4,30 +4,17 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.1.25] - 2026-08-01
+
 ### Added
 
-- Added an optional `recall_query` outbound-message field so hosts can pass the
-  user's unwrapped intent to native runtime memory recall.
+- Added an optional `recall_query` message field so hosts can provide native runtimes with the user's unwrapped memory-recall intent.
 
 ### Fixed
 
-- Prevented Windows batch runtime shims from reinterpreting SDK arguments as
-  shell commands by routing them through a sibling PowerShell shim or rejecting
-  them when no safe launcher exists.
-- Launched Windows `claude.ps1` shims through PowerShell for both runtime
-  startup and CLI version checks.
-- Made Windows child-process environment overrides case-insensitive, preventing
-  duplicate `Path` and `PATH` entries from nondeterministically hiding the
-  configured runtime path.
-- Made runtime transport shutdown obey the disconnect context even when the
-  transport's own close operation is still blocked.
-- Kept timed-out transport cleanup scoped to its session generation and delayed
-  reconnect until the prior transport and read loop have fully exited.
-- Prevented disconnect from deadlocking behind a full inbound message buffer,
-  and made its read-loop wait honor the caller's context.
-- Routed Windows process interrupts through the runtime control protocol when
-  the operating system cannot deliver `os.Interrupt`, preserving live sessions
-  after users stop an active turn.
+- Secured Windows runtime startup across batch and PowerShell shims, case-insensitive environment overrides, argument forwarding, and version checks.
+- Preserved Windows sessions when users interrupt an active turn by routing stop requests through the runtime control protocol.
+- Bounded transport shutdown and message draining, isolated close generations, and prevented blocked disconnects from racing later reconnects.
 
 ## [0.1.24] - 2026-07-31
 
