@@ -11,6 +11,8 @@ All notable changes to this project are documented in this file.
 
 ### Fixed
 
+- Launched Windows `claude.ps1` shims through PowerShell for both runtime
+  startup and CLI version checks.
 - Made Windows child-process environment overrides case-insensitive, preventing
   duplicate `Path` and `PATH` entries from nondeterministically hiding the
   configured runtime path.

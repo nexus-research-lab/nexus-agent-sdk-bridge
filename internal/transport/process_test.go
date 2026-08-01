@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -72,6 +73,133 @@ func TestResolveCommandPathUsesWindowsNPMShim(t *testing.T) {
 	}
 	if got != expected {
 		t.Fatalf("command path = %q, want npm shim %q", got, expected)
+	}
+}
+
+func TestResolveProcessCommandWrapsWindowsPowerShellScript(t *testing.T) {
+	scriptPath := `C:\Users\lee\AppData\Roaming\npm\claude.ps1`
+	launcherPath := `C:\Program Files\PowerShell\7\pwsh.exe`
+	command, err := resolveProcessCommandWith(scriptPath, processCommandResolver{
+		goos:   "windows",
+		getenv: fakeProcessCommandEnv(nil),
+		lookPath: func(name string) (string, error) {
+			if name == "pwsh.exe" {
+				return launcherPath, nil
+			}
+			return "", exec.ErrNotFound
+		},
+	})
+	if err != nil {
+		t.Fatalf("resolve PowerShell command: %v", err)
+	}
+	if command.path != scriptPath || command.executable != launcherPath {
+		t.Fatalf("resolved command = %#v", command)
+	}
+	wantArgs := strings.Join([]string{
+		"-NoProfile",
+		"-NonInteractive",
+		"-ExecutionPolicy",
+		"Bypass",
+		"-File",
+		scriptPath,
+		"-v",
+	}, "|")
+	if got := strings.Join(command.arguments([]string{"-v"}), "|"); got != wantArgs {
+		t.Fatalf("PowerShell args = %q, want %q", got, wantArgs)
+	}
+}
+
+func TestResolveProcessCommandFallsBackToWindowsPowerShell(t *testing.T) {
+	scriptPath := `C:\tools\claude.ps1`
+	launcherPath := `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe`
+	command, err := resolveProcessCommandWith(scriptPath, processCommandResolver{
+		goos:   "windows",
+		getenv: fakeProcessCommandEnv(nil),
+		lookPath: func(name string) (string, error) {
+			if name == "powershell.exe" {
+				return launcherPath, nil
+			}
+			return "", exec.ErrNotFound
+		},
+	})
+	if err != nil {
+		t.Fatalf("resolve Windows PowerShell command: %v", err)
+	}
+	if command.executable != launcherPath {
+		t.Fatalf("launcher path = %q, want %q", command.executable, launcherPath)
+	}
+}
+
+func TestProcessManagerStartsWindowsPowerShellScript(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("PowerShell script launcher is Windows-only")
+	}
+	launcherDir := filepath.Join(
+		os.Getenv("SystemRoot"),
+		"System32",
+		"WindowsPowerShell",
+		"v1.0",
+	)
+	launcherPath := filepath.Join(launcherDir, "powershell.exe")
+	if _, err := os.Stat(launcherPath); err != nil {
+		t.Skipf("Windows PowerShell is unavailable: %v", err)
+	}
+	t.Setenv("PATH", launcherDir)
+	t.Setenv(skipVersionCheckEnv, "")
+	temporaryRoot := t.TempDir()
+	scriptPath := filepath.Join(temporaryRoot, "claude shim.ps1")
+	markerPath := filepath.Join(temporaryRoot, "runtime-args.txt")
+	script := `
+if ($args -contains '-v') {
+    [Console]::Out.WriteLine('1.0.0')
+    exit 0
+}
+[IO.File]::WriteAllText($env:NEXUS_BRIDGE_PS1_MARKER, ($args -join '|'))
+`
+	if err := os.WriteFile(scriptPath, []byte(script), 0o600); err != nil {
+		t.Fatalf("write PowerShell shim: %v", err)
+	}
+
+	var diagnostics []ProcessDiagnosticEvent
+	manager := NewProcessManager(ProcessConfig{
+		CommandPath: scriptPath,
+		CWD:         temporaryRoot,
+		Args:        []string{"runtime", "two words"},
+		Env:         map[string]string{"NEXUS_BRIDGE_PS1_MARKER": markerPath},
+		Diagnostics: func(event ProcessDiagnosticEvent) {
+			diagnostics = append(diagnostics, event)
+		},
+	})
+	if err := manager.Start(t.Context()); err != nil {
+		t.Fatalf("Start() PowerShell shim: %v", err)
+	}
+	if err := manager.Wait(); err != nil {
+		t.Fatalf("Wait() PowerShell shim: %v", err)
+	}
+	args, err := os.ReadFile(markerPath)
+	if err != nil {
+		t.Fatalf("read PowerShell runtime marker: %v", err)
+	}
+	if got := string(args); got != "runtime|two words" {
+		t.Fatalf("PowerShell runtime args = %q", got)
+	}
+
+	var sawVersionDiagnostic bool
+	var sawLauncherDiagnostic bool
+	for _, event := range diagnostics {
+		switch event.Event {
+		case "cli_version_unsupported":
+			sawVersionDiagnostic = event.Attributes["command_path"] == scriptPath
+		case "process_start":
+			sawLauncherDiagnostic = event.Attributes["command_path"] == scriptPath &&
+				strings.EqualFold(
+					strings.TrimSpace(fmt.Sprint(event.Attributes["launcher_path"])),
+					launcherPath,
+				)
+		}
+	}
+	if !sawVersionDiagnostic || !sawLauncherDiagnostic {
+		t.Fatalf("PowerShell diagnostics = %#v", diagnostics)
 	}
 }
 

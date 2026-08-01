@@ -42,6 +42,18 @@ type processCommandResolver struct {
 	fileExists func(string) bool
 }
 
+type processCommand struct {
+	path       string
+	executable string
+	prefixArgs []string
+}
+
+func (c processCommand) arguments(args []string) []string {
+	result := make([]string, 0, len(c.prefixArgs)+len(args))
+	result = append(result, c.prefixArgs...)
+	return append(result, args...)
+}
+
 // ProcessDiagnosticEvent 表示 process bridge 产生的一条诊断事件。
 type ProcessDiagnosticEvent struct {
 	Component  string
@@ -146,7 +158,7 @@ func (m *ProcessManager) Start(ctx context.Context) error {
 		return nil
 	}
 
-	commandPath, err := resolveCommandPath(m.config.CommandPath)
+	command, err := resolveProcessCommand(m.config.CommandPath)
 	if err != nil {
 		return err
 	}
@@ -154,9 +166,9 @@ func (m *ProcessManager) Start(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	m.checkCommandVersion(ctx, commandPath)
+	m.checkCommandVersion(ctx, command)
 
-	cmd := exec.Command(commandPath, m.config.Args...)
+	cmd := exec.Command(command.executable, command.arguments(m.config.Args)...)
 	cmd.Dir = m.config.CWD
 	cmd.Env = buildEnvironment(m.config.Env, m.config.CWD, m.config.ControlWireDialect)
 	if err := applyCommandUser(cmd, m.config.User); err != nil {
@@ -198,12 +210,16 @@ func (m *ProcessManager) Start(ctx context.Context) error {
 		_ = cmd.Wait()
 		return err
 	}
-	m.emitDiagnostic("process_start", map[string]any{
-		"command_path": commandPath,
+	attributes := map[string]any{
+		"command_path": command.path,
 		"cwd":          m.config.CWD,
 		"pid":          cmd.Process.Pid,
 		"args":         append([]string(nil), m.config.Args...),
-	})
+	}
+	if !strings.EqualFold(command.path, command.executable) {
+		attributes["launcher_path"] = command.executable
+	}
+	m.emitDiagnostic("process_start", attributes)
 
 	if err := stdoutWriter.Close(); err != nil {
 		_ = stdoutReader.Close()
@@ -442,6 +458,49 @@ func resolveCommandPath(commandPath string) (string, error) {
 	return resolveCommandPathWith(commandPath, defaultProcessCommandResolver())
 }
 
+func resolveProcessCommand(commandPath string) (processCommand, error) {
+	return resolveProcessCommandWith(commandPath, defaultProcessCommandResolver())
+}
+
+func resolveProcessCommandWith(
+	commandPath string,
+	resolver processCommandResolver,
+) (processCommand, error) {
+	resolver = normalizeProcessCommandResolver(resolver)
+	resolvedPath, err := resolveCommandPathWith(commandPath, resolver)
+	if err != nil {
+		return processCommand{}, err
+	}
+	command := processCommand{
+		path:       resolvedPath,
+		executable: resolvedPath,
+	}
+	if resolver.goos != "windows" || !strings.EqualFold(filepath.Ext(resolvedPath), ".ps1") {
+		return command, nil
+	}
+	for _, name := range []string{"pwsh.exe", "pwsh", "powershell.exe", "powershell"} {
+		launcherPath, err := resolver.lookPath(name)
+		if err != nil || strings.TrimSpace(launcherPath) == "" {
+			continue
+		}
+		command.executable = strings.TrimSpace(launcherPath)
+		command.prefixArgs = []string{
+			"-NoProfile",
+			"-NonInteractive",
+			"-ExecutionPolicy",
+			"Bypass",
+			"-File",
+			resolvedPath,
+		}
+		return command, nil
+	}
+	return processCommand{}, fmt.Errorf(
+		"process: PowerShell launcher for cli script %q not found: %w",
+		resolvedPath,
+		exec.ErrNotFound,
+	)
+}
+
 func defaultProcessCommandResolver() processCommandResolver {
 	return processCommandResolver{
 		goos:     runtime.GOOS,
@@ -573,18 +632,22 @@ func compactCommandPaths(paths []string) []string {
 	return result
 }
 
-func (m *ProcessManager) checkCommandVersion(parent context.Context, commandPath string) {
+func (m *ProcessManager) checkCommandVersion(parent context.Context, command processCommand) {
 	if !m.shouldCheckCommandVersion() {
 		return
 	}
 	ctx, cancel := context.WithTimeout(parent, versionCheckTimeout)
 	defer cancel()
 
-	output, err := exec.CommandContext(ctx, commandPath, "-v").Output()
+	output, err := exec.CommandContext(
+		ctx,
+		command.executable,
+		command.arguments([]string{"-v"})...,
+	).Output()
 	if err != nil {
 		return
 	}
-	m.emitUnsupportedCommandVersionDiagnostic(commandPath, string(output))
+	m.emitUnsupportedCommandVersionDiagnostic(command.path, string(output))
 }
 
 func (m *ProcessManager) shouldCheckCommandVersion() bool {
