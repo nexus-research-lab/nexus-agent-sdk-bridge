@@ -174,6 +174,7 @@ func (m *ProcessManager) Start(ctx context.Context) error {
 	if err := applyCommandUser(cmd, m.config.User); err != nil {
 		return err
 	}
+	configureProcessSession(cmd)
 
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
@@ -201,6 +202,7 @@ func (m *ProcessManager) Start(ctx context.Context) error {
 		_ = stderrWriter.Close()
 		return fmt.Errorf("process: start command failed: %w", err)
 	}
+	processSession := startedProcessSession(cmd)
 	if err := ctx.Err(); err != nil {
 		_ = stdoutReader.Close()
 		_ = stdoutWriter.Close()
@@ -208,6 +210,7 @@ func (m *ProcessManager) Start(ctx context.Context) error {
 		_ = stderrWriter.Close()
 		_ = cmd.Process.Kill()
 		_ = cmd.Wait()
+		m.cleanupProcessSession(processSession)
 		return err
 	}
 	attributes := map[string]any{
@@ -227,6 +230,7 @@ func (m *ProcessManager) Start(ctx context.Context) error {
 		_ = stderrWriter.Close()
 		_ = cmd.Process.Kill()
 		_ = cmd.Wait()
+		m.cleanupProcessSession(processSession)
 		return fmt.Errorf("process: close parent stdout writer failed: %w", err)
 	}
 	if err := stderrWriter.Close(); err != nil {
@@ -234,6 +238,7 @@ func (m *ProcessManager) Start(ctx context.Context) error {
 		_ = stderrReader.Close()
 		_ = cmd.Process.Kill()
 		_ = cmd.Wait()
+		m.cleanupProcessSession(processSession)
 		return fmt.Errorf("process: close parent stderr writer failed: %w", err)
 	}
 
@@ -256,6 +261,7 @@ func (m *ProcessManager) Start(ctx context.Context) error {
 		defer close(m.done)
 		err := cmd.Wait()
 		m.setWaitError(err)
+		m.cleanupProcessSession(processSession)
 		m.waitForStderrReader()
 		stderrTail := strings.TrimSpace(m.stderrTail.String())
 		attributes := map[string]any{"pid": cmd.Process.Pid}
@@ -269,6 +275,22 @@ func (m *ProcessManager) Start(ctx context.Context) error {
 	}()
 
 	return nil
+}
+
+func (m *ProcessManager) cleanupProcessSession(session processSession) {
+	terminated, err := session.cleanup()
+	if terminated > 0 {
+		m.emitDiagnostic("process_descendants_terminated", map[string]any{
+			"session_id":       session.id(),
+			"terminated_count": terminated,
+		})
+	}
+	if err != nil {
+		m.emitDiagnostic("process_descendant_cleanup_error", map[string]any{
+			"session_id": session.id(),
+			"error":      err.Error(),
+		})
+	}
 }
 
 // ReadJSON 读取下一条 JSON 消息。

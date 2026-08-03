@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Terminated runtime-owned descendant processes when an `nxs` or Claude Code process exits unexpectedly on macOS or Linux.
+
 ## [0.1.25] - 2026-08-01
 
 ### Added
