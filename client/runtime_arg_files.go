@@ -27,16 +27,48 @@ func materializeProcessArgFiles(options *Options) error {
 }
 
 func materializeProcessArgFilesForOS(goos string, options *Options) error {
-	if goos != "windows" || options == nil || options.Transport != nil || options.DirectConnect != nil {
+	if options == nil || options.Transport != nil || options.DirectConnect != nil {
 		return nil
 	}
-	if err := cleanupRuntimeArgFiles(options.Env); err != nil {
+
+	appendPrompt := ""
+	if goos == "windows" {
+		appendPrompt = combinedSystemAppendPrompt(options.System)
+	}
+	mcpPayload := []byte(nil)
+	sdkServers := options.MCP.SDKServers
+	materializeMCP := false
+	if rawConfig := strings.TrimSpace(options.MCP.Config); strings.HasPrefix(rawConfig, "{") &&
+		len(options.MCP.Servers) == 0 {
+		mcpPayload = []byte(rawConfig)
+		materializeMCP = true
+	} else if rawConfig == "" && len(options.resolvedMCPServers()) > 0 {
+		var err error
+		mcpPayload, sdkServers, err = mcpwire.MarshalConfig(options.resolvedMCPServers())
+		if err != nil {
+			return err
+		}
+		materializeMCP = true
+	}
+	if appendPrompt == "" && !materializeMCP {
+		return nil
+	}
+
+	dirMode, fileMode := runtimeArgFileModes(goos)
+	if err := cleanupRuntimeArgFiles(options.Env, dirMode); err != nil {
 		return err
 	}
-	if appendPrompt := combinedSystemAppendPrompt(options.System); appendPrompt != "" {
+	if appendPrompt != "" {
 		preservePromptParts := normalizedRuntimeKind(options.Runtime.Kind) == RuntimeNXS &&
 			(strings.TrimSpace(options.System.AppendStatic) != "" || strings.TrimSpace(options.System.AppendDynamic) != "")
-		path, err := writeRuntimeArgFile(options.Env, "append-system-prompt", ".txt", []byte(appendPrompt))
+		path, err := writeRuntimeArgFile(
+			options.Env,
+			dirMode,
+			fileMode,
+			"append-system-prompt",
+			".txt",
+			[]byte(appendPrompt),
+		)
 		if err != nil {
 			return fmt.Errorf("write append system prompt arg file: %w", err)
 		}
@@ -51,12 +83,15 @@ func materializeProcessArgFilesForOS(goos string, options *Options) error {
 			options.System.AppendDynamic = ""
 		}
 	}
-	if len(options.resolvedMCPServers()) > 0 && strings.TrimSpace(options.MCP.Config) == "" {
-		payload, sdkServers, err := mcpwire.MarshalConfig(options.resolvedMCPServers())
-		if err != nil {
-			return err
-		}
-		path, err := writeRuntimeArgFile(options.Env, "mcp-config", ".json", payload)
+	if materializeMCP {
+		path, err := writeRuntimeArgFile(
+			options.Env,
+			dirMode,
+			fileMode,
+			"mcp-config",
+			".json",
+			mcpPayload,
+		)
 		if err != nil {
 			return fmt.Errorf("write MCP config arg file: %w", err)
 		}
@@ -67,10 +102,22 @@ func materializeProcessArgFilesForOS(goos string, options *Options) error {
 	return nil
 }
 
-func cleanupRuntimeArgFiles(env map[string]string) error {
+func runtimeArgFileModes(goos string) (os.FileMode, os.FileMode) {
+	if goos == "linux" {
+		// Linux 隔离 runtime 通过用户私有组读取宿主生成的参数文件；
+		// setgid 保证新文件继承参数目录从 runtime 根继承的私有组。
+		return 0o750 | os.ModeSetgid, 0o640
+	}
+	return 0o700, 0o600
+}
+
+func cleanupRuntimeArgFiles(env map[string]string, dirMode os.FileMode) error {
 	root := runtimeArgFilesRoot(env)
-	if err := os.MkdirAll(root, 0o700); err != nil {
+	if err := os.MkdirAll(root, dirMode); err != nil {
 		return fmt.Errorf("create runtime arg file dir: %w", err)
+	}
+	if err := os.Chmod(root, dirMode); err != nil {
+		return fmt.Errorf("set runtime arg file dir permissions: %w", err)
 	}
 	entries, err := os.ReadDir(root)
 	if err != nil {
@@ -90,13 +137,26 @@ func cleanupRuntimeArgFiles(env map[string]string) error {
 	return nil
 }
 
-func writeRuntimeArgFile(env map[string]string, prefix string, extension string, payload []byte) (string, error) {
+func writeRuntimeArgFile(
+	env map[string]string,
+	dirMode os.FileMode,
+	fileMode os.FileMode,
+	prefix string,
+	extension string,
+	payload []byte,
+) (string, error) {
 	root := runtimeArgFilesRoot(env)
-	if err := os.MkdirAll(root, 0o700); err != nil {
+	if err := os.MkdirAll(root, dirMode); err != nil {
+		return "", err
+	}
+	if err := os.Chmod(root, dirMode); err != nil {
 		return "", err
 	}
 	path := filepath.Join(root, fmt.Sprintf("%s-%s%s", prefix, runtimeArgFileDigest(payload), extension))
 	if sameRuntimeArgFile(path, payload) {
+		if err := os.Chmod(path, fileMode); err != nil {
+			return "", err
+		}
 		return path, nil
 	}
 	temp, err := os.CreateTemp(root, "."+prefix+"-*"+extension)
@@ -104,7 +164,7 @@ func writeRuntimeArgFile(env map[string]string, prefix string, extension string,
 		return "", err
 	}
 	tempPath := temp.Name()
-	if err := os.Chmod(tempPath, 0o600); err != nil {
+	if err := os.Chmod(tempPath, fileMode); err != nil {
 		_ = temp.Close()
 		_ = os.Remove(tempPath)
 		return "", err
@@ -122,7 +182,7 @@ func writeRuntimeArgFile(env map[string]string, prefix string, extension string,
 		_ = os.Remove(tempPath)
 		return "", err
 	}
-	if err := os.Chmod(path, 0o600); err != nil {
+	if err := os.Chmod(path, fileMode); err != nil {
 		return "", err
 	}
 	return path, nil

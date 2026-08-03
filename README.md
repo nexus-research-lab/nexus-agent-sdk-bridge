@@ -435,6 +435,11 @@ client.NewOptions().
     WithSDKMCPServer("internal", myInProcessServer)
 ```
 
+For process-launched runtimes, generated MCP configuration and inline JSON
+passed through `WithMCPConfig` are materialized in permission-restricted
+argument files. Process arguments contain only the file path. An explicit MCP
+configuration file path remains unchanged.
+
 For Go-native in-process servers, build tools through the `tools` package:
 
 ```go

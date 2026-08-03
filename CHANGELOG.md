@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Prevented process-launched runtimes from exposing generated or inline MCP configuration credentials in process arguments by materializing the configuration in permission-restricted argument files on every supported OS.
+
 ## [0.1.25] - 2026-08-01
 
 ### Added
