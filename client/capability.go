@@ -17,6 +17,7 @@ const (
 	CapabilityAutoDream         Capability = "auto_dream"
 	CapabilityUpdateEnvironment Capability = "update_environment"
 	CapabilityHookResponseAck   Capability = "hook_response_ack"
+	CapabilityRuntimeLifecycle  Capability = "runtime_lifecycle"
 )
 
 const hookResponseAckProtocolCapability = "hook_response_ack_v1"
@@ -44,7 +45,8 @@ func (c *sessionCore) supports(capability Capability) bool {
 		CapabilityTypedUsage,
 		CapabilityTerminalCategory,
 		CapabilityStopTask,
-		CapabilityInProcessMCP:
+		CapabilityInProcessMCP,
+		CapabilityRuntimeLifecycle:
 		return true
 	case CapabilitySendTaskMessage, CapabilityAutoDream:
 		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS

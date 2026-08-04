@@ -898,7 +898,9 @@ type ReceivedMessage struct {
 	TaskUpdated      *TaskUpdatedMessage      `json:"task_updated,omitempty"`
 	PromptSuggestion *PromptSuggestionMessage `json:"prompt_suggestion,omitempty"`
 	AuthStatus       *AuthStatusMessage       `json:"auth_status,omitempty"`
-	Raw              map[string]any           `json:"raw,omitempty"`
+	// RuntimeLifecycle 由 Bridge 从当前强类型消息确定性派生，不参与 runtime wire。
+	RuntimeLifecycle []RuntimeLifecycleEvent `json:"-"`
+	Raw              map[string]any          `json:"raw,omitempty"`
 }
 
 // PermissionDenial 表示权限拒绝明细。
@@ -1437,6 +1439,7 @@ func DecodeMessage(payload map[string]any) (ReceivedMessage, error) {
 		}
 	default:
 	}
+	message.RuntimeLifecycle = DeriveRuntimeLifecycleEvents(message)
 
 	return message, nil
 }

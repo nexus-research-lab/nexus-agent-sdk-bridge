@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Added provider-neutral runtime lifecycle projection for tool and subagent runs, allowing hosts to build durable execution graphs without model-authored status calls.
+
 ### Fixed
 
 - Prevented process-launched runtimes from exposing generated or inline MCP configuration credentials in process arguments by materializing the configuration in permission-restricted argument files on every supported OS.
