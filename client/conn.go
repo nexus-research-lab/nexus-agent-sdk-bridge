@@ -269,6 +269,7 @@ func (c *sessionCore) resetLifecycleIfNeededLocked() {
 func (c *sessionCore) markDisconnected() {
 	c.lifecycleState().setConnected(false)
 	c.hookAppliedAckRegistry().reset()
+	c.permissionErrorRegistry().reset()
 }
 
 func (c *sessionCore) markTransportFailed(err error) {
@@ -590,6 +591,7 @@ func (c *sessionCore) readLoop(streams *sessionStreams, activeTransport Transpor
 				c.failPendingRequests(decodeErr)
 				return
 			}
+			message = c.attachPermissionErrorCodes(message)
 			message = normalizeAPIRetrySystemMessage(message)
 
 			if message.SessionID != "" {
@@ -619,6 +621,7 @@ func (c *sessionCore) finishReadLoop(streams *sessionStreams) {
 	lifecycle.lockConnection()
 	lifecycle.setConnectedLocked(false)
 	c.hookAppliedAckRegistry().reset()
+	c.permissionErrorRegistry().reset()
 	close(streams.messages)
 	close(streams.readDone)
 	lifecycle.unlockConnection()

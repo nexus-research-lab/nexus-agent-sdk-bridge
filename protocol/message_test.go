@@ -5,7 +5,7 @@ import "testing"
 func TestEncodeOutboundMessages(t *testing.T) {
 	message := NewUserBlocksMessage(
 		NewTextContent("hello"),
-		NewToolResultContent("tool-1", "done", false),
+		NewToolResultContent("tool-1", "done", true).WithErrorCode("permission_request_timeout"),
 		NewImageContent("ZmFrZS1pbWFnZQ==", "image/png"),
 		NewDocumentContent(map[string]any{"type": "base64", "data": "JVBERi0x"}, "application/pdf", "spec"),
 		NewSearchResultContent("tool result", "Spec", "https://example.com/spec", "demo"),
@@ -27,8 +27,40 @@ func TestEncodeOutboundMessages(t *testing.T) {
 	if content[0]["type"] != "text" || content[1]["tool_use_id"] != "tool-1" {
 		t.Fatalf("content prefix = %#v, want text + tool_result", content[:2])
 	}
+	if content[1]["error_code"] != "permission_request_timeout" {
+		t.Fatalf("tool result error_code = %#v, want permission timeout", content[1]["error_code"])
+	}
 	if content[2]["type"] != "image" || content[3]["type"] != "document" || content[4]["type"] != "search_result" || content[5]["type"] != "resource_link" {
 		t.Fatalf("content suffix = %#v, want image/document/search_result/resource_link", content[2:])
+	}
+}
+
+func TestDecodeToolResultErrorCode(t *testing.T) {
+	message, err := ParseMessage([]byte(`{
+		"type":"user",
+		"message":{"role":"user","content":[{
+			"type":"tool_result",
+			"tool_use_id":"tool-1",
+			"content":"等待用户确认超时",
+			"is_error":true,
+			"error_code":"permission_request_timeout"
+		}]}
+	}`))
+	if err != nil {
+		t.Fatalf("ParseMessage(tool result) error = %v", err)
+	}
+	if message.User == nil || len(message.User.Message.Content) != 1 {
+		t.Fatalf("tool result message = %#v, want one content block", message)
+	}
+	block, ok := AsToolResultBlock(message.User.Message.Content[0])
+	if !ok {
+		t.Fatalf("content block = %#v, want tool result", message.User.Message.Content[0])
+	}
+	if block.ErrorCode != "permission_request_timeout" {
+		t.Fatalf("ErrorCode = %q, want permission timeout", block.ErrorCode)
+	}
+	if block.RawPayload()["error_code"] != "permission_request_timeout" {
+		t.Fatalf("raw payload = %#v, want error_code", block.RawPayload())
 	}
 }
 

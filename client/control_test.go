@@ -8,6 +8,8 @@ import (
 
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/hook"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/runtimeinfo"
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/permission"
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/protocol"
 )
 
 type failingControlTransport struct {
@@ -67,6 +69,67 @@ func TestBuildInitializeRequestAdvertisesHookResponseAckOnlyToNXS(t *testing.T) 
 	claudeRequest := newSessionCore(Options{Runtime: RuntimeOptions{Kind: RuntimeClaude}}).buildInitializeRequest()
 	if len(claudeRequest.ProtocolCapabilities) != 0 {
 		t.Fatalf("claude protocol capabilities = %#v, want none", claudeRequest.ProtocolCapabilities)
+	}
+}
+
+func TestPermissionErrorCodeFlowsThroughNXSAndClaudeMessages(t *testing.T) {
+	handler := func(context.Context, permission.Request) (permission.Decision, error) {
+		return permission.DenyWithErrorCode(
+			"等待用户确认超时",
+			permission.ErrorCodeRequestTimeout,
+			true,
+		), nil
+	}
+	request := map[string]any{
+		"tool_name":   "AskUserQuestion",
+		"tool_use_id": "tool-question",
+	}
+
+	nxsCore := newSessionCore(Options{
+		Runtime:   RuntimeOptions{Kind: RuntimeNXS},
+		Callbacks: CallbackOptions{PermissionHandler: handler},
+	})
+	nxsResponse := nxsCore.resolvePermissionRequest(context.Background(), request)
+	if nxsResponse["errorCode"] != string(permission.ErrorCodeRequestTimeout) {
+		t.Fatalf("nxs response = %#v, want structured errorCode", nxsResponse)
+	}
+
+	claudeCore := newSessionCore(Options{
+		Runtime:   RuntimeOptions{Kind: RuntimeClaude},
+		Callbacks: CallbackOptions{PermissionHandler: handler},
+	})
+	claudeResponse := claudeCore.resolvePermissionRequest(context.Background(), request)
+	if _, exists := claudeResponse["errorCode"]; exists {
+		t.Fatalf("Claude response = %#v, want no unsupported extension field", claudeResponse)
+	}
+	message, err := protocol.DecodeMessage(map[string]any{
+		"type": "user",
+		"message": map[string]any{
+			"role": "user",
+			"content": []any{map[string]any{
+				"type":        "tool_result",
+				"tool_use_id": "tool-question",
+				"content":     "等待用户确认超时",
+				"is_error":    true,
+			}},
+		},
+	})
+	if err != nil {
+		t.Fatalf("DecodeMessage() error = %v", err)
+	}
+	message = claudeCore.attachPermissionErrorCodes(message)
+	toolResult, ok := protocol.AsToolResultBlock(message.User.Message.Content[0])
+	if !ok || toolResult.ErrorCode != string(permission.ErrorCodeRequestTimeout) {
+		t.Fatalf("Claude tool result = %#v, want bridged error_code", toolResult)
+	}
+	if toolResult.RawPayload()["error_code"] != string(permission.ErrorCodeRequestTimeout) {
+		t.Fatalf("Claude raw tool result = %#v, want bridged error_code", toolResult.RawPayload())
+	}
+	rawEnvelope := message.Raw["message"].(map[string]any)
+	rawContent := rawEnvelope["content"].([]any)
+	rawToolResult := rawContent[0].(map[string]any)
+	if rawToolResult["error_code"] != string(permission.ErrorCodeRequestTimeout) {
+		t.Fatalf("ReceivedMessage.Raw = %#v, want bridged error_code", message.Raw)
 	}
 }
 

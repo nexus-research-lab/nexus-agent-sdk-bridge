@@ -36,6 +36,14 @@ const (
 	BehaviorAsk Behavior = "ask"
 )
 
+// ErrorCode 表示权限拒绝的稳定机器可读原因。
+type ErrorCode string
+
+const (
+	// ErrorCodeRequestTimeout 表示宿主未在期限内完成权限决策。
+	ErrorCodeRequestTimeout ErrorCode = "permission_request_timeout"
+)
+
 // UpdateDestination 表示权限更新目标。
 type UpdateDestination string
 
@@ -115,6 +123,7 @@ type Request struct {
 type Decision struct {
 	Behavior           Behavior         `json:"behavior"`
 	Message            string           `json:"message,omitempty"`
+	ErrorCode          ErrorCode        `json:"errorCode,omitempty"`
 	AcceptFeedback     string           `json:"acceptFeedback,omitempty"`
 	ContentBlocks      []map[string]any `json:"contentBlocks,omitempty"`
 	Interrupt          bool             `json:"interrupt,omitempty"`
@@ -143,6 +152,16 @@ func Deny(message string, interrupt bool) Decision {
 	}
 }
 
+// DenyWithErrorCode 构造带稳定机器可读原因的拒绝决策。
+func DenyWithErrorCode(message string, errorCode ErrorCode, interrupt bool) Decision {
+	return Decision{
+		Behavior:  BehaviorDeny,
+		Message:   message,
+		ErrorCode: errorCode,
+		Interrupt: interrupt,
+	}
+}
+
 // ToMap 将 Decision 转换为控制协议 map。
 func (d Decision) ToMap() map[string]any {
 	result := map[string]any{
@@ -150,6 +169,9 @@ func (d Decision) ToMap() map[string]any {
 	}
 	if d.Message != "" {
 		result["message"] = d.Message
+	}
+	if d.ErrorCode != "" {
+		result["errorCode"] = string(d.ErrorCode)
 	}
 	if d.AcceptFeedback != "" {
 		result["acceptFeedback"] = d.AcceptFeedback

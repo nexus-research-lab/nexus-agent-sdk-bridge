@@ -193,6 +193,7 @@ type ToolResultBlock struct {
 	ToolUseID string
 	Content   json.RawMessage
 	IsError   bool
+	ErrorCode string
 	MimeType  string
 
 	raw map[string]any
@@ -205,7 +206,11 @@ func (b ToolResultBlock) Type() ContentBlockType {
 
 // RawPayload 返回原始负载副本。
 func (b ToolResultBlock) RawPayload() map[string]any {
-	return jsonvalue.CloneMapOrEmpty(b.raw)
+	payload := jsonvalue.CloneMapOrEmpty(b.raw)
+	if b.ErrorCode != "" {
+		payload["error_code"] = b.ErrorCode
+	}
+	return payload
 }
 
 // DecodeContent 将工具结果内容解码到目标结构。
@@ -628,6 +633,7 @@ type ToolResultContent struct {
 	ToolUseID string
 	Content   any
 	IsError   bool
+	ErrorCode string
 }
 
 // NewToolResultContent 创建结构化工具结果块。
@@ -637,6 +643,12 @@ func NewToolResultContent(toolUseID string, content any, isError bool) ToolResul
 		Content:   content,
 		IsError:   isError,
 	}
+}
+
+// WithErrorCode 为错误工具结果附加稳定机器可读原因。
+func (b ToolResultContent) WithErrorCode(errorCode string) ToolResultContent {
+	b.ErrorCode = errorCode
+	return b
 }
 
 func (b ToolResultContent) encodeOutboundContentBlock() map[string]any {
@@ -649,6 +661,9 @@ func (b ToolResultContent) encodeOutboundContentBlock() map[string]any {
 	}
 	if b.IsError {
 		payload["is_error"] = true
+	}
+	if b.ErrorCode != "" {
+		payload["error_code"] = b.ErrorCode
 	}
 	return payload
 }
@@ -1582,6 +1597,7 @@ func decodeContentBlocks(raw any) []ContentBlock {
 				ToolUseID: jsonvalue.StringValue(payload["tool_use_id"]),
 				Content:   rawJSONValue(payload["content"]),
 				IsError:   jsonvalue.BoolValue(payload["is_error"]),
+				ErrorCode: jsonvalue.StringValue(payload["error_code"]),
 				MimeType:  jsonvalue.StringValue(payload["mime_type"]),
 				raw:       jsonvalue.CloneMapOrEmpty(payload),
 			})

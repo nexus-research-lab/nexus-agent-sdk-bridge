@@ -449,6 +449,10 @@ client.NewOptions().
     })
 ```
 
+拒绝原因具有稳定机器语义时，宿主可返回 `permission.DenyWithErrorCode`。bridge
+会把 `errorCode` 传给原生 `nxs`，并统一投影为 `tool_result.error_code`；若 runtime
+不原生回传该可选字段，则按 `tool_use_id` 关联补齐。
+
 运行时可通过 `session.Control()` 动态调整权限模式：
 
 ```go

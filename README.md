@@ -458,6 +458,11 @@ client.NewOptions().
     })
 ```
 
+Hosts can return `permission.DenyWithErrorCode` when a denial has a stable
+machine-readable reason. The bridge carries `errorCode` to native `nxs` and
+projects the same value as `tool_result.error_code`; for runtimes that do not
+echo the optional field, it correlates the result by `tool_use_id`.
+
 Permission mode can be changed at runtime via `session.Control()`:
 
 ```go
