@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.1.27] - 2026-08-05
+
 ### Added
 
 - Added structured permission denial error codes across control responses and tool-result messages, including bridge-side correlation for runtimes that do not echo the optional field.
