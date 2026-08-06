@@ -10,6 +10,7 @@ All notable changes to this project are documented in this file.
 
 ### Fixed
 
+- Normalized native Agent progress and structured completion attachments into the same Subagent runtime lifecycle used by typed task events, preserving exact launch ToolUse and task identity without copying prompts or outputs.
 - Prevented process-launched runtimes from exposing generated or inline MCP configuration credentials in process arguments by materializing the configuration in permission-restricted argument files on every supported OS.
 
 ## [0.1.27] - 2026-08-05

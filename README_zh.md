@@ -172,7 +172,9 @@ provider 无关的 `started`、`progress`、`finished` 事件。宿主可把这�
 到自己的 round 或 execution 身份并持久化工作图，无需要求模型调用状态上报
 工具。投影只包含稳定 subject 身份和低敏展示元数据，不复制工具参数或结果正文。
 宿主自行构造强类型消息时，也可调用
-`protocol.DeriveRuntimeLifecycleEvents(msg)` 完成同一投影。
+`protocol.DeriveRuntimeLifecycleEvents(msg)` 完成同一投影。原生 `Agent` progress
+与 structured completion attachment 会归一为同一套 Subagent lifecycle，并保留
+精确的 launch ToolUse 和 task identity，无需宿主按 runtime 猜测关联。
 
 runtime 的 `attachment` 消息通过 `protocol.MessageTypeAttachment` 和
 `msg.Attachment` 暴露。结构化工具结果保留在 `AttachmentMessage.Data`，

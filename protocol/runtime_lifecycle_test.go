@@ -91,3 +91,77 @@ func TestDecodeMessageDerivesSystemSubagentLifecycle(t *testing.T) {
 		t.Fatalf("task tool identity missing: %+v", event.Metadata)
 	}
 }
+
+func TestDecodeMessageDerivesAgentProgressSubagentLifecycle(t *testing.T) {
+	message, err := DecodeMessage(map[string]any{
+		"type":               "tool_progress",
+		"uuid":               "progress-1",
+		"session_id":         "session-1",
+		"tool_use_id":        "agent-message-1",
+		"parent_tool_use_id": "call-agent-1",
+		"tool_name":          "Agent",
+		"task_id":            "task-1",
+		"data": map[string]any{
+			"type":             "agent_progress",
+			"agent_id":         "child-1",
+			"agent_type":       "Explore",
+			"description":      "Collect primary sources",
+			"child_session_id": "child-session-1",
+			"prompt":           "must not be copied",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(message.RuntimeLifecycle) != 2 {
+		t.Fatalf("lifecycle count = %d, want Tool progress and Subagent start", len(message.RuntimeLifecycle))
+	}
+	event := message.RuntimeLifecycle[1]
+	if event.NodeKind != RuntimeLifecycleNodeSubagent ||
+		event.Phase != RuntimeLifecycleStarted ||
+		event.SubjectID != "task-1" ||
+		event.AgentID != "child-1" ||
+		event.ChildSessionID != "child-session-1" ||
+		event.Metadata["tool_use_id"] != "call-agent-1" {
+		t.Fatalf("unexpected Agent progress lifecycle: %+v", event)
+	}
+	if _, leaked := event.Metadata["prompt"]; leaked {
+		t.Fatalf("Agent prompt leaked into lifecycle: %+v", event.Metadata)
+	}
+}
+
+func TestDecodeMessageDerivesStructuredOutputSubagentLifecycle(t *testing.T) {
+	message, err := DecodeMessage(map[string]any{
+		"type":       "attachment",
+		"uuid":       "attachment-1",
+		"session_id": "session-1",
+		"attachment": map[string]any{
+			"type": "structured_output",
+			"data": map[string]any{
+				"agentId":     "child-1",
+				"agentType":   "Explore",
+				"description": "Collected sources",
+				"status":      "completed",
+				"toolUseId":   "call-agent-1",
+				"output":      "must not be copied",
+			},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(message.RuntimeLifecycle) != 1 {
+		t.Fatalf("lifecycle count = %d, want one Subagent finish", len(message.RuntimeLifecycle))
+	}
+	event := message.RuntimeLifecycle[0]
+	if event.NodeKind != RuntimeLifecycleNodeSubagent ||
+		event.Phase != RuntimeLifecycleFinished ||
+		event.SubjectID != "child-1" ||
+		event.Status != "succeeded" || event.Failed ||
+		event.Metadata["tool_use_id"] != "call-agent-1" {
+		t.Fatalf("unexpected structured output lifecycle: %+v", event)
+	}
+	if _, leaked := event.Metadata["output"]; leaked {
+		t.Fatalf("Subagent output leaked into lifecycle: %+v", event.Metadata)
+	}
+}

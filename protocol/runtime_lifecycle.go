@@ -98,6 +98,13 @@ func DeriveRuntimeLifecycleEvents(message ReceivedMessage) []RuntimeLifecycleEve
 			Name:            strings.TrimSpace(progress.ToolName),
 			Status:          "running",
 		}))
+		if subagent, ok := agentProgressLifecycle(progress); ok {
+			events = append(events, lifecycleEvent(message, subagent))
+		}
+	}
+
+	if subagent, ok := structuredOutputSubagentLifecycle(message.Attachment); ok {
+		events = append(events, lifecycleEvent(message, subagent))
 	}
 
 	taskStarted := message.TaskStarted
@@ -185,6 +192,101 @@ func DeriveRuntimeLifecycleEvents(message ReceivedMessage) []RuntimeLifecycleEve
 	}
 
 	return events
+}
+
+func agentProgressLifecycle(progress *ToolProgressMessage) (RuntimeLifecycleEvent, bool) {
+	data := lifecycleMap(progress.Additional["data"])
+	if !strings.EqualFold(lifecycleMapString(data, "type"), "agent_progress") {
+		return RuntimeLifecycleEvent{}, false
+	}
+	taskID := firstLifecycleValue(
+		progress.TaskID,
+		lifecycleMapString(data, "task_id", "taskId"),
+		lifecycleMapString(data, "agent_id", "agentId"),
+		progress.ToolUseID,
+	)
+	toolUseID := firstLifecycleValue(
+		stringPointerValue(progress.ParentToolUseID),
+		lifecycleMapString(data, "tool_use_id", "toolUseId"),
+	)
+	if taskID == "" || toolUseID == "" {
+		return RuntimeLifecycleEvent{}, false
+	}
+	agentID := firstLifecycleValue(
+		lifecycleMapString(data, "agent_id", "agentId"),
+		taskID,
+	)
+	return RuntimeLifecycleEvent{
+		NodeKind:       RuntimeLifecycleNodeSubagent,
+		Phase:          RuntimeLifecycleStarted,
+		SubjectID:      taskID,
+		Name:           firstLifecycleValue(lifecycleMapString(data, "agent_type", "agentType"), "subagent"),
+		Description:    lifecycleMapString(data, "description", "summary"),
+		AgentID:        agentID,
+		ChildSessionID: firstLifecycleValue(lifecycleMapString(data, "child_session_id", "childSessionId"), agentID),
+		Status:         "running",
+		Metadata: lifecycleMetadata(
+			"tool_use_id", toolUseID,
+			"last_tool_name", lifecycleMapString(data, "last_tool_name", "lastToolName"),
+		),
+	}, true
+}
+
+func structuredOutputSubagentLifecycle(
+	attachment *AttachmentMessage,
+) (RuntimeLifecycleEvent, bool) {
+	if attachment == nil || !strings.EqualFold(strings.TrimSpace(attachment.Type), "structured_output") {
+		return RuntimeLifecycleEvent{}, false
+	}
+	data := lifecycleMap(attachment.Data)
+	agentID := lifecycleMapString(data, "agent_id", "agentId")
+	taskID := firstLifecycleValue(
+		lifecycleMapString(data, "task_id", "taskId"),
+		agentID,
+	)
+	toolUseID := firstLifecycleValue(
+		attachment.ToolUseID,
+		lifecycleMapString(data, "tool_use_id", "toolUseId"),
+	)
+	if taskID == "" || toolUseID == "" {
+		return RuntimeLifecycleEvent{}, false
+	}
+	status := normalizeLifecycleTerminalStatus(firstLifecycleValue(
+		lifecycleMapString(data, "task_status", "taskStatus"),
+		lifecycleMapString(data, "status"),
+	))
+	phase := RuntimeLifecycleProgress
+	if lifecycleStatusTerminal(status) {
+		phase = RuntimeLifecycleFinished
+	}
+	return RuntimeLifecycleEvent{
+		NodeKind:       RuntimeLifecycleNodeSubagent,
+		Phase:          phase,
+		SubjectID:      taskID,
+		Name:           lifecycleMapString(data, "agent_type", "agentType"),
+		Description:    firstLifecycleValue(lifecycleMapString(data, "description"), lifecycleMapString(data, "summary")),
+		AgentID:        firstLifecycleValue(agentID, taskID),
+		ChildSessionID: firstLifecycleValue(lifecycleMapString(data, "child_session_id", "childSessionId"), agentID),
+		Status:         status,
+		Failed:         lifecycleStatusFailed(status),
+		Metadata:       lifecycleMetadata("tool_use_id", toolUseID),
+	}, true
+}
+
+func lifecycleMap(value any) map[string]any {
+	result, _ := value.(map[string]any)
+	return result
+}
+
+func lifecycleMapString(values map[string]any, keys ...string) string {
+	for _, key := range keys {
+		if value, ok := values[key].(string); ok {
+			if value = strings.TrimSpace(value); value != "" {
+				return value
+			}
+		}
+	}
+	return ""
 }
 
 func lifecycleEvent(message ReceivedMessage, event RuntimeLifecycleEvent) RuntimeLifecycleEvent {

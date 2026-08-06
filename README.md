@@ -162,7 +162,9 @@ and persist an execution graph without asking the model to report status. The
 projection includes stable subject identity and low-sensitive display metadata,
 but never copies tool arguments or result bodies. Hosts can call
 `protocol.DeriveRuntimeLifecycleEvents(msg)` when they construct a typed message
-outside the standard decoder.
+outside the standard decoder. Native `Agent` progress and structured completion
+attachments are normalized into the same Subagent lifecycle, with exact launch
+ToolUse and task identities rather than runtime-specific host heuristics.
 
 Runtime `attachment` messages are exposed as
 `protocol.MessageTypeAttachment` with `msg.Attachment`. Structured tool output
