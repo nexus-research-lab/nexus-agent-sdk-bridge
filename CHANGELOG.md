@@ -12,6 +12,18 @@ All notable changes to this project are documented in this file.
 
 - Prevented process-launched runtimes from exposing generated or inline MCP configuration credentials in process arguments by materializing the configuration in permission-restricted argument files on every supported OS.
 
+## [0.1.27] - 2026-08-05
+
+### Added
+
+- Added structured permission denial error codes across control responses and tool-result messages, including bridge-side correlation for runtimes that do not echo the optional field.
+
+## [0.1.26] - 2026-08-03
+
+### Fixed
+
+- Terminated runtime-owned descendant processes when an `nxs` or Claude Code process exits unexpectedly on macOS or Linux.
+
 ## [0.1.25] - 2026-08-01
 
 ### Added

@@ -25,3 +25,22 @@ func TestPermissionDecisionToMapIncludesApprovalFeedbackAndContentBlocks(t *test
 		t.Fatalf("decision content block mutated through ToMap clone: %#v", decision.ContentBlocks)
 	}
 }
+
+func TestDenyWithErrorCodeEmitsStableCode(t *testing.T) {
+	decision := DenyWithErrorCode(
+		"等待用户确认超时",
+		ErrorCodeRequestTimeout,
+		true,
+	)
+
+	payload := decision.ToMap()
+	if payload["behavior"] != string(BehaviorDeny) {
+		t.Fatalf("behavior = %#v, want deny", payload["behavior"])
+	}
+	if payload["errorCode"] != string(ErrorCodeRequestTimeout) {
+		t.Fatalf("errorCode = %#v, want request timeout", payload["errorCode"])
+	}
+	if payload["message"] != "等待用户确认超时" || payload["interrupt"] != true {
+		t.Fatalf("deny payload = %#v, want message and interrupt", payload)
+	}
+}

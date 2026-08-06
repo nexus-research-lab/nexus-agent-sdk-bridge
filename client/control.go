@@ -99,10 +99,55 @@ func (c *sessionCore) resolvePermissionRequest(ctx context.Context, request map[
 		"behavior": "deny",
 		"message":  decision.Message,
 	}
+	errorCode := strings.TrimSpace(string(decision.ErrorCode))
+	if errorCode != "" {
+		if toolUseID := strings.TrimSpace(permissionRequest.ToolUseID); toolUseID != "" {
+			c.permissionErrorRegistry().set(toolUseID, errorCode)
+		}
+		// errorCode 是 nxs 的可选扩展；Claude Code 由 bridge 在结果消息上补写。
+		if normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS {
+			response["errorCode"] = errorCode
+		}
+	}
 	if decision.Interrupt {
 		response["interrupt"] = true
 	}
 	return response
+}
+
+// attachPermissionErrorCodes 将权限决策的稳定原因投影到对应工具结果。
+// 该关联让未原生回传扩展字段的 runtime 仍能保持同一宿主消息合同。
+func (c *sessionCore) attachPermissionErrorCodes(message protocol.ReceivedMessage) protocol.ReceivedMessage {
+	if message.User == nil {
+		return message
+	}
+	for index, block := range message.User.Message.Content {
+		toolResult, ok := protocol.AsToolResultBlock(block)
+		if !ok {
+			continue
+		}
+		errorCode, ok := c.permissionErrorRegistry().pop(strings.TrimSpace(toolResult.ToolUseID))
+		if !ok || toolResult.ErrorCode != "" {
+			continue
+		}
+		toolResult.ErrorCode = errorCode
+		message.User.Message.Content[index] = toolResult
+		attachPermissionErrorCodeToRaw(message.Raw, toolResult.ToolUseID, errorCode)
+	}
+	return message
+}
+
+func attachPermissionErrorCodeToRaw(message map[string]any, toolUseID string, errorCode string) {
+	envelope := jsonvalue.MapValue(message["message"])
+	for _, rawBlock := range jsonvalue.SliceValue(envelope["content"]) {
+		block := jsonvalue.MapValue(rawBlock)
+		if jsonvalue.StringValue(block["type"]) != "tool_result" ||
+			jsonvalue.StringValue(block["tool_use_id"]) != toolUseID {
+			continue
+		}
+		block["error_code"] = errorCode
+		return
+	}
 }
 
 func (c *sessionCore) resolveHookCallback(

@@ -32,6 +32,7 @@ type runner struct {
 	inflightRequests *inflightControlRequests
 	hookCallbacks    *hookCallbackRegistry
 	hookAppliedAcks  *registry[func(hook.AppliedAck)]
+	permissionErrors *registry[string]
 	sdkMCPServers    *registry[mcp.SDKMCPServer]
 	nextTurnContext  *nextTurnContextBuffer
 }
@@ -61,6 +62,7 @@ func newRunner(
 		inflightRequests: newInflightControlRequests(),
 		hookCallbacks:    newHookCallbackRegistry(),
 		hookAppliedAcks:  newRegistry[func(hook.AppliedAck)](),
+		permissionErrors: newRegistry[string](),
 		sdkMCPServers:    newRegistry[mcp.SDKMCPServer](),
 		nextTurnContext:  newNextTurnContextBuffer(),
 	}
@@ -92,6 +94,13 @@ func (c *sessionCore) hookAppliedAckRegistry() *registry[func(hook.AppliedAck)] 
 		c.hookAppliedAcks = newRegistry[func(hook.AppliedAck)]()
 	}
 	return c.hookAppliedAcks
+}
+
+func (c *sessionCore) permissionErrorRegistry() *registry[string] {
+	if c.permissionErrors == nil {
+		c.permissionErrors = newRegistry[string]()
+	}
+	return c.permissionErrors
 }
 
 func (c *sessionCore) sdkMCPServerRegistry() *registry[mcp.SDKMCPServer] {
