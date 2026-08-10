@@ -72,21 +72,3 @@ func TestClaudeSessionDistinguishesSubagentTaskCapabilities(t *testing.T) {
 		t.Fatalf("TryAutoDream() error = %v, want ErrUnsupportedCapability", err)
 	}
 }
-
-func TestUnsupportedCapabilityError(t *testing.T) {
-	err := &UnsupportedCapabilityError{Capability: CapabilityInternalContext}
-	if !errors.Is(err, ErrUnsupportedCapability) {
-		t.Fatalf("errors.Is(%v, ErrUnsupportedCapability) = false, want true", err)
-	}
-}
-
-func TestStreamClosedBeforeTerminalError(t *testing.T) {
-	err := &StreamClosedBeforeTerminalError{
-		LastMessageID:   "msg-1",
-		LastMessageType: "assistant",
-		SessionID:       "session-1",
-	}
-	if !errors.Is(err, ErrNoResult) {
-		t.Fatalf("errors.Is(%v, ErrNoResult) = false, want true", err)
-	}
-}

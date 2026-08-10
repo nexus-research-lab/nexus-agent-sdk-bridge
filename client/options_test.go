@@ -31,34 +31,44 @@ func TestOptionsTransportConfiguration(t *testing.T) {
 	}
 }
 
-func TestOptionsDefaultRuntimeUsesNXSControlWire(t *testing.T) {
-	config := NewOptions().WithCLIPath("nxs").processConfig()
-	if config.ControlWireDialect != transport.ControlWireDialectNXS {
-		t.Fatalf("control wire dialect = %q, want nxs", config.ControlWireDialect)
+func TestOptionsRuntimeControlWire(t *testing.T) {
+	tests := []struct {
+		name    string
+		options Options
+		want    transport.ControlWireDialect
+	}{
+		{name: "default", options: NewOptions().WithCLIPath("nxs"), want: transport.ControlWireDialectNXS},
+		{name: "Claude", options: NewOptions().WithRuntime(RuntimeClaude).WithCLIPath("claude"), want: transport.ControlWireDialectClaude},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if got := test.options.processConfig().ControlWireDialect; got != test.want {
+				t.Fatalf("control wire dialect = %q, want %q", got, test.want)
+			}
+		})
 	}
 }
 
-func TestOptionsWithRuntimeClaudeUsesClaudeControlWire(t *testing.T) {
-	config := NewOptions().WithRuntime(RuntimeClaude).WithCLIPath("claude").processConfig()
-	if config.ControlWireDialect != transport.ControlWireDialectClaude {
-		t.Fatalf("control wire dialect = %q, want claude", config.ControlWireDialect)
-	}
-}
-
-func TestOptionsWithRuntimeNXSRequiresExplicitCommandPath(t *testing.T) {
-	t.Setenv("NEXUS_NXS_COMMAND_PATH", "")
-	_, err := NewOptions().WithRuntime(RuntimeNXS).normalized()
-	if err == nil || !strings.Contains(err.Error(), "NEXUS_NXS_COMMAND_PATH") {
-		t.Fatalf("normalized() error = %v, want explicit nxs command path error", err)
-	}
-}
-
-func TestOptionsWithRuntimeNXSUsesEnvOverride(t *testing.T) {
-	t.Setenv("NEXUS_NXS_COMMAND_PATH", "/tmp/custom-nxs")
-	config := NewOptions().WithRuntime(RuntimeNXS).processConfig()
-	if config.CommandPath != "/tmp/custom-nxs" {
-		t.Fatalf("nxs command path = %q, want env override", config.CommandPath)
-	}
+func TestOptionsWithRuntimeNXSResolvesCommandPath(t *testing.T) {
+	t.Run("requires explicit path", func(t *testing.T) {
+		t.Setenv("NEXUS_NXS_COMMAND_PATH", "")
+		_, err := NewOptions().WithRuntime(RuntimeNXS).normalized()
+		if err == nil || !strings.Contains(err.Error(), "NEXUS_NXS_COMMAND_PATH") {
+			t.Fatalf("normalized() error = %v, want explicit nxs command path error", err)
+		}
+	})
+	t.Run("uses environment override", func(t *testing.T) {
+		t.Setenv("NEXUS_NXS_COMMAND_PATH", "/tmp/custom-nxs")
+		if got := NewOptions().WithRuntime(RuntimeNXS).processConfig().CommandPath; got != "/tmp/custom-nxs" {
+			t.Fatalf("nxs command path = %q, want env override", got)
+		}
+	})
+	t.Run("keeps explicit path", func(t *testing.T) {
+		t.Setenv("NEXUS_NXS_COMMAND_PATH", "/tmp/custom-nxs")
+		if got := NewOptions().WithRuntime(RuntimeNXS).WithCLIPath("/tmp/manual-nxs").processConfig().CommandPath; got != "/tmp/manual-nxs" {
+			t.Fatalf("nxs command path = %q, want explicit CLIPath", got)
+		}
+	})
 }
 
 func TestOptionsWithRuntimeNXSInjectsDefaultEnv(t *testing.T) {
@@ -197,14 +207,6 @@ func TestOptionsWithRuntimeNXSAllowsDefaultEnvOverride(t *testing.T) {
 	}
 }
 
-func TestOptionsWithRuntimeNXSKeepsExplicitCLIPath(t *testing.T) {
-	t.Setenv("NEXUS_NXS_COMMAND_PATH", "/tmp/custom-nxs")
-	config := NewOptions().WithRuntime(RuntimeNXS).WithCLIPath("/tmp/manual-nxs").processConfig()
-	if config.CommandPath != "/tmp/manual-nxs" {
-		t.Fatalf("nxs command path = %q, want explicit CLIPath", config.CommandPath)
-	}
-}
-
 func TestOptionsRejectUnsupportedRuntimeKind(t *testing.T) {
 	_, err := NewOptions().WithRuntime(RuntimeKind("unknown")).normalized()
 	if err == nil || !strings.Contains(err.Error(), "unsupported runtime kind") {
@@ -321,7 +323,7 @@ func TestInlineSettingsMergeSandbox(t *testing.T) {
 	}
 }
 
-func TestSandboxPreservesExplicitEmptyEnabledPlatforms(t *testing.T) {
+func TestSandboxPreservesExplicitEmptyLists(t *testing.T) {
 	options := NewOptions().
 		WithCLIPath("nxs").
 		WithSandbox(SandboxSettings{EnabledPlatforms: []string{}})
@@ -342,9 +344,7 @@ func TestSandboxPreservesExplicitEmptyEnabledPlatforms(t *testing.T) {
 	if values, ok := platforms.([]any); !ok || len(values) != 0 {
 		t.Fatalf("sandbox.enabledPlatforms = %#v, want []", platforms)
 	}
-}
 
-func TestSandboxNetworkPreservesExplicitEmptyDomainLists(t *testing.T) {
 	data, err := json.Marshal(SandboxNetworkConfig{})
 	if err != nil {
 		t.Fatalf("marshal network config: %v", err)
@@ -365,47 +365,45 @@ func TestSandboxNetworkPreservesExplicitEmptyDomainLists(t *testing.T) {
 	}
 }
 
-func TestOptionsRejectSettingsPathWithStructuredSettings(t *testing.T) {
+func TestOptionsRejectInvalidCombinations(t *testing.T) {
 	enabled := true
-	_, err := NewOptions().
-		WithCLIPath("nxs").
-		WithSettings("/tmp/settings.json").
-		WithSandbox(SandboxSettings{Enabled: &enabled}).
-		normalized()
-	if err == nil {
-		t.Fatal("normalized succeeded, want settings path conflict")
+	transportConflict := NewOptions()
+	transportConflict.Transport = fakeTransport{}
+	transportConflict.DirectConnect = &DirectConnectOptions{URL: "cc://127.0.0.1:1234/token"}
+	tests := []struct {
+		name    string
+		options Options
+		wantErr error
+	}{
+		{
+			name: "settings path with structured settings",
+			options: NewOptions().WithCLIPath("nxs").WithSettings("/tmp/settings.json").WithSandbox(
+				SandboxSettings{Enabled: &enabled},
+			),
+		},
+		{
+			name: "invalid tool preview format",
+			options: NewOptions().WithCLIPath("nxs").WithToolConfig(ToolConfig{
+				AskUserQuestion: &AskUserQuestionToolConfig{PreviewFormat: QuestionPreviewFormat("pdf")},
+			}),
+		},
+		{
+			name:    "executable args without executable",
+			options: NewOptions().WithCLIPath("nxs").WithExecutableArgs("--loader", "tsx"),
+		},
+		{
+			name:    "transport and direct connect",
+			options: transportConflict,
+			wantErr: errTransportDirectConnectConflict,
+		},
 	}
-}
-
-func TestOptionsRejectInvalidToolConfigPreview(t *testing.T) {
-	_, err := NewOptions().
-		WithCLIPath("nxs").
-		WithToolConfig(ToolConfig{
-			AskUserQuestion: &AskUserQuestionToolConfig{
-				PreviewFormat: QuestionPreviewFormat("pdf"),
-			},
-		}).
-		normalized()
-	if err == nil {
-		t.Fatal("normalized succeeded, want invalid preview format error")
-	}
-}
-
-func TestOptionsRejectExecutableArgsWithoutExecutable(t *testing.T) {
-	_, err := NewOptions().WithCLIPath("nxs").WithExecutableArgs("--loader", "tsx").normalized()
-	if err == nil {
-		t.Fatal("normalized succeeded, want executable args conflict")
-	}
-}
-
-func TestOptionsRejectsTransportAndDirectConnectConflict(t *testing.T) {
-	options := NewOptions()
-	options.Transport = fakeTransport{}
-	options.DirectConnect = &DirectConnectOptions{URL: "cc://127.0.0.1:1234/token"}
-
-	_, err := options.normalized()
-	if err == nil || !errors.Is(err, errTransportDirectConnectConflict) {
-		t.Fatalf("normalized error = %v, want transport/direct-connect conflict", err)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := test.options.normalized()
+			if err == nil || test.wantErr != nil && !errors.Is(err, test.wantErr) {
+				t.Fatalf("normalized() error = %v, want validation failure", err)
+			}
+		})
 	}
 }
 

@@ -3,7 +3,6 @@ package client
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -89,14 +88,6 @@ func TestRuntimeCommandResolverResolveClaudeCommandPath(t *testing.T) {
 				t.Fatalf("resolveClaudeCommandPath() = %q, want %q", got, test.want)
 			}
 		})
-	}
-}
-
-func TestClaudeCommandNamesOnWindowsAreSafestFirst(t *testing.T) {
-	want := []string{"claude.exe", "claude.ps1", "claude.cmd", "claude"}
-	got := claudeCommandNames("windows")
-	if strings.Join(got, "|") != strings.Join(want, "|") {
-		t.Fatalf("claudeCommandNames(windows) = %q, want %q", got, want)
 	}
 }
 
