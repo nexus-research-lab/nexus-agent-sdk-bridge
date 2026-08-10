@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.1.28] - 2026-08-10
+
 ### Added
 
 - Added provider-neutral runtime lifecycle projection for tool and subagent runs, allowing hosts to build durable execution graphs without model-authored status calls.
