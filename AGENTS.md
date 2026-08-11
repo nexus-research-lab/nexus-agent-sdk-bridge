@@ -20,6 +20,7 @@ Nexus product
   `file_path` 仍为 CC 原生 snake_case），不能按字段外观批量改名。
 - `internal/transport/`：子进程和传输实现，不向产品泄漏
 - `runtimes/`：runtime kind 的公开能力差异
+- `docs/`：面向开源使用者的文档索引与 runtime 契约，不收录宿主产品内部设计
 - 新能力必须先定义 capability；产品不能按 runtime 名称猜测 control 是否存在
 - AutoDream 只由原生 nxs 提供；宿主负责唤醒，nxs 负责最终执行判断
 - 长时 control 的 context 取消必须携带同一 `request_id` 传播到 runtime
@@ -27,6 +28,7 @@ Nexus product
 ## 开发约定
 
 - 用户可见能力、协议或路径变化同步更新 `CHANGELOG.md`、英文 README 与中文 README
+- README 只保留安装、可运行示例和公开边界；完整类型以 GoDoc 为准，Runtime 差异以 `docs/runtime-contract.md` 为准
 - 注释使用中文，解释意图和边界
 - Go 代码执行 `gofmt`，实现遵循 Google Go Style
 - 全量验证使用 `go test ./...`

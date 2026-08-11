@@ -2,605 +2,134 @@
 
 English | [简体中文](./README_zh.md)
 
-## Installation
+Open-source Go client and protocol contract for connecting a host application
+to a local Agent runtime over `stream-json`.
+
+```text
+Host application -> nexus-agent-sdk-bridge -> runtime process
+```
+
+The bridge starts or connects to a runtime, streams typed messages, and exposes
+runtime controls. It does not implement the agent loop or include a model
+runtime.
+
+## Requirements
+
+- Go 1.24 or later
+- One runtime:
+  - Claude Code installed separately, or
+  - an `nxs` executable supplied by an official Nexus distribution or another
+    authorized source
+
+The native `nxs` runtime is closed source and is not included, downloaded, or
+built by this repository.
+
+## Install
 
 ```bash
 go get github.com/nexus-research-lab/nexus-agent-sdk-bridge@latest
 ```
 
-Requires Go 1.24 or later.
+## Choose a runtime
 
-On Windows, Claude Code discovery prefers a native executable, then an npm
-PowerShell shim. A discovered or explicitly configured `claude.ps1` is launched
-through `pwsh`, with Windows PowerShell used as a fallback. A `.cmd` or `.bat`
-shim is never launched directly: the bridge uses its same-name `.ps1` sibling,
-or returns a startup error when no safe sibling exists. Set
-`NEXUS_CLAUDE_COMMAND_PATH` to override the discovered Claude Code command.
+| Runtime | Configuration |
+| --- | --- |
+| Claude Code | `client.NewOptions().WithRuntime(client.RuntimeClaude)` |
+| Native `nxs` | `NEXUS_NXS_COMMAND_PATH=/path/to/nxs` or `WithCLIPath(...)` |
+| Direct connect | `WithDirectConnect(...)` |
+| Host-managed transport | `WithTransport(...)` |
 
-## Quick Start
+`nxs` is the default runtime kind, so standalone programs must provide its
+command path. Claude Code is always an explicit compatibility runtime.
+
+## Quick start with Claude Code
 
 ```go
 package main
 
 import (
-    "context"
-    "fmt"
-    "log"
+	"context"
+	"fmt"
+	"log"
 
-    "github.com/nexus-research-lab/nexus-agent-sdk-bridge/client"
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/client"
 )
 
 func main() {
-    ctx := context.Background()
+	ctx := context.Background()
+	options := client.NewOptions().
+		WithRuntime(client.RuntimeClaude).
+		WithCWD(".")
 
-    result, err := client.Prompt(ctx, client.PromptRequest{
-        Prompt:  "Summarize this project in one sentence.",
-        Options: client.NewOptions().WithCWD("."),
-    })
-    if err != nil {
-        log.Fatal(err)
-    }
+	result, err := client.Prompt(ctx, client.PromptRequest{
+		Prompt:  "Summarize this project in one sentence.",
+		Options: options,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
 
-    fmt.Println(result.Result)
+	fmt.Println(result.Result)
 }
 ```
 
-## Session Management
+Claude Code discovery uses a native executable when available and safe
+platform-specific wrappers otherwise. Set `NEXUS_CLAUDE_COMMAND_PATH` or
+`WithCLIPath` to bypass discovery.
 
-Use `client.NewSession` to create a persistent session with streaming message delivery and runtime control:
+## Persistent sessions
 
 ```go
-session, err := client.NewSession(ctx, client.NewOptions().WithCWD("."))
+session, err := client.NewSession(ctx, options)
 if err != nil {
-    return err
+	return err
 }
 defer session.Close(ctx)
 
 stream, err := session.Send(ctx, "Prepare a concise implementation plan.")
 if err != nil {
-    return err
+	return err
 }
 
 result, err := stream.Result(ctx)
 if err != nil {
-    return err
+	return err
 }
 fmt.Println(result.Result)
 ```
 
-### Skills
-
-Hosts can keep Skill files in one shared resource root and select a per-session
-allowlist:
-
-```go
-options := client.NewOptions().
-    WithAdditionalDirectories("/opt/nexus/platform-skills").
-    WithSkills("imagegen", "ima-skill").
-    WithDisabledSkills("workspace-review")
-```
-
-The Claude adapter maps the root to `--add-dir` and sends the selected names in
-the stream-json initialize `skills` field. It also emits `Skill(name)` allow
-rules and explicit `Skill(name)` deny rules for CLI permission compatibility;
-`--allowedTools` controls approval and is not the Skill discovery filter. The
-nxs adapter forwards the same directory, selection, and explicit disabled names
-through its initialize contract. `WithSkills` selects bundled, shared, and
-additional-root names while project workspace Skills remain dynamically
-discoverable. Use `WithDisabledSkills` to turn off a project Skill for the
-current Agent. Reconfiguring a connected session with a different Skill
-selection, disabled set, setting source, or discovery root returns
-`ErrRestartRequired`, allowing the host to replace the stale runtime process.
-
-### Runtime Primitives
-
-When a host wraps a user turn with application context, it can preserve the
-original intent for native memory recall:
-
-```go
-stream, err := session.SendWithOptions(ctx, wrappedPrompt, protocol.OutboundMessageOptions{
-    RecallQuery: originalUserText,
-})
-```
-
-### Streaming Output
-
-Use `stream.Recv()` to read messages one by one and handle text, tool calls, and other content in real time:
-
-```go
-stream, err := session.Send(ctx, "Explain the logic of this code.")
-if err != nil {
-    return err
-}
-
-for {
-    msg, err := stream.Recv(ctx)
-    if err != nil {
-        break
-    }
-    switch msg.Type {
-    case protocol.MessageTypeAssistant:
-        for _, block := range msg.Assistant.Content {
-            if text, ok := protocol.AsTextBlock(block); ok {
-                fmt.Print(text.Text)
-            }
-        }
-    case protocol.MessageTypeTaskProgress:
-        fmt.Printf("task %s: %s\n", msg.TaskProgress.TaskID, msg.TaskProgress.Summary)
-    case protocol.MessageTypeResult:
-        fmt.Println("\n--- done ---")
-        return
-    }
-}
-```
-
-The message decoder accepts both the canonical `nxs` fields and Claude Code's
-public mixed-case fields where the runtimes differ, including result model
-usage, init metadata, status, replay, and authentication state. These aliases
-are declared field by field; tool input and provider payload casing is never
-rewritten globally. `ResultMessage.TerminalCategory()` also uses the effective
-outcome, so `error_*` subtypes and `success` results with `is_error: true` are
-reported as failures.
-
-Task events are strongly typed as `protocol.MessageTypeTaskStarted`,
-`protocol.MessageTypeTaskProgress`, and `protocol.MessageTypeTaskNotification`.
-Official system-subtype task events remain available under `msg.System.Task*`,
-including `system/task_updated` lifecycle patches. `task_updated` does not have
-a top-level `MessageType`.
-top-level task events use `msg.TaskStarted`, `msg.TaskProgress`, or
-`msg.TaskNotification`. Task progress and notification messages share
-`protocol.TaskUsage`. Subagent metadata fields such as `agent_id`,
-`agent_type`, `child_session_id`, `task_type`, `parent_task_id`, `output_file`,
-and `transcript_path` are exposed as typed fields where they apply, while the
-full wire payload remains available in `Additional`.
-
-Every runtime adapter also exposes `CapabilityRuntimeLifecycle`. After decoding
-a message, the bridge deterministically projects tool and subagent activity to
-`msg.RuntimeLifecycle` as provider-neutral `started`, `progress`, and `finished`
-events. Hosts may bind these observations to their own round or execution IDs
-and persist an execution graph without asking the model to report status. The
-projection includes stable subject identity and low-sensitive display metadata,
-but never copies tool arguments or result bodies. Hosts can call
-`protocol.DeriveRuntimeLifecycleEvents(msg)` when they construct a typed message
-outside the standard decoder. Native `Agent` progress and structured completion
-attachments are normalized into the same Subagent lifecycle, with exact launch
-ToolUse and task identities rather than runtime-specific host heuristics.
-
-Runtime `attachment` messages are exposed as
-`protocol.MessageTypeAttachment` with `msg.Attachment`. Structured tool output
-remains in `AttachmentMessage.Data`, while `Additional` preserves the complete
-attachment payload so hosts can project runtime-specific evidence without
-rewriting its field casing.
-
-Use `session.Supports` before exposing task controls in a host UI. Both native
-`nxs` and Claude Code sessions support `CapabilityStopTask`. Only `nxs`
-supports `CapabilitySendTaskMessage`, which can continue the same completed or
-stopped task thread, including a failed terminal run. Claude Code task
-transcripts remain observable, but direct host follow-up is intentionally
-reported as unsupported.
-
-Both runtimes expose `CapabilityInProcessMCP`. Hosts can use this capability
-as the runtime-neutral boundary for product-owned tools: the host keeps the
-state and implementation, while the runtime only invokes the injected MCP
-server. A future runtime adapter must declare this capability before a product
-depends on host-owned tools such as durable scheduling.
-
-Native runtimes may negotiate `CapabilityHookResponseAck`. When available,
-`hook.Output.OnApplied` runs exactly once after the runtime has applied the hook
-response, rather than when the bridge merely writes the response to stdin.
-Older runtimes and Claude Code do not expose this capability, so hosts should
-keep their existing fallback confirmation path.
-
-Only native `nxs` exposes `CapabilityAutoDream`. A host scheduler can wake the
-runtime and wait while `nxs` decides whether memory consolidation is due:
-
-```go
-if session.Supports(client.CapabilityAutoDream) {
-    dream, err := session.Control().TryAutoDream(ctx)
-    if err != nil {
-        return err
-    }
-    fmt.Printf("dream: %s (%s), files: %v\n", dream.Status, dream.Reason, dream.WrittenPaths)
-}
-```
-
-The wake-up does not force consolidation. Provider, model, workspace, and
-eligibility remain owned by the effective `nxs` runtime configuration. When
-background memory work finishes outside this control call, `system/memory_saved`
-is decoded as `message.System.MemorySaved` on the next main query.
-
-### Streaming Input
-
-Pass a message channel via `QueryRequest.Messages` or `PromptRequest.Messages` to send messages continuously during a session:
-
-```go
-messages := make(chan protocol.OutboundMessage, 16)
-
-go func() {
-    messages <- protocol.NewUserTextMessage("Step 1: Analyze the requirements.")
-    messages <- protocol.NewUserTextMessage("Step 2: Propose a solution.")
-    close(messages)
-}()
-
-stream, err := client.Query(ctx, client.QueryRequest{
-    Messages: messages,
-    Options:  client.NewOptions().WithCWD("."),
-})
-if err != nil {
-    return err
-}
-defer stream.Close(ctx)
-
-result, err := stream.Result(ctx)
-if err != nil {
-    return err
-}
-fmt.Println(result.Result)
-```
-
-### Session History
-
-Local session transcripts are stored under `~/.nexus/projects/` by default.
-Lookup and mutation options are intentionally separate: reads use
-`SessionLookupOptions`, while title/tag updates use `SessionMutationOptions`.
-
-```go
-info, err := client.GetSessionInfo(sessionID, client.SessionLookupOptions{})
-if err != nil {
-    return err
-}
-_ = info
-
-if err := client.RenameSession(sessionID, "review notes", client.SessionMutationOptions{}); err != nil {
-    return err
-}
-tag := "review"
-if err := client.TagSession(sessionID, &tag, client.SessionMutationOptions{}); err != nil {
-    return err
-}
-```
-
-### Cancellation
-
-Cancellation and user abort paths return errors that match
-`client.ErrAborted`. Context cancellation is still preserved, so callers can
-check both sentinels:
-
-```go
-if errors.Is(err, client.ErrAborted) || errors.Is(err, context.Canceled) {
-    return nil
-}
-```
-
-## Transport
-
-The SDK follows the official Agent SDK shape: options configure the local CLI,
-and callers may inject a custom `Transport` when they manage the connection
-themselves.
-
-| Mode | Configuration |
-|------|---------------|
-| Nexus native runtime (default) | `NEXUS_NXS_COMMAND_PATH=/path/to/nxs`, or `client.NewOptions().WithCLIPath("/path/to/nxs")` |
-| Claude Code runtime | `client.NewOptions().WithRuntime(client.RuntimeClaude)` |
-| Explicit CLI path | `client.NewOptions().WithCLIPath("/path/to/nxs")` |
-| JavaScript runtime wrapper | `client.NewOptions().WithPathToClaudeCodeExecutable("/path/to/cli.js").WithExecutable("node")` |
-| Direct connect | `client.NewOptions().WithDirectConnect(client.DirectConnectOptions{...})` |
-| Host-managed transport | `client.NewOptions().WithTransport(transport)` |
-
-By default the SDK starts the Nexus native runtime. The runtime path must be
-explicit: packaged Nexus hosts set `NEXUS_NXS_COMMAND_PATH` before launching the
-bridge, and development environments should set the same variable or pass
-`WithCLIPath`.
-
-```go
-options := client.NewOptions().
-    WithCLIPath("/path/to/nxs").
-    WithCWD(".")
-```
-
-The bridge does not download `nxs`, scan app roots, inspect caches, or fall back
-to `PATH` at runtime. Missing or broken `NEXUS_NXS_COMMAND_PATH` is reported as
-a launch configuration error.
-
-Native `nxs` and Claude Code use the same control wire directly. The bridge
-does not maintain a second snake_case representation or a casing compatibility
-layer: fields remain mixed exactly as Claude Code defines them. For example,
-MCP status uses `mcpServers`/`inputSchema`, while tool arguments retain their
-per-tool names such as `file_path`; provider request schemas are separate and
-are not rewritten here.
-
-Claude Code remains available as an explicit compatibility runtime:
-
-```go
-options := client.NewOptions().
-    WithRuntime(client.RuntimeClaude).
-    WithCWD(".")
-```
-
-Direct-connect remains separate when the host manages the runtime process:
-
-```go
-options := client.NewOptions().
-    WithDirectConnect(client.DirectConnectOptions{
-        URL:                  "cc://127.0.0.1:54321/token",
-        SessionKey:           "project-session",
-        DeleteSessionOnClose: true,
-    }).
-    WithCWD(".")
-```
-
-## Configuration
-
-All options are configured through the `client.NewOptions()` builder.
-
-### System Prompt
-
-```go
-client.NewOptions().
-    WithSystemPrompt("You are a code review assistant.").
-    WithAppendSystemPrompt("Always respond in Chinese.")
-```
-
-When prompt-cache boundaries matter, use `WithAppendSystemPromptParts(static, dynamic)` to keep stable Room rules separate from turn-specific context. The `nxs` runtime carries both fields; Claude Code process runtimes receive the same content as one flattened append prompt.
-
-### Runtime Settings
-
-Inline settings, sandbox settings, debug flags, fixed session IDs, and resume points are configured on `client.Options` and translated to the process bridge:
-
-```go
-enabled := true
-
-client.NewOptions().
-    WithSessionID("00000000-0000-0000-0000-000000000001").
-    WithResumeSessionAt("11111111-1111-1111-1111-111111111111").
-    WithSettingsObject(map[string]any{"model": "sonnet"}).
-    WithSandbox(client.SandboxSettings{Enabled: &enabled}).
-    WithDebugFile("/tmp/nexus-agent-sdk.log")
-```
-
-`SandboxSettings` forwards the complete runtime policy contract, including filesystem carve-outs, domain/socket allowlists, platform gates, managed-policy restrictions, Git-config policy, and macOS IPC switches. The runtime remains responsible for enforcing those settings on the target platform.
-
-For OpenAI Responses, the bridge is intentionally provider-neutral. Pass the
-runtime configuration through `WithEnv`; the native `nxs` runtime owns the
-Responses request and stream protocol, Azure URL normalization, and cache
-accounting:
-
-```go
-options := client.NewOptions().
-    WithRuntime(client.RuntimeNXS).
-    WithCLIPath("/path/to/nxs").
-    WithEnv(map[string]string{
-        "NEXUS_API_PROVIDER":    "openai",
-        "NEXUS_OPENAI_PROTOCOL": "responses",
-        "NEXUS_OPENAI_PROMPT_CACHE":      "1",
-        "NEXUS_OPENAI_PROMPT_CACHE_MODE": "explicit",
-        "NEXUS_OPENAI_PROMPT_CACHE_TTL":  "30m",
-        "OPENAI_BASE_URL":       "https://example.openai.azure.com/openai/",
-        "OPENAI_API_KEY":        os.Getenv("OPENAI_API_KEY"),
-        "OPENAI_MODEL":          "gpt-5.6",
-    })
-```
-
-These variables are preserved on initial process launch. For an active native
-`nxs` session, `Session.Reconfigure` sends only changed values through
-`update_environment_variables`, so switching between Chat Completions and
-Responses rebuilds the runtime provider without restarting the process. A
-Claude Code runtime still requires process replacement for environment changes.
-The bridge does not translate `/responses` payloads or cache headers itself.
-Prompt-cache variables are opaque bridge environment values; model/version
-validation, breakpoint placement, and legacy-retention exclusivity belong to
-`nxs`.
-
-### Custom Tools
-
-Define tools in Go via the `tools` package. Registered tools are exposed as MCP tools for the agent to call:
-
-```go
-searchTool, _ := tools.NewTyped[SearchInput](
-    "search_docs",
-    "Search the internal documentation",
-    func(ctx context.Context, input SearchInput, tc *tools.Context) (tools.Result, error) {
-        results := search(input.Query)
-        return tools.Text(results), nil
-    },
-    tools.ReadOnly(),
-)
-
-client.NewOptions().WithCustomTools("my-server", searchTool)
-```
-
-For host capabilities that used to live behind SDK-core env-command fallbacks,
-keep the shell boundary in the bridge and expose it as an explicit MCP tool:
-
-```go
-sendMessage, _ := tools.NewHostCommandTool(tools.HostCommandOptions{
-    Name:        "host_send_user_message",
-    Description: "Send a visible message through the host bridge",
-    Command:     "/opt/nexus/bin/send-user-message",
-    InputSchema: map[string]any{
-        "type": "object",
-        "properties": map[string]any{
-            "message": map[string]any{"type": "string"},
-        },
-        "required": []any{"message"},
-    },
-})
-
-client.NewOptions().WithCustomTools("host", sendMessage)
-```
-
-The command receives the tool arguments as JSON on stdin. It may print a full
-MCP tool result JSON object, a plain JSON object for `structuredContent`, or
-plain text.
-
-### MCP Servers
-
-Supports external MCP servers (stdio / SSE / HTTP) and in-process SDK servers:
-
-```go
-client.NewOptions().
-    WithMCPServer("github", mcp.StdioServerConfig{
-        Command: "npx",
-        Args:    []string{"-y", "@modelcontextprotocol/server-github"},
-        Env:     map[string]string{"GITHUB_TOKEN": token},
-    }).
-    WithSDKMCPServer("internal", myInProcessServer)
-```
-
-For process-launched runtimes, generated MCP configuration and inline JSON
-passed through `WithMCPConfig` are materialized in permission-restricted
-argument files. Process arguments contain only the file path. An explicit MCP
-configuration file path remains unchanged.
-
-For Go-native in-process servers, build tools through the `tools` package:
-
-```go
-server := tools.CreateSDKMCPServer(tools.SDKMCPServerOptions{
-    Name:  "internal",
-    Tools: []tools.Tool{searchTool},
-})
-
-client.NewOptions().WithSDKMCPServer("internal", server)
-```
-
-### Permissions
-
-Configure permission modes via the `permission` package, with support for real-time tool call interception:
-
-```go
-client.NewOptions().
-    WithPermissionMode(permission.ModeAcceptEdits).
-    WithPermissionHandler(func(ctx context.Context, req permission.Request) (permission.Decision, error) {
-        return permission.Allow(nil, nil), nil
-    })
-```
-
-Hosts can return `permission.DenyWithErrorCode` when a denial has a stable
-machine-readable reason. The bridge carries `errorCode` to native `nxs` and
-projects the same value as `tool_result.error_code`; for runtimes that do not
-echo the optional field, it correlates the result by `tool_use_id`.
-
-Permission mode can be changed at runtime via `session.Control()`:
-
-```go
-session.Control().SetPermissionMode(ctx, permission.ModeBypassPermissions)
-commands, _ := session.Control().SupportedCommands(ctx)
-_ = commands
-_ = session.MCP().Reconnect(ctx, "github")
-```
-
-### Slash Commands
-
-The runtime initialization snapshot is the command catalog. The current wire
-exposes the canonical `Name`, `Description`, and `ArgumentHint`;
-runtime-private metadata remains inside the bridge compatibility snapshot.
-Newer Agent SDK versions may also advertise aliases, which can be added
-without changing dispatch. Execute a listed command as an ordinary user
-message—there is no separate slash-command RPC:
-
-```go
-commands, err := session.Control().SupportedCommands(ctx)
-if err != nil {
-    return err
-}
-_ = commands
-
-_, err = session.Send(ctx, "/review src/auth")
-```
-
-Typed controls such as `SetModel` remain separate from prompt dispatch.
-
-When a host is about to send an atomic Slash input after staging optional next-turn
-context, it can clear that one-shot context first:
-
-```go
-_ = session.Control().ClearNextTurnContext(ctx)
-_, err = session.Send(ctx, "/model sonnet")
-```
-
-### Hooks
-
-Register callbacks at key points in the agent lifecycle — before/after tool calls, session start/end, context compaction, and more:
-
-```go
-client.NewOptions().AddHookMatcher(hook.EventPreToolUse, hook.Matcher{
-    Matcher: "Bash",
-    Hooks: []hook.Callback{
-        func(ctx context.Context, input hook.Input, id string) (hook.Output, error) {
-            return hook.Output{}, nil
-        },
-    },
-})
-```
-
-### Model Settings
-
-```go
-client.NewOptions().
-    WithThinking(true).
-    WithMaxThinkingTokens(10000).
-    WithMaxBudgetUSD(5.0)
-```
-
-### Runtime Control
-
-After a session is established, you can dynamically adjust the model, check context usage, and manage MCP servers:
-
-```go
-session.Control().SetModel(ctx, "claude-sonnet-4-6")
-usage, _ := session.Control().ContextUsage(ctx)
-session.MCP().SetServers(ctx, newServerConfig)
-session.MCP().Status(ctx)
-```
-
-Hosts normally use `Session.Reconfigure` when applying a complete new option
-snapshot. `Session.Control().UpdateEnvironment` is available for an explicit
-native-runtime environment delta.
-
-## Callbacks
-
-Wire up callbacks via `client.Options` to participate in the agent's decision-making process:
-
-```go
-client.NewOptions().
-    WithPermissionHandler(myPermissionHandler).
-    WithElicitationHandler(myElicitationHandler).
-    WithUserDialogHandler(myDialogHandler).
-    WithOAuthTokenHandler(myOAuthHandler).
-    WithStderr(func(line string) {
-        log.Printf("[agent] %s", line)
-    })
-```
-
-## Package Layout
-
-| Package | Description |
-|---------|-------------|
-| `client` | Session management, queries, execution connection, option builder, callbacks, agent definitions, and runtime control results |
-| `protocol` | Streamed message, content block, outbound message, and control wire models |
-| `mcp` | MCP server configuration, SDK server interface, and MCP status results |
-| `tools` | Go-native custom tool definitions and result helpers |
-| `permission` | Permission modes, requests, decisions, and permission updates |
-| `hook` | Hook events, matchers, and callback signatures |
-
-## Environment Variables
-
-| Variable | Description |
-|----------|-------------|
-| `NEXUS_CONFIG_DIR` | SDK configuration root directory (default: `~/.nexus`) |
-
-Session transcripts are stored under `~/.nexus/projects/` by default.
-
-## Development & Release
+Use `stream.Recv` for incremental messages. Before exposing optional controls,
+check `session.Supports(capability)` rather than branching on a runtime name.
+
+## Documentation
+
+- [Documentation index](./docs/README.md)
+- [Runtime contract](./docs/runtime-contract.md)
+- [Go package reference](https://pkg.go.dev/github.com/nexus-research-lab/nexus-agent-sdk-bridge)
+- [Changelog](./CHANGELOG.md)
+
+## Public packages
+
+| Package | Responsibility |
+| --- | --- |
+| `client` | Queries, sessions, options, transport selection, capabilities, and runtime control |
+| `protocol` | Streamed messages, content blocks, lifecycle events, and control wire types |
+| `agent` | Public subagent configuration types |
+| `hook` | Runtime hook events, matchers, and callbacks |
+| `permission` | Permission modes, requests, and decisions |
+| `mcp` | MCP configuration and status types |
+| `tools` | Go-native MCP tool and result helpers |
+| `runtimes/nxs` | Native runtime path inspection without downloading the executable |
+
+Packages under `internal/` are implementation details and are not supported
+imports.
+
+## Development
 
 ```bash
-go test ./...
+make test
 ```
 
-To verify the full bridge process and control path against a locally built nxs
-without contacting a remote model service:
+## License
 
-```bash
-NEXUS_TEST_NXS_RESPONSES_COMMAND=/absolute/path/to/nxs-responses \
-  go test ./client -run TestNXSResponsesProtocolHotReconfigure -count=1 -v
-```
+Apache License 2.0 · [LICENSE](./LICENSE)
