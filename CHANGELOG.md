@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Preserved empty successful control responses as JSON objects so no-op Claude Code hooks pass callback validation.
+
 ### Changed
 
 - Reworked the public documentation around an executable quick start, the open-source bridge boundary, runtime capability negotiation, and the separately distributed closed-source `nxs` executable.

@@ -3,6 +3,7 @@ package protocol
 import (
 	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/jsonvalue"
@@ -122,6 +123,30 @@ func TestControlEnvelopeConstructors(t *testing.T) {
 	if ack.Type != "control_ack" || ack.RequestID != "request-3" || ack.Stage != "applied" ||
 		ack.HookEventName != "PostToolUse" || ack.ToolUseID != "tool-1" || ack.SessionID != "session-1" {
 		t.Fatalf("DecodeControlAck() = %#v, want applied hook ack", ack)
+	}
+}
+
+func TestControlSuccessResponseSerializesEmptyObject(t *testing.T) {
+	encoded, err := json.Marshal(NewControlSuccessResponse("request-empty", map[string]any{}))
+	if err != nil {
+		t.Fatalf("Marshal() error = %v", err)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(encoded, &payload); err != nil {
+		t.Fatalf("Unmarshal() error = %v", err)
+	}
+	response := payload["response"].(map[string]any)
+	result, ok := response["response"].(map[string]any)
+	if !ok || len(result) != 0 {
+		t.Fatalf("response.response = %#v, want empty object", response["response"])
+	}
+
+	encoded, err = json.Marshal(NewControlErrorResponse("request-error", "failed"))
+	if err != nil {
+		t.Fatalf("Marshal(error) error = %v", err)
+	}
+	if strings.Contains(string(encoded), `"response":null`) {
+		t.Fatalf("error response leaked null response: %s", encoded)
 	}
 }
 

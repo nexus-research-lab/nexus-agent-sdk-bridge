@@ -1,6 +1,7 @@
 package protocol
 
 import (
+	"encoding/json"
 	"strings"
 
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/jsonvalue"
@@ -87,6 +88,27 @@ type ControlResponse struct {
 	RequestID string         `json:"request_id"`
 	Response  map[string]any `json:"response,omitempty"`
 	Error     string         `json:"error,omitempty"`
+}
+
+// MarshalJSON 保留成功响应中的空对象；hook callback 会把它作为合法输出继续校验。
+func (r ControlResponse) MarshalJSON() ([]byte, error) {
+	payload := map[string]any{
+		"subtype":    r.Subtype,
+		"request_id": r.RequestID,
+	}
+	if r.Subtype == "success" {
+		response := r.Response
+		if response == nil {
+			response = map[string]any{}
+		}
+		payload["response"] = response
+	} else if len(r.Response) > 0 {
+		payload["response"] = r.Response
+	}
+	if r.Error != "" {
+		payload["error"] = r.Error
+	}
+	return json.Marshal(payload)
 }
 
 // ControlCancelRequest 表示控制取消请求。
