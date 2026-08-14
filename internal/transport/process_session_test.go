@@ -15,6 +15,39 @@ import (
 	"time"
 )
 
+func TestCleanupProcessSessionUsesHostSignalHandler(t *testing.T) {
+	var processID int
+	var received ProcessSignal
+	manager := NewProcessManager(ProcessConfig{
+		SignalProcess: func(pid int, signal ProcessSignal) error {
+			processID = pid
+			received = signal
+			return nil
+		},
+	})
+
+	manager.cleanupProcessSession(processSession{sessionID: 321})
+	if processID != 321 || received != ProcessSignalKill {
+		t.Fatalf("cleanup signal = pid:%d signal:%q", processID, received)
+	}
+}
+
+func TestKillStartedProcessReportsHostAndDirectSignalFailures(t *testing.T) {
+	process, err := os.FindProcess(1 << 30)
+	if err != nil {
+		t.Fatalf("FindProcess() error = %v", err)
+	}
+	hostErr := errors.New("host signal denied")
+	manager := NewProcessManager(ProcessConfig{
+		SignalProcess: func(int, ProcessSignal) error { return hostErr },
+	})
+
+	err = manager.killStartedProcess(process)
+	if !errors.Is(err, hostErr) {
+		t.Fatalf("killStartedProcess() error = %v, want host error", err)
+	}
+}
+
 func TestProcessWaitTerminatesRuntimeDescendants(t *testing.T) {
 	if os.Getenv("NEXUS_BRIDGE_TEST_RUNTIME_DESCENDANT") == "1" {
 		child := exec.Command("/bin/sh", "-c", "exec sleep 60")

@@ -68,6 +68,9 @@ matching. Long-running controls propagate cancellation with the same
 
 - The host decides which runtime executable and environment to trust.
 - The bridge passes sandbox policy but does not claim to enforce a sandbox.
+- Direct process signals assume the host and runtime share an OS identity. A
+  host that crosses this boundary must provide `WithProcessSignalHandler` and
+  validate PID ownership before forwarding lifecycle signals.
 - Generated or inline MCP configuration is materialized in restricted argument
   files rather than exposed directly in process arguments.
 - Provider credentials remain runtime process environment values; the bridge

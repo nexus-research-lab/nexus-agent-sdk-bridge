@@ -505,6 +505,26 @@ func TestProcessInterruptSignalUsesOSInterruptElsewhere(t *testing.T) {
 	}
 }
 
+func TestProcessManagerUsesHostSignalHandler(t *testing.T) {
+	var processID int
+	var received ProcessSignal
+	manager := NewProcessManager(ProcessConfig{
+		SignalProcess: func(pid int, signal ProcessSignal) error {
+			processID = pid
+			received = signal
+			return nil
+		},
+	})
+	manager.cmd = &exec.Cmd{Process: &os.Process{Pid: 321}}
+
+	if err := manager.Interrupt(); err != nil {
+		t.Fatalf("Interrupt() error = %v", err)
+	}
+	if processID != 321 || received != ProcessSignalInterrupt {
+		t.Fatalf("signal = pid:%d signal:%q", processID, received)
+	}
+}
+
 func TestBuildEnvironmentUsesRuntimeEntrypointEnv(t *testing.T) {
 	claudeEnv := buildEnvironment(nil, "", ControlWireDialectClaude)
 	if envValue(claudeEnv, "CLAUDE_CODE_ENTRYPOINT") != "sdk-go" {

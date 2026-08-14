@@ -7,6 +7,7 @@ All notable changes to this project are documented in this file.
 ### Fixed
 
 - Preserved empty successful control responses as JSON objects so no-op Claude Code hooks pass callback validation.
+- Allowed hosts with isolated runtime identities to provide the trusted process-signal boundary used by interrupt, shutdown, and descendant cleanup.
 
 ### Changed
 

@@ -474,6 +474,7 @@ type resolvedOptions struct {
 	Hooks                           map[hook.Event][]hook.Matcher
 	Stderr                          func(string)
 	Diagnostics                     DiagnosticHandler
+	ProcessSignalHandler            ProcessSignalHandler
 	InitializeTimeout               time.Duration
 	Debug                           bool
 	DebugFile                       string
@@ -667,6 +668,7 @@ func (o Options) buildResolvedOptions(strictMCP bool) (resolvedOptions, error) {
 		Hooks:                           cloneHooks(o.Hooks.Matchers),
 		Stderr:                          o.Callbacks.Stderr,
 		Diagnostics:                     o.Callbacks.Diagnostics,
+		ProcessSignalHandler:            o.Callbacks.ProcessSignalHandler,
 		InitializeTimeout:               o.Runtime.InitializeTimeout,
 		Debug:                           o.Runtime.Debug,
 		DebugFile:                       o.Runtime.DebugFile,

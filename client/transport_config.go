@@ -17,6 +17,18 @@ import (
 // Transport 表示可替换的 SDK 底层通信实现。
 type Transport = transport.Transport
 
+// ProcessSignal 表示宿主请求的进程生命周期信号。
+type ProcessSignal = transport.ProcessSignal
+
+const (
+	ProcessSignalInterrupt = transport.ProcessSignalInterrupt
+	ProcessSignalTerminate = transport.ProcessSignalTerminate
+	ProcessSignalKill      = transport.ProcessSignalKill
+)
+
+// ProcessSignalHandler 允许宿主跨 OS 身份边界发送进程信号。
+type ProcessSignalHandler = transport.ProcessSignalHandler
+
 // DirectConnectOptions 表示 direct-connect transport 配置。
 type DirectConnectOptions struct {
 	URL                  string
@@ -404,6 +416,7 @@ func buildProcessTransportConfig(o resolvedOptions) transport.ProcessConfig {
 		Env:                processEnv,
 		Stderr:             o.Stderr,
 		Diagnostics:        processDiagnosticHandler(o.Diagnostics),
+		SignalProcess:      o.ProcessSignalHandler,
 		ControlWireDialect: processControlWireDialect(o),
 	}
 }

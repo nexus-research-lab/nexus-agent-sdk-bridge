@@ -557,6 +557,12 @@ func (o Options) WithDiagnostics(callback DiagnosticHandler) Options {
 	return o
 }
 
+// WithProcessSignalHandler 设置跨 OS 身份边界的进程信号处理器。
+func (o Options) WithProcessSignalHandler(handler ProcessSignalHandler) Options {
+	o.Callbacks.ProcessSignalHandler = handler
+	return o
+}
+
 // WithInitializeTimeout 设置初始化超时。
 func (o Options) WithInitializeTimeout(timeout time.Duration) Options {
 	o.Runtime.InitializeTimeout = timeout

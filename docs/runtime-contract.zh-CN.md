@@ -59,6 +59,8 @@ Context 取消和用户中断可通过 Go error matching 区分。长时 control
 
 - 宿主决定信任哪个 runtime 可执行程序和进程环境。
 - Bridge 只传递 sandbox policy，不宣称自己执行沙箱隔离。
+- 默认进程信号假设宿主与 runtime 使用同一 OS 身份；跨身份运行时，宿主必须通过
+  `WithProcessSignalHandler` 提供边界，并在转发生命周期信号前校验 PID 归属。
 - 自动生成或内联的 MCP 配置会写入权限受限的参数文件，不直接暴露在进程参数中。
 - Provider 凭据保留为 runtime 进程环境；bridge 不解释 Provider 请求 payload。
 

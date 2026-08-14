@@ -61,6 +61,18 @@ type ProcessDiagnosticEvent struct {
 	Attributes map[string]any
 }
 
+// ProcessSignal 表示宿主请求的进程生命周期信号。
+type ProcessSignal string
+
+const (
+	ProcessSignalInterrupt ProcessSignal = "interrupt"
+	ProcessSignalTerminate ProcessSignal = "terminate"
+	ProcessSignalKill      ProcessSignal = "kill"
+)
+
+// ProcessSignalHandler 允许宿主跨 OS 身份边界发送进程信号。
+type ProcessSignalHandler func(processID int, signal ProcessSignal) error
+
 // StdoutDecodeError 携带 stdout JSON 解码失败时的现场信息。
 type StdoutDecodeError struct {
 	Err           error
@@ -112,6 +124,7 @@ type ProcessConfig struct {
 	Env                map[string]string
 	Stderr             func(string)
 	Diagnostics        func(ProcessDiagnosticEvent)
+	SignalProcess      ProcessSignalHandler
 	ControlWireDialect ControlWireDialect
 }
 
@@ -204,14 +217,12 @@ func (m *ProcessManager) Start(ctx context.Context) error {
 	}
 	processSession := startedProcessSession(cmd)
 	if err := ctx.Err(); err != nil {
+		_ = stdin.Close()
 		_ = stdoutReader.Close()
 		_ = stdoutWriter.Close()
 		_ = stderrReader.Close()
 		_ = stderrWriter.Close()
-		_ = cmd.Process.Kill()
-		_ = cmd.Wait()
-		m.cleanupProcessSession(processSession)
-		return err
+		return errors.Join(err, m.abortStartedProcess(cmd, processSession))
 	}
 	attributes := map[string]any{
 		"command_path": command.path,
@@ -225,21 +236,23 @@ func (m *ProcessManager) Start(ctx context.Context) error {
 	m.emitDiagnostic("process_start", attributes)
 
 	if err := stdoutWriter.Close(); err != nil {
+		_ = stdin.Close()
 		_ = stdoutReader.Close()
 		_ = stderrReader.Close()
 		_ = stderrWriter.Close()
-		_ = cmd.Process.Kill()
-		_ = cmd.Wait()
-		m.cleanupProcessSession(processSession)
-		return fmt.Errorf("process: close parent stdout writer failed: %w", err)
+		return errors.Join(
+			fmt.Errorf("process: close parent stdout writer failed: %w", err),
+			m.abortStartedProcess(cmd, processSession),
+		)
 	}
 	if err := stderrWriter.Close(); err != nil {
+		_ = stdin.Close()
 		_ = stdoutReader.Close()
 		_ = stderrReader.Close()
-		_ = cmd.Process.Kill()
-		_ = cmd.Wait()
-		m.cleanupProcessSession(processSession)
-		return fmt.Errorf("process: close parent stderr writer failed: %w", err)
+		return errors.Join(
+			fmt.Errorf("process: close parent stderr writer failed: %w", err),
+			m.abortStartedProcess(cmd, processSession),
+		)
 	}
 
 	m.cmd = cmd
@@ -278,6 +291,15 @@ func (m *ProcessManager) Start(ctx context.Context) error {
 }
 
 func (m *ProcessManager) cleanupProcessSession(session processSession) {
+	if m.config.SignalProcess != nil && session.id() > 1 {
+		if err := m.config.SignalProcess(session.id(), ProcessSignalKill); err != nil {
+			m.emitDiagnostic("process_descendant_cleanup_error", map[string]any{
+				"session_id": session.id(),
+				"error":      err.Error(),
+			})
+		}
+		return
+	}
 	terminated, err := session.cleanup()
 	if terminated > 0 {
 		m.emitDiagnostic("process_descendants_terminated", map[string]any{
@@ -373,11 +395,7 @@ func (m *ProcessManager) Interrupt() error {
 	if m.cmd == nil || m.cmd.Process == nil {
 		return nil
 	}
-	signal, err := processInterruptSignal(runtime.GOOS)
-	if err != nil {
-		return err
-	}
-	return m.cmd.Process.Signal(signal)
+	return m.signalProcess(m.cmd.Process, ProcessSignalInterrupt)
 }
 
 func processInterruptSignal(goos string) (os.Signal, error) {
@@ -387,14 +405,68 @@ func processInterruptSignal(goos string) (os.Signal, error) {
 	return os.Interrupt, nil
 }
 
-func terminateProcess(process *os.Process) error {
+func signalProcess(process *os.Process, signal ProcessSignal) error {
 	if process == nil {
 		return nil
 	}
-	if runtime.GOOS == "windows" {
+	switch signal {
+	case ProcessSignalInterrupt:
+		value, err := processInterruptSignal(runtime.GOOS)
+		if err != nil {
+			return err
+		}
+		return process.Signal(value)
+	case ProcessSignalTerminate:
+		if runtime.GOOS == "windows" {
+			return process.Kill()
+		}
+		return process.Signal(syscall.SIGTERM)
+	case ProcessSignalKill:
 		return process.Kill()
+	default:
+		return fmt.Errorf("process: unsupported process signal %q", signal)
 	}
-	return process.Signal(syscall.SIGTERM)
+}
+
+func (m *ProcessManager) signalProcess(process *os.Process, signal ProcessSignal) error {
+	if process == nil {
+		return nil
+	}
+	if m.config.SignalProcess != nil {
+		return m.config.SignalProcess(process.Pid, signal)
+	}
+	return signalProcess(process, signal)
+}
+
+func (m *ProcessManager) abortStartedProcess(cmd *exec.Cmd, session processSession) error {
+	if cmd == nil || cmd.Process == nil {
+		return nil
+	}
+	if err := m.killStartedProcess(cmd.Process); err != nil {
+		m.emitDiagnostic("process_kill_error", map[string]any{
+			"pid":   cmd.Process.Pid,
+			"error": err.Error(),
+		})
+		go func() {
+			_ = cmd.Wait()
+			m.cleanupProcessSession(session)
+		}()
+		return fmt.Errorf("process: kill started command failed: %w", err)
+	}
+	_ = cmd.Wait()
+	m.cleanupProcessSession(session)
+	return nil
+}
+
+func (m *ProcessManager) killStartedProcess(process *os.Process) error {
+	err := m.signalProcess(process, ProcessSignalKill)
+	if err == nil || m.config.SignalProcess == nil {
+		return err
+	}
+	if fallbackErr := signalProcess(process, ProcessSignalKill); fallbackErr != nil {
+		return errors.Join(err, fallbackErr)
+	}
+	return nil
 }
 
 func applyCommandUser(cmd *exec.Cmd, userName string) error {
@@ -792,7 +864,7 @@ func (m *ProcessManager) Close() error {
 				"timeout_ms": defaultCloseTimeout.Milliseconds(),
 			})
 			forcedExit = true
-			if err := terminateProcess(m.cmd.Process); err != nil {
+			if err := m.signalProcess(m.cmd.Process, ProcessSignalTerminate); err != nil {
 				m.emitDiagnostic("process_terminate_error", map[string]any{
 					"pid":   m.cmd.Process.Pid,
 					"error": err.Error(),
@@ -803,8 +875,15 @@ func (m *ProcessManager) Close() error {
 					"pid":        m.cmd.Process.Pid,
 					"timeout_ms": defaultCloseTimeout.Milliseconds(),
 				})
-				_ = m.cmd.Process.Kill()
-				<-m.done
+				if err := m.signalProcess(m.cmd.Process, ProcessSignalKill); err != nil {
+					m.emitDiagnostic("process_kill_error", map[string]any{
+						"pid":   m.cmd.Process.Pid,
+						"error": err.Error(),
+					})
+					closeErr = errors.Join(closeErr, fmt.Errorf("process: kill failed: %w", err))
+				} else {
+					<-m.done
+				}
 			}
 		}
 

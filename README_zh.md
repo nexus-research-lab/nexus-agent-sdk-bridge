@@ -96,6 +96,8 @@ fmt.Println(result.Result)
 
 增量消息通过 `stream.Recv` 消费。宿主暴露可选控制前，应调用
 `session.Supports(capability)`，不要按 runtime 名称猜测能力。
+宿主若以另一个 OS 身份运行子进程，可通过 `WithProcessSignalHandler` 提供可信且
+校验 PID 的进程信号边界，统一处理中断、关闭和遗留子进程清理。
 
 ## 文档
 

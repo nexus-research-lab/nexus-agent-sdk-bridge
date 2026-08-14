@@ -100,6 +100,9 @@ fmt.Println(result.Result)
 
 Use `stream.Recv` for incremental messages. Before exposing optional controls,
 check `session.Supports(capability)` rather than branching on a runtime name.
+Hosts that run the child under another OS identity can use
+`WithProcessSignalHandler` as the trusted, PID-validating boundary for
+interrupt, shutdown, and descendant cleanup.
 
 ## Documentation
 

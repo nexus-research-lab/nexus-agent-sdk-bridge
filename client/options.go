@@ -400,12 +400,13 @@ type HookOptions struct {
 
 // CallbackOptions 表示宿主注入的回调和外部运行边界。
 type CallbackOptions struct {
-	PermissionHandler  permission.Handler
-	ElicitationHandler ElicitationHandler
-	UserDialogHandler  UserDialogHandler
-	OAuthTokenHandler  OAuthTokenHandler
-	Stderr             func(string)
-	Diagnostics        DiagnosticHandler
+	PermissionHandler    permission.Handler
+	ElicitationHandler   ElicitationHandler
+	UserDialogHandler    UserDialogHandler
+	OAuthTokenHandler    OAuthTokenHandler
+	Stderr               func(string)
+	Diagnostics          DiagnosticHandler
+	ProcessSignalHandler ProcessSignalHandler
 }
 
 // Options 表示 Nexus Agent SDK Go 客户端选项。
