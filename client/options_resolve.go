@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/agent"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/hook"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/jsonvalue"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/mcpwire"
@@ -177,7 +178,7 @@ func (o Options) normalized() (Options, error) {
 		result.MCP.SDKServers = map[string]mcp.SDKMCPServer{}
 	}
 	if result.Agents == nil {
-		result.Agents = map[string]AgentDefinition{}
+		result.Agents = map[string]agent.Definition{}
 	}
 	if strings.TrimSpace(result.MCP.Config) == "" {
 		for name, server := range result.MCP.SDKServers {
@@ -456,7 +457,7 @@ type resolvedOptions struct {
 	ResumeSessionAt                 string
 	SessionTitle                    string
 	Agent                           string
-	Agents                          map[string]AgentDefinition
+	Agents                          map[string]agent.Definition
 	Model                           string
 	FallbackModel                   string
 	Betas                           []string

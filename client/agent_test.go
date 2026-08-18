@@ -3,12 +3,13 @@ package client
 import (
 	"testing"
 
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/agent"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/permission"
 )
 
 func TestAgentDefinitionToMapMatchesAgentShape(t *testing.T) {
 	background := true
-	definition := AgentDefinition{
+	definition := agent.Definition{
 		Description:     "review code",
 		Prompt:          "Review the change.",
 		Tools:           []string{"Read"},
@@ -47,7 +48,7 @@ func TestAgentDefinitionToMapMatchesAgentShape(t *testing.T) {
 }
 
 func TestAgentDefinitionCloneCopiesMutableSlices(t *testing.T) {
-	definition := AgentDefinition{
+	definition := agent.Definition{
 		Tools:           []string{"Read"},
 		DisallowedTools: []string{"Write"},
 		MCPServers:      []any{"slack"},

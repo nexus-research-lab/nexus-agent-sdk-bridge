@@ -4,6 +4,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/agent"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/hook"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/jsonvalue"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/mcp"
@@ -251,16 +252,16 @@ func (o Options) WithAgent(agent string) Options {
 }
 
 // WithAgents 批量设置 agent 定义。
-func (o Options) WithAgents(agents map[string]AgentDefinition) Options {
+func (o Options) WithAgents(agents map[string]agent.Definition) Options {
 	o.Agents = cloneAgentDefinitions(agents)
 	return o
 }
 
 // WithAgentDefinition 添加或替换单个 agent 定义。
-func (o Options) WithAgentDefinition(name string, definition AgentDefinition) Options {
+func (o Options) WithAgentDefinition(name string, definition agent.Definition) Options {
 	o.Agents = cloneAgentDefinitions(o.Agents)
 	if o.Agents == nil {
-		o.Agents = map[string]AgentDefinition{}
+		o.Agents = map[string]agent.Definition{}
 	}
 	o.Agents[name] = definition
 	return o

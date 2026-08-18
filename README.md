@@ -120,7 +120,7 @@ interrupt, shutdown, and descendant cleanup.
 | --- | --- |
 | `client` | Queries, sessions, options, transport selection, capabilities, and runtime control |
 | `protocol` | Streamed messages, content blocks, lifecycle events, and control wire types |
-| `agent` | Public subagent configuration types |
+| `agent` | Sole public source of subagent configuration types |
 | `hook` | Runtime hook events, matchers, and callbacks |
 | `permission` | Permission modes, requests, and decisions |
 | `mcp` | MCP configuration and status types |

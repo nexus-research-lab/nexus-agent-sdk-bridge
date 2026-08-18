@@ -37,9 +37,6 @@ type DiagnosticEvent struct {
 // DiagnosticHandler 接收 SDK 内部诊断事件。
 type DiagnosticHandler func(DiagnosticEvent)
 
-// AgentDefinition 表示可通过 Options 注入的子 agent 定义。
-type AgentDefinition = agent.Definition
-
 // SandboxNetworkConfig 表示 sandbox 网络配置。
 type SandboxNetworkConfig struct {
 	AllowedDomains          []string                `json:"allowedDomains,omitempty"`
@@ -423,7 +420,7 @@ type Options struct {
 	Session                SessionOptions
 	Runtime                RuntimeOptions
 	Agent                  string
-	Agents                 map[string]AgentDefinition
+	Agents                 map[string]agent.Definition
 	Model                  string
 	FallbackModel          string
 	Betas                  []string
@@ -465,11 +462,11 @@ func cloneAnyMap(input map[string]any) map[string]any {
 	return jsonvalue.CloneMap(input)
 }
 
-func cloneAgentDefinitions(input map[string]AgentDefinition) map[string]AgentDefinition {
+func cloneAgentDefinitions(input map[string]agent.Definition) map[string]agent.Definition {
 	if len(input) == 0 {
 		return nil
 	}
-	result := make(map[string]AgentDefinition, len(input))
+	result := make(map[string]agent.Definition, len(input))
 	for key, value := range input {
 		result[key] = value.Clone()
 	}

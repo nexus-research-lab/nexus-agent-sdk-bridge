@@ -115,7 +115,7 @@ fmt.Println(result.Result)
 | --- | --- |
 | `client` | Query、Session、Options、transport 选择、capability 与 runtime control |
 | `protocol` | 流式消息、content block、lifecycle event 与 control wire 类型 |
-| `agent` | 公开 Subagent 配置类型 |
+| `agent` | Subagent 配置类型的唯一公开来源 |
 | `hook` | Runtime Hook 事件、匹配器与回调 |
 | `permission` | 权限模式、请求与决策 |
 | `mcp` | MCP 配置与状态类型 |

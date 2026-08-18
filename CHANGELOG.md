@@ -15,6 +15,7 @@ All notable changes to this project are documented in this file.
 
 ### Changed
 
+- Removed the duplicate `client.AgentDefinition` alias; subagent configuration now consistently uses `agent.Definition`.
 - Reworked the public documentation around an executable quick start, the open-source bridge boundary, runtime capability negotiation, and the separately distributed closed-source `nxs` executable.
 
 ## [0.1.28] - 2026-08-10
