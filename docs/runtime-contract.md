@@ -45,9 +45,10 @@ control messages, tool arguments, hook inputs, or provider payloads.
 
 Hosts must call `Session.Supports` before exposing optional controls. Common
 capabilities include typed usage, terminal categories, task stopping,
-in-process MCP, and provider-neutral runtime lifecycle events. Native-only
-controls currently include task follow-up, environment hot updates, and
-AutoDream. Hook response acknowledgement is negotiated during initialization.
+in-process MCP, exact-boundary session forking, and provider-neutral runtime
+lifecycle events. Native-only controls currently include task follow-up,
+environment hot updates, and AutoDream. Hook response acknowledgement is
+negotiated during initialization.
 
 Capability values are defined in [`client/capability.go`](../client/capability.go).
 Runtime names are not a substitute for capability checks.
@@ -59,6 +60,11 @@ Runtime names are not a substitute for capability checks.
 3. The host consumes typed messages with `Recv` or waits for `Result`.
 4. Controls use the active session and preserve the runtime request identity.
 5. `Session.Close` releases the transport and owned process resources.
+
+`client.ForkSession` creates an independent target from a source session through
+the exact supplied message ID. Claude Code may not persist the target transcript
+until its first user turn, but the bridge assigns the target session ID before
+returning the session.
 
 Context cancellation and user aborts remain distinguishable through Go error
 matching. Long-running controls propagate cancellation with the same

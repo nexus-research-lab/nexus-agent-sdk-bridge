@@ -1,6 +1,8 @@
 package client
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -103,6 +105,13 @@ func (o Options) normalized() (Options, error) {
 	}
 	if err := result.resolveRuntimeCommand(); err != nil {
 		return Options{}, err
+	}
+	if result.Runtime.Kind == RuntimeClaude && result.Session.Fork && strings.TrimSpace(result.Session.ID) == "" {
+		id, err := newSessionUUID()
+		if err != nil {
+			return Options{}, err
+		}
+		result.Session.ID = id
 	}
 	if result.System.Text != "" && strings.TrimSpace(result.System.File) != "" {
 		return Options{}, fmt.Errorf("client: system prompt text and system prompt file cannot be used together")
@@ -250,6 +259,17 @@ func (o Options) normalized() (Options, error) {
 		return Options{}, fmt.Errorf("client: direct connect url cannot be empty")
 	}
 	return result, nil
+}
+
+func newSessionUUID() (string, error) {
+	var value [16]byte
+	if _, err := rand.Read(value[:]); err != nil {
+		return "", fmt.Errorf("client: generate fork session id: %w", err)
+	}
+	value[6] = value[6]&0x0f | 0x40
+	value[8] = value[8]&0x3f | 0x80
+	raw := hex.EncodeToString(value[:])
+	return raw[:8] + "-" + raw[8:12] + "-" + raw[12:16] + "-" + raw[16:20] + "-" + raw[20:], nil
 }
 
 func (o *Options) resolveRuntimeCommand() error {

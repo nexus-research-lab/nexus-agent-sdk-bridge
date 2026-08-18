@@ -155,6 +155,39 @@ func ResumeSession(ctx context.Context, sessionID string, options Options) (*Ses
 	return newSession(ctx, options)
 }
 
+// ForkSession 从既有会话的指定消息节点创建并连接独立会话。
+func ForkSession(
+	ctx context.Context,
+	sessionID string,
+	upToMessageID string,
+	options Options,
+) (*Session, error) {
+	prepared, err := forkSessionOptions(sessionID, upToMessageID, options)
+	if err != nil {
+		return nil, err
+	}
+	return newSession(ctx, prepared)
+}
+
+func forkSessionOptions(sessionID string, upToMessageID string, options Options) (Options, error) {
+	sessionID = strings.TrimSpace(sessionID)
+	upToMessageID = strings.TrimSpace(upToMessageID)
+	if sessionID == "" {
+		return Options{}, errors.New("client: fork session id is required")
+	}
+	if upToMessageID == "" {
+		return Options{}, errors.New("client: fork message id is required")
+	}
+	if strings.TrimSpace(options.Session.ID) != "" {
+		return Options{}, errors.New("client: fork session does not accept an explicit session id")
+	}
+	options.Session.ResumeID = sessionID
+	options.Session.ResumeAt = upToMessageID
+	options.Session.ContinueLatest = false
+	options.Session.Fork = true
+	return options, nil
+}
+
 func newSession(ctx context.Context, options Options) (*Session, error) {
 	instance := newSessionCoreWithTransport(options, options.Transport)
 	if err := instance.Connect(ctx); err != nil {
@@ -214,12 +247,15 @@ func (s *Session) StreamInput(ctx context.Context, messages <-chan protocol.Outb
 	return &Stream{core: s.core}, nil
 }
 
-// ID 返回当前会话 ID；新会话在收到真实 session_id 前返回空字符串。
+// ID 返回当前会话 ID；显式指定的 ID 在 runtime init 前即可用。
 func (s *Session) ID() string {
 	if s == nil || s.core == nil {
 		return ""
 	}
 	sessionID := s.core.SessionID()
+	if sessionID == "" {
+		sessionID = strings.TrimSpace(s.core.options.Session.ID)
+	}
 	if sessionID == defaultSessionID {
 		return ""
 	}

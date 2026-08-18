@@ -28,6 +28,9 @@ func TestSessionSupportsHostRuntimePrimitives(t *testing.T) {
 	if !session.Supports(CapabilityInProcessMCP) {
 		t.Fatal("Supports(in_process_mcp) = false, want true")
 	}
+	if !session.Supports(CapabilitySessionFork) {
+		t.Fatal("Supports(session_fork) = false, want true")
+	}
 	if !session.Supports(CapabilitySendTaskMessage) {
 		t.Fatal("Supports(send_task_message) = false, want true")
 	}
@@ -55,6 +58,9 @@ func TestClaudeSessionDistinguishesSubagentTaskCapabilities(t *testing.T) {
 	}
 	if !session.Supports(CapabilityInProcessMCP) {
 		t.Fatal("Supports(in_process_mcp) = false, want true")
+	}
+	if !session.Supports(CapabilitySessionFork) {
+		t.Fatal("Supports(session_fork) = false, want true")
 	}
 	if session.Supports(CapabilitySendTaskMessage) {
 		t.Fatal("Supports(send_task_message) = true, want false")

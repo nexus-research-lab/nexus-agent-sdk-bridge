@@ -100,6 +100,9 @@ fmt.Println(result.Result)
 
 Use `stream.Recv` for incremental messages. Before exposing optional controls,
 check `session.Supports(capability)` rather than branching on a runtime name.
+Use `client.ForkSession(ctx, sourceSessionID, completedMessageID, options)` to
+start an independent session at an exact completed message boundary. Both
+`nxs` and Claude Code advertise `client.CapabilitySessionFork`.
 Hosts that run the child under another OS identity can use
 `WithProcessSignalHandler` as the trusted, PID-validating boundary for
 interrupt, shutdown, and descendant cleanup.

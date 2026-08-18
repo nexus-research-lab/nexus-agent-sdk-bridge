@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Added a capability-negotiated `ForkSession` constructor for creating an independent runtime session at an exact completed message boundary.
+
 ### Fixed
 
 - Preserved empty successful control responses as JSON objects so no-op Claude Code hooks pass callback validation.

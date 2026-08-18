@@ -38,8 +38,9 @@ Hook 输入或 Provider payload 做全局 snake_case/camelCase 转换。
 ## Capability 协商
 
 宿主暴露可选控制前必须调用 `Session.Supports`。通用能力包括类型化 usage、终态分类、
-停止任务、进程内 MCP 和 provider-neutral runtime lifecycle。当前原生专属控制包括
-任务续聊、环境热更新和 AutoDream。Hook response ack 在初始化阶段协商。
+停止任务、进程内 MCP、精确边界 Session fork 和 provider-neutral runtime lifecycle。
+当前原生专属控制包括任务续聊、环境热更新和 AutoDream。Hook response ack 在初始化
+阶段协商。
 
 Capability 真相源位于 [`client/capability.go`](../client/capability.go)。不能用 Runtime
 名称替代 capability 检查。
@@ -51,6 +52,10 @@ Capability 真相源位于 [`client/capability.go`](../client/capability.go)。�
 3. 宿主通过 `Recv` 消费类型化消息，或通过 `Result` 等待终态。
 4. 控制请求复用活跃 session，并保留 runtime request identity。
 5. `Session.Close` 释放 transport 和 bridge 拥有的进程资源。
+
+`client.ForkSession` 会复制源 Session 到传入消息 ID 的精确边界，并创建独立目标。
+Claude Code 可能到首个用户回合才持久化目标 transcript，但 bridge 会在返回 Session
+前分配目标 Session ID。
 
 Context 取消和用户中断可通过 Go error matching 区分。长时 control 会使用同一个
 `request_id` 传播取消，使 runtime 能停止原始操作。
