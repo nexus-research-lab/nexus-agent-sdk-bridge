@@ -40,7 +40,7 @@ func TestHandleControlRequestMarksTransportFailedWhenResponseWriteFails(t *testi
 		writeErr: errors.New("process: write payload failed: Stream closed"),
 	}
 	core := newSessionCoreWithTransport(Options{}, transport)
-	core.lifecycleState().setConnected(true)
+	core.lifecycle.setConnected(true)
 
 	core.handleControlRequest(map[string]any{
 		"request_id": "request-hook",
@@ -198,13 +198,13 @@ func TestBuildInitializeRequestCarriesPromptPartsOnlyToNXS(t *testing.T) {
 func TestHookResponseAppliedAckInvokesCallbackExactlyOnce(t *testing.T) {
 	transport := newScriptedTransport()
 	core := newSessionCoreWithTransport(Options{}, transport)
-	core.lifecycleState().setConnected(true)
-	core.lifecycleState().setInitializeResponse(runtimeinfo.InitializeResponse{
+	core.lifecycle.setConnected(true)
+	core.lifecycle.setInitializeResponse(runtimeinfo.InitializeResponse{
 		ProtocolCapabilities: []string{hookResponseAckProtocolCapability},
 	})
 
 	applied := make(chan hook.AppliedAck, 1)
-	callbackID := core.hookCallbackRegistry().register(func(context.Context, hook.Input, string) (hook.Output, error) {
+	callbackID := core.hookCallbacks.register(func(context.Context, hook.Input, string) (hook.Output, error) {
 		return hook.Output{
 			SystemMessage: "continue",
 			OnApplied: func(ack hook.AppliedAck) {
@@ -250,13 +250,13 @@ func TestHookResponseAppliedAckInvokesCallbackExactlyOnce(t *testing.T) {
 func TestHookResponseAppliedAckIsClearedWhenResponseWriteFails(t *testing.T) {
 	transport := &failingControlTransport{writeErr: errors.New("write failed")}
 	core := newSessionCoreWithTransport(Options{}, transport)
-	core.lifecycleState().setConnected(true)
-	core.lifecycleState().setInitializeResponse(runtimeinfo.InitializeResponse{
+	core.lifecycle.setConnected(true)
+	core.lifecycle.setInitializeResponse(runtimeinfo.InitializeResponse{
 		ProtocolCapabilities: []string{hookResponseAckProtocolCapability},
 	})
 
 	called := false
-	callbackID := core.hookCallbackRegistry().register(func(context.Context, hook.Input, string) (hook.Output, error) {
+	callbackID := core.hookCallbacks.register(func(context.Context, hook.Input, string) (hook.Output, error) {
 		return hook.Output{OnApplied: func(hook.AppliedAck) { called = true }}, nil
 	})
 	core.handleControlRequest(map[string]any{

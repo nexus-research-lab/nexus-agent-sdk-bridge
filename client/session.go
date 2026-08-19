@@ -53,7 +53,7 @@ func newRunner(
 ) runner {
 	return runner{
 		options:          options,
-		lifecycle:        newSessionLifecycle(),
+		lifecycle:        &sessionLifecycle{},
 		streams:          newSessionStreams(64),
 		transport:        transport,
 		transportFactory: transportFactory,
@@ -64,50 +64,8 @@ func newRunner(
 		hookAppliedAcks:  newRegistry[func(hook.AppliedAck)](),
 		permissionErrors: newRegistry[string](),
 		sdkMCPServers:    newRegistry[mcp.SDKMCPServer](),
-		nextTurnContext:  newNextTurnContextBuffer(),
+		nextTurnContext:  &nextTurnContextBuffer{},
 	}
-}
-
-func (c *sessionCore) lifecycleState() *sessionLifecycle {
-	if c.lifecycle == nil {
-		c.lifecycle = newSessionLifecycle()
-	}
-	return c.lifecycle
-}
-
-func (c *sessionCore) streamState() *sessionStreams {
-	if c.streams == nil {
-		c.streams = newSessionStreams(64)
-	}
-	return c.streams
-}
-
-func (c *sessionCore) hookCallbackRegistry() *hookCallbackRegistry {
-	if c.hookCallbacks == nil {
-		c.hookCallbacks = newHookCallbackRegistry()
-	}
-	return c.hookCallbacks
-}
-
-func (c *sessionCore) hookAppliedAckRegistry() *registry[func(hook.AppliedAck)] {
-	if c.hookAppliedAcks == nil {
-		c.hookAppliedAcks = newRegistry[func(hook.AppliedAck)]()
-	}
-	return c.hookAppliedAcks
-}
-
-func (c *sessionCore) permissionErrorRegistry() *registry[string] {
-	if c.permissionErrors == nil {
-		c.permissionErrors = newRegistry[string]()
-	}
-	return c.permissionErrors
-}
-
-func (c *sessionCore) sdkMCPServerRegistry() *registry[mcp.SDKMCPServer] {
-	if c.sdkMCPServers == nil {
-		c.sdkMCPServers = newRegistry[mcp.SDKMCPServer]()
-	}
-	return c.sdkMCPServers
 }
 
 func joinErrors(left error, right error) error {

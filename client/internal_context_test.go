@@ -12,7 +12,7 @@ import (
 func TestSetNextTurnContextInjectsSystemReminderIntoNextUserMessage(t *testing.T) {
 	transport := &capturingTransport{}
 	core := newSessionCoreWithTransport(Options{}, transport)
-	core.lifecycleState().setConnected(true)
+	core.lifecycle.setConnected(true)
 
 	err := core.setNextTurnContext(context.Background(), []InternalContextBlock{{
 		Name:    "goal",
@@ -57,7 +57,7 @@ func TestSetNextTurnContextInjectsSystemReminderIntoNextUserMessage(t *testing.T
 func TestNextTurnContextIsConsumedOnce(t *testing.T) {
 	transport := &capturingTransport{}
 	core := newSessionCoreWithTransport(Options{}, transport)
-	core.lifecycleState().setConnected(true)
+	core.lifecycle.setConnected(true)
 
 	if err := core.setNextTurnContext(context.Background(), []InternalContextBlock{{Name: "goal", Content: "one-shot context"}}); err != nil {
 		t.Fatalf("setNextTurnContext() error = %v", err)
@@ -84,7 +84,7 @@ func TestNextTurnContextIsConsumedOnce(t *testing.T) {
 func TestNextTurnContextPrependsStructuredContentBlock(t *testing.T) {
 	transport := &capturingTransport{}
 	core := newSessionCoreWithTransport(Options{}, transport)
-	core.lifecycleState().setConnected(true)
+	core.lifecycle.setConnected(true)
 
 	if err := core.setNextTurnContext(context.Background(), []InternalContextBlock{{Name: "goal", Content: "structured context"}}); err != nil {
 		t.Fatalf("setNextTurnContext() error = %v", err)
@@ -110,7 +110,7 @@ func TestNextTurnContextPrependsStructuredContentBlock(t *testing.T) {
 func TestClearNextTurnContextKeepsAtomicUserInputUntouched(t *testing.T) {
 	transport := &capturingTransport{}
 	core := newSessionCoreWithTransport(Options{}, transport)
-	core.lifecycleState().setConnected(true)
+	core.lifecycle.setConnected(true)
 
 	if err := core.setNextTurnContext(context.Background(), []InternalContextBlock{{
 		Name:    "goal",

@@ -79,20 +79,3 @@ func (e *MessageParseError) Is(target error) bool {
 func NewMessageParseError(message string) *MessageParseError {
 	return &MessageParseError{Message: message}
 }
-
-// NewMessageParseErrorWithType 创建带消息类型的解析错误。
-func NewMessageParseErrorWithType(message string, messageType string) *MessageParseError {
-	return &MessageParseError{
-		Message:     message,
-		MessageType: messageType,
-	}
-}
-
-// NewMessageParseErrorWithCause 创建带底层错误的消息解析错误。
-func NewMessageParseErrorWithCause(message string, messageType string, cause error) *MessageParseError {
-	return &MessageParseError{
-		Message:     message,
-		MessageType: messageType,
-		Cause:       cause,
-	}
-}

@@ -1,44 +1,11 @@
 package mcpserver
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
 )
-
-// NewTypedTool creates an MCP tool with a JSON Schema inferred from T.
-func NewTypedTool[T any](
-	name string,
-	description string,
-	handler func(context.Context, T) (ToolResult, error),
-	annotations *ToolAnnotations,
-) (Tool, error) {
-	schema, err := JSONSchemaFor[T]()
-	if err != nil {
-		return Tool{}, err
-	}
-
-	return Tool{
-		Name:        name,
-		Description: description,
-		InputSchema: schema,
-		Annotations: annotations,
-		Handler: func(ctx context.Context, input map[string]any) (ToolResult, error) {
-			var decoded T
-			payload, err := json.Marshal(input)
-			if err != nil {
-				return ToolResult{}, fmt.Errorf("client: marshal typed MCP tool input failed: %w", err)
-			}
-			if err := json.Unmarshal(payload, &decoded); err != nil {
-				return ToolResult{}, fmt.Errorf("client: decode typed MCP tool input failed: %w", err)
-			}
-			return handler(ctx, decoded)
-		},
-	}, nil
-}
 
 // JSONSchemaFor infers a JSON Schema from a Go type.
 func JSONSchemaFor[T any]() (map[string]any, error) {

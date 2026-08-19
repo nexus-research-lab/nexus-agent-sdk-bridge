@@ -42,7 +42,7 @@ func TestStreamRecvReturnsErrAbortedOnContextCancel(t *testing.T) {
 func TestSessionWaitReturnsErrAbortedForCancelledRead(t *testing.T) {
 	core := newSessionCore(Options{})
 	core.setReadError(context.Canceled)
-	close(core.streamState().readDone)
+	close(core.streams.readDone)
 
 	err := core.Wait()
 	if !errors.Is(err, ErrAborted) {
@@ -55,7 +55,7 @@ func TestSessionWaitReturnsErrAbortedForCancelledRead(t *testing.T) {
 
 func TestStreamResultReturnsLastStreamStopDiagnostics(t *testing.T) {
 	core := newSessionCore(Options{})
-	streams := core.streamState()
+	streams := core.streams
 	streams.messages <- protocol.ReceivedMessage{
 		Type:      protocol.MessageTypeStreamEvent,
 		SessionID: "session-1",

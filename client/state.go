@@ -29,10 +29,6 @@ type sessionLifecycle struct {
 	inputStreamActive bool
 }
 
-func newSessionLifecycle() *sessionLifecycle {
-	return &sessionLifecycle{}
-}
-
 func (l *sessionLifecycle) lockConnection() {
 	l.connectedMu.Lock()
 }

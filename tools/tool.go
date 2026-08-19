@@ -169,20 +169,6 @@ func NewTyped[T any](
 	}, options...), nil
 }
 
-// NewTypedTool creates an SDK custom tool with a JSON Schema inferred from T.
-//
-// Deprecated: use NewTyped for new custom SDK tools.
-func NewTypedTool[T any](
-	name string,
-	description string,
-	handler func(context.Context, T) (Result, error),
-	options ...ToolOption,
-) (Definition, error) {
-	return NewTyped(name, description, func(ctx context.Context, input T, _ *Context) (Result, error) {
-		return handler(ctx, input)
-	}, options...)
-}
-
 // JSONSchemaFor infers a JSON Schema from a Go type.
 func JSONSchemaFor[T any]() (map[string]any, error) {
 	return mcpserver.JSONSchemaFor[T]()

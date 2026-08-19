@@ -8,11 +8,6 @@ import (
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/jsonvalue"
 )
 
-// Server is an in-process MCP server hosted by the SDK.
-type Server interface {
-	HandleMessage(context.Context, map[string]any) (map[string]any, error)
-}
-
 // ToolHandler handles one MCP tool call.
 type ToolHandler func(context.Context, map[string]any) (ToolResult, error)
 

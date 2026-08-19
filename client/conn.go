@@ -15,7 +15,7 @@ import (
 )
 
 func (c *sessionCore) Connect(ctx context.Context) error {
-	lifecycle := c.lifecycleState()
+	lifecycle := c.lifecycle
 	var activeStreams *sessionStreams
 	var activeTransport Transport
 	for {
@@ -28,7 +28,7 @@ func (c *sessionCore) Connect(ctx context.Context) error {
 			lifecycle.unlockConnection()
 			return err
 		}
-		streams := c.streamState()
+		streams := c.streams
 		if closeState := streams.closeState; closeState != nil && !transport.ChannelClosed(closeState.done) {
 			lifecycle.unlockConnection()
 			if err := waitForSessionClose(ctx, closeState); err != nil {
@@ -112,7 +112,7 @@ func (c *sessionCore) waitForInitialSessionReady(ctx context.Context, timeout ti
 		return nil
 	}
 
-	streams := c.streamState()
+	streams := c.streams
 	waitContext := ctx
 	cancel := func() {}
 	if waitTimeout := initialSessionReadyTimeout(timeout); waitTimeout > 0 {
@@ -134,7 +134,7 @@ func (c *sessionCore) waitForInitialSessionReady(ctx context.Context, timeout ti
 }
 
 func (c *sessionCore) hasKnownInitialSessionID() bool {
-	if c.lifecycleState().sessionIDValue() != "" {
+	if c.lifecycle.sessionIDValue() != "" {
 		return true
 	}
 	return c.options.Session.ID != "" || c.options.Session.ResumeID != ""
@@ -161,9 +161,9 @@ func (c *sessionCore) runtimeStartupError(err error) error {
 
 // Wait 等待会话结束。
 func (c *sessionCore) Wait() error {
-	streams := c.streamState()
+	streams := c.streams
 	<-streams.readDone
-	if c.lifecycleState().inputStreamActiveValue() && !transport.ChannelClosed(streams.inputClosed) {
+	if c.lifecycle.inputStreamActiveValue() && !transport.ChannelClosed(streams.inputClosed) {
 		c.finishInputStream()
 	}
 
@@ -172,16 +172,16 @@ func (c *sessionCore) Wait() error {
 		result = c.transport.Wait()
 	}
 	if c.getReadError() == nil {
-		result = withLastErrorResult(result, c.lifecycleState().lastErrorResultValue())
+		result = withLastErrorResult(result, c.lifecycle.lastErrorResultValue())
 	}
 	return abortError(classifyProcessExitError(joinErrors(c.getReadError(), result)))
 }
 
 // Disconnect 断开连接。
 func (c *sessionCore) Disconnect(ctx context.Context) error {
-	lifecycle := c.lifecycleState()
+	lifecycle := c.lifecycle
 	lifecycle.lockConnection()
-	streams := c.streamState()
+	streams := c.streams
 	closeState := streams.closeState
 	var activeTransport Transport
 	var readDone <-chan struct{}
@@ -238,15 +238,15 @@ func (c *sessionCore) finishSessionClose(
 
 // SessionID 返回当前会话 ID。
 func (c *sessionCore) SessionID() string {
-	return c.lifecycleState().sessionIDValue()
+	return c.lifecycle.sessionIDValue()
 }
 
 func (c *sessionCore) isConnected() bool {
-	return c.lifecycleState().isConnected()
+	return c.lifecycle.isConnected()
 }
 
 func (c *sessionCore) resetLifecycleIfNeededLocked() {
-	streams := c.streamState()
+	streams := c.streams
 	if !transport.ChannelClosed(streams.readDone) {
 		return
 	}
@@ -254,16 +254,16 @@ func (c *sessionCore) resetLifecycleIfNeededLocked() {
 		return
 	}
 	streams.reset()
-	c.lifecycleState().resetRuntimeState("")
+	c.lifecycle.resetRuntimeState("")
 	if !c.customTransport {
 		c.transport = nil
 	}
 }
 
 func (c *sessionCore) markDisconnected() {
-	c.lifecycleState().setConnected(false)
-	c.hookAppliedAckRegistry().reset()
-	c.permissionErrorRegistry().reset()
+	c.lifecycle.setConnected(false)
+	c.hookAppliedAcks.reset()
+	c.permissionErrors.reset()
 }
 
 func (c *sessionCore) markTransportFailed(err error) {
@@ -275,7 +275,7 @@ func (c *sessionCore) markTransportFailed(err error) {
 }
 
 func (c *sessionCore) currentSessionID() string {
-	return c.lifecycleState().currentSessionID(defaultSessionID, c.options.Session.ID, c.options.Session.ResumeID)
+	return c.lifecycle.currentSessionID(defaultSessionID, c.options.Session.ID, c.options.Session.ResumeID)
 }
 
 func (c *sessionCore) buildTransport(options Options) (Transport, error) {
@@ -315,7 +315,7 @@ func (c *sessionCore) ConnectWithMessages(ctx context.Context, messages <-chan p
 	if err := c.Connect(ctx); err != nil {
 		return err
 	}
-	c.lifecycleState().setInputStreamActive(true)
+	c.lifecycle.setInputStreamActive(true)
 	c.startMessageStream(messages)
 	return nil
 }
@@ -325,7 +325,7 @@ func (c *sessionCore) ConnectWithRawMessages(ctx context.Context, messages <-cha
 	if err := c.Connect(ctx); err != nil {
 		return err
 	}
-	c.lifecycleState().setInputStreamActive(true)
+	c.lifecycle.setInputStreamActive(true)
 	c.startRawMessageStream(messages)
 	return nil
 }
@@ -390,7 +390,7 @@ func (c *sessionCore) SendRawMessage(ctx context.Context, message map[string]any
 }
 
 func (c *sessionCore) startMessageStream(messages <-chan protocol.OutboundMessage) {
-	streams := c.streamState()
+	streams := c.streams
 	go func() {
 		for {
 			select {
@@ -413,7 +413,7 @@ func (c *sessionCore) startMessageStream(messages <-chan protocol.OutboundMessag
 }
 
 func (c *sessionCore) startRawMessageStream(messages <-chan map[string]any) {
-	streams := c.streamState()
+	streams := c.streams
 	go func() {
 		for {
 			select {
@@ -436,7 +436,7 @@ func (c *sessionCore) startRawMessageStream(messages <-chan map[string]any) {
 }
 
 func (c *sessionCore) finishInputStream() {
-	c.finishInputStreamFor(c.streamState())
+	c.finishInputStreamFor(c.streams)
 }
 
 func (c *sessionCore) finishInputStreamFor(streams *sessionStreams) {
@@ -445,8 +445,8 @@ func (c *sessionCore) finishInputStreamFor(streams *sessionStreams) {
 	case <-streams.readDone:
 	}
 	_ = c.CloseInput()
-	c.lifecycleState().inputCloseOnceDo(func() {
-		c.lifecycleState().setInputStreamActive(false)
+	c.lifecycle.inputCloseOnceDo(func() {
+		c.lifecycle.setInputStreamActive(false)
 		close(streams.inputClosed)
 	})
 }
@@ -491,7 +491,7 @@ func (c *sessionCore) setNextTurnContext(ctx context.Context, blocks []InternalC
 		return abortError(ctx.Err())
 	default:
 	}
-	c.nextTurnContextBuffer().set(blocks)
+	c.nextTurnContext.set(blocks)
 	return nil
 }
 
@@ -504,18 +504,18 @@ func (c *sessionCore) clearNextTurnContext(ctx context.Context) error {
 		return abortError(ctx.Err())
 	default:
 	}
-	c.nextTurnContextBuffer().set(nil)
+	c.nextTurnContext.set(nil)
 	return nil
 }
 
 // ReceiveMessages 返回消息流。
 func (c *sessionCore) ReceiveMessages(ctx context.Context) <-chan protocol.ReceivedMessage {
-	return c.streamState().messages
+	return c.streams.messages
 }
 
 // Messages 返回消息流。
 func (c *sessionCore) Messages() <-chan protocol.ReceivedMessage {
-	return c.streamState().messages
+	return c.streams.messages
 }
 
 // ReceiveResponse 读取直到首个 result 的消息流。
@@ -523,7 +523,7 @@ func (c *sessionCore) ReceiveResponse(ctx context.Context) <-chan protocol.Recei
 	response := make(chan protocol.ReceivedMessage, 16)
 	go func() {
 		defer close(response)
-		streams := c.streamState()
+		streams := c.streams
 		for {
 			select {
 			case <-ctx.Done():
@@ -585,7 +585,7 @@ func (c *sessionCore) readLoop(streams *sessionStreams, activeTransport Transpor
 			message = normalizeAPIRetrySystemMessage(message)
 
 			if message.SessionID != "" {
-				c.lifecycleState().setSessionID(message.SessionID)
+				c.lifecycle.setSessionID(message.SessionID)
 			}
 			messagesSeen++
 			streamStop := streamDiagnostics.observe(message, messagesSeen)
@@ -607,11 +607,11 @@ func (c *sessionCore) readLoop(streams *sessionStreams, activeTransport Transpor
 func (c *sessionCore) finishReadLoop(streams *sessionStreams) {
 	// connected=false 与 readDone 关闭必须作为一个原子状态对外可见，否则新一代
 	// Connect 可能在旧 readLoop 完全退出前复用 transport。
-	lifecycle := c.lifecycleState()
+	lifecycle := c.lifecycle
 	lifecycle.lockConnection()
 	lifecycle.setConnectedLocked(false)
-	c.hookAppliedAckRegistry().reset()
-	c.permissionErrorRegistry().reset()
+	c.hookAppliedAcks.reset()
+	c.permissionErrors.reset()
 	close(streams.messages)
 	close(streams.readDone)
 	lifecycle.unlockConnection()
@@ -660,7 +660,7 @@ func (c *sessionCore) sendInternalRawMessage(message map[string]any, sessionID s
 }
 
 func (c *sessionCore) emitMessage(message protocol.ReceivedMessage) bool {
-	streams := c.streamState()
+	streams := c.streams
 	if message.Type == protocol.MessageTypeResult {
 		c.signalFirstResult()
 	}
@@ -688,7 +688,7 @@ func (c *sessionCore) withAPIRetryStderrMessages(options Options) Options {
 }
 
 func (c *sessionCore) tryEmitMessage(message protocol.ReceivedMessage) {
-	streams := c.streamState()
+	streams := c.streams
 	defer func() {
 		_ = recover()
 	}()
@@ -701,15 +701,15 @@ func (c *sessionCore) tryEmitMessage(message protocol.ReceivedMessage) {
 }
 
 func (c *sessionCore) signalFirstResult() {
-	streams := c.streamState()
-	c.lifecycleState().firstResultOnceDo(func() {
+	streams := c.streams
+	c.lifecycle.firstResultOnceDo(func() {
 		close(streams.firstResult)
 	})
 }
 
 func (c *sessionCore) signalInitialSessionReady() {
-	streams := c.streamState()
-	c.lifecycleState().sessionReadyOnceDo(func() {
+	streams := c.streams
+	c.lifecycle.sessionReadyOnceDo(func() {
 		close(streams.initialSessionReady)
 	})
 }
@@ -717,16 +717,16 @@ func (c *sessionCore) signalInitialSessionReady() {
 func (c *sessionCore) trackLastErrorResult(message protocol.ReceivedMessage) {
 	if message.Type == protocol.MessageTypeResult && message.Result != nil {
 		if message.Result.IsError {
-			c.lifecycleState().setLastErrorResult(resultErrorText(message.Result))
+			c.lifecycle.setLastErrorResult(resultErrorText(message.Result))
 			return
 		}
-		c.lifecycleState().setLastErrorResult("")
+		c.lifecycle.setLastErrorResult("")
 		return
 	}
 	if message.Type == protocol.MessageTypeSystem && message.Subtype == "session_state_changed" {
 		return
 	}
-	c.lifecycleState().setLastErrorResult("")
+	c.lifecycle.setLastErrorResult("")
 }
 
 func resultErrorText(result *protocol.ResultMessage) string {

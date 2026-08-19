@@ -15,23 +15,13 @@ type nextTurnContextBuffer struct {
 	blocks []InternalContextBlock
 }
 
-func newNextTurnContextBuffer() *nextTurnContextBuffer {
-	return &nextTurnContextBuffer{}
-}
-
 func (b *nextTurnContextBuffer) set(blocks []InternalContextBlock) {
-	if b == nil {
-		return
-	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.blocks = normalizeInternalContextBlocks(blocks)
 }
 
 func (b *nextTurnContextBuffer) consume() []InternalContextBlock {
-	if b == nil {
-		return nil
-	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	blocks := cloneInternalContextBlocks(b.blocks)
@@ -88,21 +78,14 @@ func cloneInternalContextBlocks(blocks []InternalContextBlock) []InternalContext
 }
 
 func (c *sessionCore) applyNextTurnContext(payload map[string]any) map[string]any {
-	if c == nil || len(payload) == 0 || jsonvalue.StringValue(payload["type"]) != "user" {
+	if len(payload) == 0 || jsonvalue.StringValue(payload["type"]) != "user" {
 		return payload
 	}
-	blocks := c.nextTurnContextBuffer().consume()
+	blocks := c.nextTurnContext.consume()
 	if len(blocks) == 0 {
 		return payload
 	}
 	return injectInternalContextReminder(payload, blocks)
-}
-
-func (c *sessionCore) nextTurnContextBuffer() *nextTurnContextBuffer {
-	if c.nextTurnContext == nil {
-		c.nextTurnContext = newNextTurnContextBuffer()
-	}
-	return c.nextTurnContext
 }
 
 func injectInternalContextReminder(payload map[string]any, blocks []InternalContextBlock) map[string]any {

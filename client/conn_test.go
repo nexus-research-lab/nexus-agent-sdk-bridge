@@ -168,7 +168,7 @@ func TestConnectWithPromptUsesInitializeResponseSession(t *testing.T) {
 func TestSendUsesExplicitSessionIDOption(t *testing.T) {
 	transport := &capturingTransport{}
 	core := newSessionCoreWithTransport(NewOptions().WithSessionID("explicit-session"), transport)
-	core.lifecycleState().setConnected(true)
+	core.lifecycle.setConnected(true)
 
 	if err := core.Send(context.Background(), "hello", nil, ""); err != nil {
 		t.Fatalf("Send() error = %v", err)
@@ -181,7 +181,7 @@ func TestSendUsesExplicitSessionIDOption(t *testing.T) {
 func TestSendSlashCommandUsesNormalUserMessage(t *testing.T) {
 	transport := &capturingTransport{}
 	core := newSessionCoreWithTransport(NewOptions().WithSessionID("session-slash"), transport)
-	core.lifecycleState().setConnected(true)
+	core.lifecycle.setConnected(true)
 
 	if err := core.Send(context.Background(), "/review target", nil, ""); err != nil {
 		t.Fatalf("Send() error = %v", err)
@@ -294,7 +294,7 @@ func TestDisconnectUnblocksReadLoopWhenMessageBufferIsFull(t *testing.T) {
 		t.Fatalf("Connect() error = %v", err)
 	}
 
-	streams := core.streamState()
+	streams := core.streams
 	for len(streams.messages) < cap(streams.messages) {
 		streams.messages <- protocol.ReceivedMessage{}
 	}
@@ -350,7 +350,7 @@ func TestDisconnectReadLoopWaitHonorsContext(t *testing.T) {
 	}
 	_ = transport.scriptedTransport.Close()
 	select {
-	case <-core.streamState().readDone:
+	case <-core.streams.readDone:
 	case <-time.After(time.Second):
 		t.Fatal("测试 transport 释放后 readLoop 未结束")
 	}
@@ -391,7 +391,7 @@ func TestDisconnectTransportCloseHonorsContext(t *testing.T) {
 		close(transport.closeRelease)
 		t.Fatal("Disconnect() blocked inside transport Close")
 	}
-	closeState := core.streamState().closeState
+	closeState := core.streams.closeState
 	if closeState == nil {
 		close(transport.closeRelease)
 		t.Fatal("Disconnect() 未发布本代 close state")
@@ -404,7 +404,7 @@ func TestDisconnectTransportCloseHonorsContext(t *testing.T) {
 		t.Fatal("释放 transport 后 Close 未结束")
 	}
 	select {
-	case <-core.streamState().readDone:
+	case <-core.streams.readDone:
 	case <-time.After(time.Second):
 		t.Fatal("释放 transport 后 readLoop 未结束")
 	}
@@ -447,7 +447,7 @@ func TestConnectWaitsForPreviousCloseGenerationWithoutBlockingReadLoop(t *testin
 		t.Fatalf("首次 Connect() error = %v", err)
 	}
 
-	oldStreams := core.streamState()
+	oldStreams := core.streams
 	oldReadDone := oldStreams.readDone
 	releasedFirstClose := false
 	defer func() {
@@ -525,14 +525,14 @@ func TestConnectWaitsForPreviousCloseGenerationWithoutBlockingReadLoop(t *testin
 	if err := receiveDone(t, reconnectDone); err != nil {
 		t.Fatalf("前代 close 完成后 Connect() error = %v", err)
 	}
-	if core.streamState().closeState != nil {
+	if core.streams.closeState != nil {
 		t.Fatal("新 generation 不应继承旧 close state")
 	}
 
 	if err := core.Disconnect(context.Background()); err != nil {
 		t.Fatalf("新 generation Disconnect() error = %v", err)
 	}
-	newCloseState := core.streamState().closeState
+	newCloseState := core.streams.closeState
 	if newCloseState == nil || newCloseState == oldCloseState {
 		t.Fatal("新 generation 应持有独立 close state")
 	}

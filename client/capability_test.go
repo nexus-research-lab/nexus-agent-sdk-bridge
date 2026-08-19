@@ -41,7 +41,7 @@ func TestSessionSupportsHostRuntimePrimitives(t *testing.T) {
 		t.Fatal("Supports(hook_response_ack) = true before negotiation, want false")
 	}
 
-	session.core.lifecycleState().setInitializeResponse(runtimeinfo.InitializeResponse{
+	session.core.lifecycle.setInitializeResponse(runtimeinfo.InitializeResponse{
 		ProtocolCapabilities: []string{hookResponseAckProtocolCapability},
 	})
 	if !session.Supports(CapabilityHookResponseAck) {

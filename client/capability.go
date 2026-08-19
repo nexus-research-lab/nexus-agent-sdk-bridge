@@ -56,7 +56,7 @@ func (c *sessionCore) supports(capability Capability) bool {
 		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS
 	case CapabilityHookResponseAck:
 		return slices.Contains(
-			c.lifecycleState().initializeResponseValue().ProtocolCapabilities,
+			c.lifecycle.initializeResponseValue().ProtocolCapabilities,
 			hookResponseAckProtocolCapability,
 		)
 	default:

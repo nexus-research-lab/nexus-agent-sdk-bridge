@@ -102,7 +102,7 @@ func (c *sessionCore) resolvePermissionRequest(ctx context.Context, request map[
 	errorCode := strings.TrimSpace(string(decision.ErrorCode))
 	if errorCode != "" {
 		if toolUseID := strings.TrimSpace(permissionRequest.ToolUseID); toolUseID != "" {
-			c.permissionErrorRegistry().set(toolUseID, errorCode)
+			c.permissionErrors.set(toolUseID, errorCode)
 		}
 		// errorCode 是 nxs 的可选扩展；Claude Code 由 bridge 在结果消息上补写。
 		if normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS {
@@ -126,7 +126,7 @@ func (c *sessionCore) attachPermissionErrorCodes(message protocol.ReceivedMessag
 		if !ok {
 			continue
 		}
-		errorCode, ok := c.permissionErrorRegistry().pop(strings.TrimSpace(toolResult.ToolUseID))
+		errorCode, ok := c.permissionErrors.pop(strings.TrimSpace(toolResult.ToolUseID))
 		if !ok || toolResult.ErrorCode != "" {
 			continue
 		}
@@ -159,7 +159,7 @@ func (c *sessionCore) resolveHookCallback(
 		return nil, nil, errors.New("hook callback id is missing")
 	}
 
-	callback, ok := c.hookCallbackRegistry().get(callbackID)
+	callback, ok := c.hookCallbacks.get(callbackID)
 	if !ok {
 		return nil, nil, fmt.Errorf("hook callback not found: %s", callbackID)
 	}
@@ -280,7 +280,7 @@ func (c *sessionCore) buildHookInitialization() map[string]any {
 		for _, matcher := range matchers {
 			callbackIDs := make([]string, 0, len(matcher.Hooks))
 			for _, callback := range matcher.Hooks {
-				callbackID := c.hookCallbackRegistry().register(callback)
+				callbackID := c.hookCallbacks.register(callback)
 				if callbackID == "" {
 					continue
 				}
@@ -358,14 +358,14 @@ func (c *sessionCore) handleControlRequest(payload map[string]any) {
 			return
 		}
 		if onApplied != nil && c.supports(CapabilityHookResponseAck) {
-			c.hookAppliedAckRegistry().set(requestID, onApplied)
+			c.hookAppliedAcks.set(requestID, onApplied)
 			if !c.isConnected() {
-				c.hookAppliedAckRegistry().pop(requestID)
+				c.hookAppliedAcks.pop(requestID)
 				return
 			}
 		}
 		if err := c.writeControlResponse(protocol.NewControlSuccessResponse(requestID, response)); err != nil {
-			c.hookAppliedAckRegistry().pop(requestID)
+			c.hookAppliedAcks.pop(requestID)
 		}
 	case "mcp_message":
 		response, err := c.resolveMCPMessage(ctx, request)
@@ -435,7 +435,7 @@ func (c *sessionCore) handleControlAck(payload map[string]any) {
 		return
 	}
 
-	onApplied, ok := c.hookAppliedAckRegistry().pop(ack.RequestID)
+	onApplied, ok := c.hookAppliedAcks.pop(ack.RequestID)
 	if !ok {
 		return
 	}
@@ -515,9 +515,9 @@ func (c *sessionCore) failPendingRequests(err error) {
 }
 
 func (c *sessionCore) setReadError(err error) {
-	c.lifecycleState().setReadError(err)
+	c.lifecycle.setReadError(err)
 }
 
 func (c *sessionCore) getReadError() error {
-	return c.lifecycleState().readError()
+	return c.lifecycle.readError()
 }

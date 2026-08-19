@@ -345,7 +345,7 @@ func (c *sessionCore) initializationResult(ctx context.Context) (InitializationR
 	if !c.isConnected() {
 		return InitializationResult{}, ErrNotConnected
 	}
-	result := initializationResultFromRuntime(c.lifecycleState().initializeResponseValue())
+	result := initializationResultFromRuntime(c.lifecycle.initializeResponseValue())
 	raw := result.Raw
 	if raw == nil {
 		raw = map[string]any{}
@@ -582,13 +582,13 @@ func (c *sessionCore) replaceSDKMCPServers(servers map[string]mcp.SDKMCPServer) 
 		}
 		filtered[name] = server
 	}
-	c.sdkMCPServerRegistry().replace(filtered)
+	c.sdkMCPServers.replace(filtered)
 }
 
 func (c *sessionCore) currentSDKMCPServers() map[string]mcp.SDKMCPServer {
-	return c.sdkMCPServerRegistry().snapshot()
+	return c.sdkMCPServers.snapshot()
 }
 
 func (c *sessionCore) sdkMCPServer(name string) (mcp.SDKMCPServer, bool) {
-	return c.sdkMCPServerRegistry().get(name)
+	return c.sdkMCPServers.get(name)
 }
