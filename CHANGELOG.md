@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.1.29] - 2026-08-19
+
 ### Added
 
 - Added a capability-negotiated `ForkSession` constructor for creating an independent runtime session at an exact completed message boundary.
@@ -15,8 +17,7 @@ All notable changes to this project are documented in this file.
 
 ### Changed
 
-- Removed the deprecated `tools.NewTypedTool` wrapper and unused message-parse error constructor variants; callers now use `tools.NewTyped` and direct structured errors.
-- Removed the duplicate `client.AgentDefinition` alias; subagent configuration now consistently uses `agent.Definition`.
+- Removed transitional tool, error, and agent-definition compatibility APIs; callers now use the canonical typed-tool, structured-error, and `agent.Definition` surfaces.
 - Reworked the public documentation around an executable quick start, the open-source bridge boundary, runtime capability negotiation, and the separately distributed closed-source `nxs` executable.
 
 ## [0.1.28] - 2026-08-10
