@@ -15,9 +15,6 @@ import (
 )
 
 func (c *sessionCore) Connect(ctx context.Context) error {
-	if ctx == nil {
-		ctx = context.Background()
-	}
 	lifecycle := c.lifecycleState()
 	var activeStreams *sessionStreams
 	var activeTransport Transport
@@ -182,9 +179,6 @@ func (c *sessionCore) Wait() error {
 
 // Disconnect 断开连接。
 func (c *sessionCore) Disconnect(ctx context.Context) error {
-	if ctx == nil {
-		ctx = context.Background()
-	}
 	lifecycle := c.lifecycleState()
 	lifecycle.lockConnection()
 	streams := c.streamState()
@@ -492,12 +486,10 @@ func (c *sessionCore) setNextTurnContext(ctx context.Context, blocks []InternalC
 	if !c.supports(CapabilityInternalContext) {
 		return &UnsupportedCapabilityError{Capability: CapabilityInternalContext}
 	}
-	if ctx != nil {
-		select {
-		case <-ctx.Done():
-			return abortError(ctx.Err())
-		default:
-		}
+	select {
+	case <-ctx.Done():
+		return abortError(ctx.Err())
+	default:
 	}
 	c.nextTurnContextBuffer().set(blocks)
 	return nil
@@ -507,12 +499,10 @@ func (c *sessionCore) clearNextTurnContext(ctx context.Context) error {
 	if !c.isConnected() {
 		return ErrNotConnected
 	}
-	if ctx != nil {
-		select {
-		case <-ctx.Done():
-			return abortError(ctx.Err())
-		default:
-		}
+	select {
+	case <-ctx.Done():
+		return abortError(ctx.Err())
+	default:
 	}
 	c.nextTurnContextBuffer().set(nil)
 	return nil

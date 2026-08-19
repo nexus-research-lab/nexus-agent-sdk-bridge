@@ -41,9 +41,6 @@ func CloneStringMap(input map[string]string) map[string]string {
 }
 
 func CloneStringSlice(input []string) []string {
-	if input == nil {
-		return nil
-	}
 	return append([]string(nil), input...)
 }
 

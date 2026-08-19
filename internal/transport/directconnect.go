@@ -258,9 +258,6 @@ func (m *DirectConnectManager) WriteJSON(payload any) error {
 	}
 
 	writeContext := m.currentContext()
-	if writeContext == nil {
-		writeContext = context.Background()
-	}
 
 	if err := conn.Write(writeContext, websocket.MessageText, append(data, '\n')); err != nil {
 		normalized := m.normalizeSocketError(err)
@@ -420,9 +417,6 @@ func (m *DirectConnectManager) deleteSession(ctx context.Context) error {
 
 func (m *DirectConnectManager) readLoop() {
 	contextValue := m.currentContext()
-	if contextValue == nil {
-		contextValue = context.Background()
-	}
 
 	var partial []byte
 	for {
