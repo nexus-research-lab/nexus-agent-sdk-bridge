@@ -288,9 +288,10 @@ func NormalizeElicitationResponse(response ElicitationResponse) ElicitationRespo
 
 // NormalizeElicitationAction 归一化 elicitation 动作。
 func NormalizeElicitationAction(action string) string {
-	switch strings.TrimSpace(action) {
+	action = strings.TrimSpace(action)
+	switch action {
 	case string(ElicitationActionAccept), string(ElicitationActionDecline), string(ElicitationActionCancel):
-		return strings.TrimSpace(action)
+		return action
 	default:
 		return ""
 	}
@@ -298,9 +299,10 @@ func NormalizeElicitationAction(action string) string {
 
 // NormalizeElicitationMode 归一化 elicitation 展示模式。
 func NormalizeElicitationMode(mode string) string {
-	switch strings.TrimSpace(mode) {
+	mode = strings.TrimSpace(mode)
+	switch mode {
 	case string(ElicitationModeForm), string(ElicitationModeURL):
-		return strings.TrimSpace(mode)
+		return mode
 	default:
 		return ""
 	}

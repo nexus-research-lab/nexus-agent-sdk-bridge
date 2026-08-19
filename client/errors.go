@@ -403,8 +403,10 @@ func cliCommandName(options Options, cause error) string {
 	command := strings.TrimSpace(options.CLIPath)
 	if command == "" {
 		var execErr *exec.Error
-		if errors.As(cause, &execErr) && strings.TrimSpace(execErr.Name) != "" {
-			return strings.TrimSpace(execErr.Name)
+		if errors.As(cause, &execErr) {
+			if name := strings.TrimSpace(execErr.Name); name != "" {
+				return name
+			}
 		}
 		return "cli"
 	}

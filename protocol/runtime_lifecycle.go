@@ -51,17 +51,17 @@ func DeriveRuntimeLifecycleEvents(message ReceivedMessage) []RuntimeLifecycleEve
 		}
 		for _, block := range message.Assistant.Message.Content {
 			toolUse, ok := AsToolUseBlock(block)
-			if !ok || strings.TrimSpace(toolUse.ID) == "" {
+			if !ok {
 				continue
 			}
-			events = append(events, lifecycleEvent(message, RuntimeLifecycleEvent{
+			events = appendLifecycleEvent(events, message, RuntimeLifecycleEvent{
 				NodeKind:        RuntimeLifecycleNodeTool,
 				Phase:           RuntimeLifecycleStarted,
-				SubjectID:       strings.TrimSpace(toolUse.ID),
+				SubjectID:       toolUse.ID,
 				ParentSubjectID: parentToolUseID,
-				Name:            strings.TrimSpace(toolUse.Name),
+				Name:            toolUse.Name,
 				Status:          "running",
-			}))
+			})
 		}
 	}
 
@@ -71,40 +71,43 @@ func DeriveRuntimeLifecycleEvents(message ReceivedMessage) []RuntimeLifecycleEve
 		}
 		for _, block := range message.User.Message.Content {
 			toolResult, ok := AsToolResultBlock(block)
-			if !ok || strings.TrimSpace(toolResult.ToolUseID) == "" {
+			if !ok {
 				continue
 			}
 			status := "succeeded"
 			if toolResult.IsError {
 				status = "failed"
 			}
-			events = append(events, lifecycleEvent(message, RuntimeLifecycleEvent{
+			events = appendLifecycleEvent(events, message, RuntimeLifecycleEvent{
 				NodeKind:        RuntimeLifecycleNodeTool,
 				Phase:           RuntimeLifecycleFinished,
-				SubjectID:       strings.TrimSpace(toolResult.ToolUseID),
+				SubjectID:       toolResult.ToolUseID,
 				ParentSubjectID: parentToolUseID,
 				Status:          status,
 				Failed:          toolResult.IsError,
-			}))
+			})
 		}
 	}
 
-	if progress := message.ToolProgress; progress != nil && strings.TrimSpace(progress.ToolUseID) != "" {
-		events = append(events, lifecycleEvent(message, RuntimeLifecycleEvent{
-			NodeKind:        RuntimeLifecycleNodeTool,
-			Phase:           RuntimeLifecycleProgress,
-			SubjectID:       strings.TrimSpace(progress.ToolUseID),
-			ParentSubjectID: stringPointerValue(progress.ParentToolUseID),
-			Name:            strings.TrimSpace(progress.ToolName),
-			Status:          "running",
-		}))
-		if subagent, ok := agentProgressLifecycle(progress); ok {
-			events = append(events, lifecycleEvent(message, subagent))
+	if progress := message.ToolProgress; progress != nil {
+		subjectID := strings.TrimSpace(progress.ToolUseID)
+		if subjectID != "" {
+			events = appendLifecycleEvent(events, message, RuntimeLifecycleEvent{
+				NodeKind:        RuntimeLifecycleNodeTool,
+				Phase:           RuntimeLifecycleProgress,
+				SubjectID:       subjectID,
+				ParentSubjectID: stringPointerValue(progress.ParentToolUseID),
+				Name:            progress.ToolName,
+				Status:          "running",
+			})
+			if subagent, ok := agentProgressLifecycle(progress); ok {
+				events = appendLifecycleEvent(events, message, subagent)
+			}
 		}
 	}
 
 	if subagent, ok := structuredOutputSubagentLifecycle(message.Attachment); ok {
-		events = append(events, lifecycleEvent(message, subagent))
+		events = appendLifecycleEvent(events, message, subagent)
 	}
 
 	taskStarted := message.TaskStarted
@@ -125,70 +128,69 @@ func DeriveRuntimeLifecycleEvents(message ReceivedMessage) []RuntimeLifecycleEve
 			taskUpdated = message.System.TaskUpdated
 		}
 	}
-	if taskStarted != nil && strings.TrimSpace(taskStarted.TaskID) != "" {
-		events = append(events, lifecycleEvent(message, RuntimeLifecycleEvent{
+	if taskStarted != nil {
+		events = appendLifecycleEvent(events, message, RuntimeLifecycleEvent{
 			NodeKind:        RuntimeLifecycleNodeSubagent,
 			Phase:           RuntimeLifecycleStarted,
-			SubjectID:       strings.TrimSpace(taskStarted.TaskID),
-			ParentSubjectID: strings.TrimSpace(taskStarted.ParentTaskID),
+			SubjectID:       taskStarted.TaskID,
+			ParentSubjectID: taskStarted.ParentTaskID,
 			Name:            firstLifecycleValue(taskStarted.AgentType, taskStarted.TaskType, taskStarted.WorkflowName),
-			Description:     strings.TrimSpace(taskStarted.Description),
-			AgentID:         strings.TrimSpace(taskStarted.AgentID),
-			ChildSessionID:  strings.TrimSpace(taskStarted.ChildSessionID),
+			Description:     taskStarted.Description,
+			AgentID:         taskStarted.AgentID,
+			ChildSessionID:  taskStarted.ChildSessionID,
 			Status:          "running",
 			Metadata: lifecycleMetadata(
 				"tool_use_id", taskStarted.ToolUseID,
 				"workflow_name", taskStarted.WorkflowName,
 			),
-		}))
+		})
 	}
-	if taskProgress != nil && strings.TrimSpace(taskProgress.TaskID) != "" {
-		events = append(events, lifecycleEvent(message, RuntimeLifecycleEvent{
+	if taskProgress != nil {
+		events = appendLifecycleEvent(events, message, RuntimeLifecycleEvent{
 			NodeKind:        RuntimeLifecycleNodeSubagent,
 			Phase:           RuntimeLifecycleProgress,
-			SubjectID:       strings.TrimSpace(taskProgress.TaskID),
-			ParentSubjectID: strings.TrimSpace(taskProgress.ParentTaskID),
+			SubjectID:       taskProgress.TaskID,
+			ParentSubjectID: taskProgress.ParentTaskID,
 			Name:            firstLifecycleValue(taskProgress.AgentType, taskProgress.TaskType),
 			Description:     firstLifecycleValue(taskProgress.Summary, taskProgress.Description),
-			AgentID:         strings.TrimSpace(taskProgress.AgentID),
-			ChildSessionID:  strings.TrimSpace(taskProgress.ChildSessionID),
+			AgentID:         taskProgress.AgentID,
+			ChildSessionID:  taskProgress.ChildSessionID,
 			Status:          "running",
 			Metadata: lifecycleMetadata(
 				"tool_use_id", taskProgress.ToolUseID,
 				"last_tool_name", taskProgress.LastToolName,
 			),
-		}))
+		})
 	}
-	if taskNotification != nil && strings.TrimSpace(taskNotification.TaskID) != "" {
+	if taskNotification != nil {
 		status := normalizeLifecycleTerminalStatus(taskNotification.Status)
-		events = append(events, lifecycleEvent(message, RuntimeLifecycleEvent{
+		events = appendLifecycleEvent(events, message, RuntimeLifecycleEvent{
 			NodeKind:        RuntimeLifecycleNodeSubagent,
 			Phase:           RuntimeLifecycleFinished,
-			SubjectID:       strings.TrimSpace(taskNotification.TaskID),
-			ParentSubjectID: strings.TrimSpace(taskNotification.ParentTaskID),
-			Description:     strings.TrimSpace(taskNotification.Summary),
-			AgentID:         strings.TrimSpace(taskNotification.AgentID),
-			ChildSessionID:  strings.TrimSpace(taskNotification.ChildSessionID),
+			SubjectID:       taskNotification.TaskID,
+			ParentSubjectID: taskNotification.ParentTaskID,
+			Description:     taskNotification.Summary,
+			AgentID:         taskNotification.AgentID,
+			ChildSessionID:  taskNotification.ChildSessionID,
 			Status:          status,
 			Failed:          lifecycleStatusFailed(status),
 			Metadata:        lifecycleMetadata("tool_use_id", taskNotification.ToolUseID),
-		}))
+		})
 	}
-	if taskUpdated != nil && strings.TrimSpace(taskUpdated.TaskID) != "" {
-		status := firstLifecycleValue(taskUpdated.Status, taskUpdated.Patch.Status)
+	if taskUpdated != nil {
+		status := normalizeLifecycleTerminalStatus(firstLifecycleValue(taskUpdated.Status, taskUpdated.Patch.Status))
 		phase := RuntimeLifecycleProgress
 		if lifecycleStatusTerminal(status) {
 			phase = RuntimeLifecycleFinished
 		}
-		status = normalizeLifecycleTerminalStatus(status)
-		events = append(events, lifecycleEvent(message, RuntimeLifecycleEvent{
+		events = appendLifecycleEvent(events, message, RuntimeLifecycleEvent{
 			NodeKind:    RuntimeLifecycleNodeSubagent,
 			Phase:       phase,
-			SubjectID:   strings.TrimSpace(taskUpdated.TaskID),
-			Description: strings.TrimSpace(taskUpdated.Patch.Description),
+			SubjectID:   taskUpdated.TaskID,
+			Description: taskUpdated.Patch.Description,
 			Status:      status,
 			Failed:      lifecycleStatusFailed(status),
-		}))
+		})
 	}
 
 	return events
@@ -289,7 +291,17 @@ func lifecycleMapString(values map[string]any, keys ...string) string {
 	return ""
 }
 
-func lifecycleEvent(message ReceivedMessage, event RuntimeLifecycleEvent) RuntimeLifecycleEvent {
+func appendLifecycleEvent(events []RuntimeLifecycleEvent, message ReceivedMessage, event RuntimeLifecycleEvent) []RuntimeLifecycleEvent {
+	event.SubjectID = strings.TrimSpace(event.SubjectID)
+	if event.SubjectID == "" {
+		return events
+	}
+	event.ParentSubjectID = strings.TrimSpace(event.ParentSubjectID)
+	event.Name = strings.TrimSpace(event.Name)
+	event.Description = strings.TrimSpace(event.Description)
+	event.AgentID = strings.TrimSpace(event.AgentID)
+	event.ChildSessionID = strings.TrimSpace(event.ChildSessionID)
+	event.Status = strings.TrimSpace(event.Status)
 	event.EventID = strings.Join([]string{
 		firstLifecycleValue(message.UUID, message.SessionID, "runtime"),
 		string(event.NodeKind),
@@ -297,7 +309,7 @@ func lifecycleEvent(message ReceivedMessage, event RuntimeLifecycleEvent) Runtim
 		event.SubjectID,
 		firstLifecycleValue(event.Status, "unknown"),
 	}, ":")
-	return event
+	return append(events, event)
 }
 
 func lifecycleMetadata(values ...string) map[string]string {
@@ -346,7 +358,7 @@ func normalizeLifecycleTerminalStatus(status string) string {
 }
 
 func lifecycleStatusTerminal(status string) bool {
-	switch normalizeLifecycleTerminalStatus(status) {
+	switch status {
 	case "succeeded", "failed", "cancelled", "interrupted":
 		return true
 	default:
@@ -355,7 +367,7 @@ func lifecycleStatusTerminal(status string) bool {
 }
 
 func lifecycleStatusFailed(status string) bool {
-	switch normalizeLifecycleTerminalStatus(status) {
+	switch status {
 	case "failed", "cancelled", "interrupted":
 		return true
 	default:

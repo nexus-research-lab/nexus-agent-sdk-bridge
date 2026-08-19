@@ -63,7 +63,7 @@ func SerializeServers(servers map[string]mcp.ServerConfig) (map[string]any, map[
 		if err != nil {
 			return nil, nil, err
 		}
-		if strings.TrimSpace(jsonvalue.StringValue(payload["scope"])) == "" {
+		if jsonvalue.TrimmedStringValue(payload["scope"]) == "" {
 			payload["scope"] = "dynamic"
 		}
 		serialized[name] = payload

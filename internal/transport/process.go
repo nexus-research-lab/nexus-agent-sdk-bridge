@@ -98,11 +98,11 @@ func (e *StdoutDecodeError) Error() string {
 	if e.ProcessExited {
 		detail += " process_exited=true"
 	}
-	if strings.TrimSpace(e.ProcessError) != "" {
-		detail += " process_error=" + strings.TrimSpace(e.ProcessError)
+	if processError := strings.TrimSpace(e.ProcessError); processError != "" {
+		detail += " process_error=" + processError
 	}
-	if strings.TrimSpace(e.StderrTail) != "" {
-		detail += " stderr_tail=" + strings.TrimSpace(e.StderrTail)
+	if stderrTail := strings.TrimSpace(e.StderrTail); stderrTail != "" {
+		detail += " stderr_tail=" + stderrTail
 	}
 	return detail
 }
@@ -357,8 +357,8 @@ func (m *ProcessManager) WriteJSON(payload any) error {
 		return errors.New("process: stdin unavailable")
 	}
 	if processExited, processError := m.processExitSnapshot(); processExited {
-		if strings.TrimSpace(processError) != "" {
-			return fmt.Errorf("process: cannot write to exited process: %s", strings.TrimSpace(processError))
+		if processError = strings.TrimSpace(processError); processError != "" {
+			return fmt.Errorf("process: cannot write to exited process: %s", processError)
 		}
 		return errors.New("process: cannot write to exited process")
 	}
@@ -594,10 +594,11 @@ func resolveProcessCommandWith(
 
 	for _, name := range []string{"pwsh.exe", "pwsh", "powershell.exe", "powershell"} {
 		launcherPath, err := resolver.lookPath(name)
-		if err != nil || strings.TrimSpace(launcherPath) == "" {
+		launcherPath = strings.TrimSpace(launcherPath)
+		if err != nil || launcherPath == "" {
 			continue
 		}
-		command.executable = strings.TrimSpace(launcherPath)
+		command.executable = launcherPath
 		command.prefixArgs = []string{
 			"-NoProfile",
 			"-NonInteractive",

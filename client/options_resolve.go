@@ -98,6 +98,16 @@ func decodeInlineSettingsObject(raw string) (map[string]any, bool, error) {
 func (o Options) normalized() (Options, error) {
 	result := o
 	result.DirectConnect = cloneDirectConnectOptions(result.DirectConnect)
+	result.Session.ID = strings.TrimSpace(result.Session.ID)
+	result.System.File = strings.TrimSpace(result.System.File)
+	result.MCP.Config = strings.TrimSpace(result.MCP.Config)
+	result.Settings = strings.TrimSpace(result.Settings)
+	result.Executable = strings.TrimSpace(result.Executable)
+	result.PathToExecutable = strings.TrimSpace(result.PathToExecutable)
+	result.CLIPath = strings.TrimSpace(result.CLIPath)
+	if result.DirectConnect != nil {
+		result.DirectConnect.URL = strings.TrimSpace(result.DirectConnect.URL)
+	}
 	if result.Runtime.InitializeTimeout <= 0 {
 		result.Runtime.InitializeTimeout = defaultInitializeTimeoutFromEnv()
 	}
@@ -107,20 +117,20 @@ func (o Options) normalized() (Options, error) {
 	if err := result.resolveRuntimeCommand(); err != nil {
 		return Options{}, err
 	}
-	if result.Runtime.Kind == RuntimeClaude && result.Session.Fork && strings.TrimSpace(result.Session.ID) == "" {
+	if result.Runtime.Kind == RuntimeClaude && result.Session.Fork && result.Session.ID == "" {
 		id, err := newSessionUUID()
 		if err != nil {
 			return Options{}, err
 		}
 		result.Session.ID = id
 	}
-	if result.System.Text != "" && strings.TrimSpace(result.System.File) != "" {
+	if result.System.Text != "" && result.System.File != "" {
 		return Options{}, fmt.Errorf("client: system prompt text and system prompt file cannot be used together")
 	}
 	if result.System.Text != "" && result.System.Preset != nil {
 		return Options{}, fmt.Errorf("client: system prompt text and system prompt preset cannot be used together")
 	}
-	if strings.TrimSpace(result.System.File) != "" && result.System.Preset != nil {
+	if result.System.File != "" && result.System.Preset != nil {
 		return Options{}, fmt.Errorf("client: system prompt file and system prompt preset cannot be used together")
 	}
 	if result.System.Preset != nil {
@@ -180,7 +190,7 @@ func (o Options) normalized() (Options, error) {
 	if result.Agents == nil {
 		result.Agents = map[string]agent.Definition{}
 	}
-	if strings.TrimSpace(result.MCP.Config) == "" {
+	if result.MCP.Config == "" {
 		for name, server := range result.MCP.SDKServers {
 			if server == nil {
 				continue
@@ -211,7 +221,7 @@ func (o Options) normalized() (Options, error) {
 	if hasStructuredSettings(result) {
 		if _, ok, err := decodeInlineSettingsObject(result.Settings); err != nil {
 			return Options{}, err
-		} else if strings.TrimSpace(result.Settings) != "" && !ok {
+		} else if result.Settings != "" && !ok {
 			return Options{}, fmt.Errorf("client: settings path cannot be combined with inline settings object or sandbox")
 		}
 	}
@@ -222,10 +232,10 @@ func (o Options) normalized() (Options, error) {
 			return Options{}, fmt.Errorf("client: unsupported AskUserQuestion preview format %q", result.ToolConfig.AskUserQuestion.PreviewFormat)
 		}
 	}
-	if len(result.ExecutableArgs) > 0 && strings.TrimSpace(result.Executable) == "" {
+	if len(result.ExecutableArgs) > 0 && result.Executable == "" {
 		return Options{}, fmt.Errorf("client: executable args require executable")
 	}
-	if strings.TrimSpace(result.Executable) != "" && strings.TrimSpace(result.PathToExecutable) == "" && strings.TrimSpace(result.CLIPath) == "" {
+	if result.Executable != "" && result.PathToExecutable == "" && result.CLIPath == "" {
 		return Options{}, fmt.Errorf("client: executable requires path to Claude Code executable")
 	}
 	if len(result.MCP.Servers) > 0 {
@@ -256,7 +266,7 @@ func (o Options) normalized() (Options, error) {
 	if result.Transport != nil && result.DirectConnect != nil {
 		return Options{}, errTransportDirectConnectConflict
 	}
-	if result.DirectConnect != nil && strings.TrimSpace(result.DirectConnect.URL) == "" {
+	if result.DirectConnect != nil && result.DirectConnect.URL == "" {
 		return Options{}, fmt.Errorf("client: direct connect url cannot be empty")
 	}
 	return result, nil
@@ -299,7 +309,8 @@ func (o *Options) resolveRuntimeCommand() error {
 }
 
 func normalizedRuntimeKind(kind RuntimeKind) RuntimeKind {
-	switch strings.ToLower(strings.TrimSpace(string(kind))) {
+	normalized := strings.TrimSpace(string(kind))
+	switch strings.ToLower(normalized) {
 	case "":
 		return RuntimeNXS
 	case string(RuntimeClaude), "claude-code", "claudecode":
@@ -307,7 +318,7 @@ func normalizedRuntimeKind(kind RuntimeKind) RuntimeKind {
 	case string(RuntimeNXS), "go", "go-native", "gonative":
 		return RuntimeNXS
 	default:
-		return RuntimeKind(strings.TrimSpace(string(kind)))
+		return RuntimeKind(normalized)
 	}
 }
 

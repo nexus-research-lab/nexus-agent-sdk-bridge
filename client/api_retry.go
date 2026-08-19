@@ -87,7 +87,7 @@ func normalizeAPIRetrySystemMessage(message protocol.ReceivedMessage) protocol.R
 	} else {
 		data["error"] = classifyAPIRetryError(fmt.Sprint(message.System.Data["error"]))
 	}
-	if strings.TrimSpace(jsonvalue.StringValue(data["message"])) == "" {
+	if jsonvalue.TrimmedStringValue(data["message"]) == "" {
 		data["message"] = apiRetryMessageText(fmt.Sprint(data["error"]))
 	}
 	message.Subtype = "api_retry"

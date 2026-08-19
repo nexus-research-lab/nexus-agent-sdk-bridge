@@ -47,16 +47,16 @@ func (t *streamDiagnosticsTracker) observe(message protocol.ReceivedMessage, mes
 		return StreamStopDiagnostics{}
 	}
 	payload := streamEventPayload(message)
-	eventType := strings.TrimSpace(jsonvalue.StringValue(payload["type"]))
+	eventType := jsonvalue.TrimmedStringValue(payload["type"])
 	switch eventType {
 	case "message_start":
 		startMessage := jsonvalue.MapValue(payload["message"])
-		t.currentMessageID = strings.TrimSpace(jsonvalue.StringValue(startMessage["id"]))
-		t.currentModel = strings.TrimSpace(jsonvalue.StringValue(startMessage["model"]))
+		t.currentMessageID = jsonvalue.TrimmedStringValue(startMessage["id"])
+		t.currentModel = jsonvalue.TrimmedStringValue(startMessage["model"])
 		t.currentStopReason = ""
 	case "message_delta":
 		delta := jsonvalue.MapValue(payload["delta"])
-		if stopReason := strings.TrimSpace(jsonvalue.StringValue(delta["stop_reason"])); stopReason != "" {
+		if stopReason := jsonvalue.TrimmedStringValue(delta["stop_reason"]); stopReason != "" {
 			t.currentStopReason = stopReason
 		}
 	case "message_stop":
@@ -65,7 +65,7 @@ func (t *streamDiagnosticsTracker) observe(message protocol.ReceivedMessage, mes
 			MessageIndex: messageIndex,
 			Summary:      "stream message_stop",
 			StopReason: firstNonEmptyString(
-				strings.TrimSpace(jsonvalue.StringValue(payload["stop_reason"])),
+				jsonvalue.TrimmedStringValue(payload["stop_reason"]),
 				t.currentStopReason,
 			),
 			SessionID: strings.TrimSpace(message.SessionID),
@@ -74,7 +74,7 @@ func (t *streamDiagnosticsTracker) observe(message protocol.ReceivedMessage, mes
 				t.currentMessageID,
 			),
 			Model: firstNonEmptyString(
-				strings.TrimSpace(jsonvalue.StringValue(payload["model"])),
+				jsonvalue.TrimmedStringValue(payload["model"]),
 				t.currentModel,
 			),
 		}
@@ -118,16 +118,18 @@ func appendStreamStopErrorDetail(message string, diagnostics StreamStopDiagnosti
 }
 
 func receivedMessageID(message protocol.ReceivedMessage) string {
-	if strings.TrimSpace(message.UUID) != "" {
-		return strings.TrimSpace(message.UUID)
+	if messageID := strings.TrimSpace(message.UUID); messageID != "" {
+		return messageID
 	}
-	if message.Assistant != nil && strings.TrimSpace(message.Assistant.Message.ID) != "" {
-		return strings.TrimSpace(message.Assistant.Message.ID)
+	if message.Assistant != nil {
+		if messageID := strings.TrimSpace(message.Assistant.Message.ID); messageID != "" {
+			return messageID
+		}
 	}
 	if message.Stream != nil {
 		payload := streamEventPayload(message)
 		if messagePayload := jsonvalue.MapValue(payload["message"]); len(messagePayload) > 0 {
-			return strings.TrimSpace(jsonvalue.StringValue(messagePayload["id"]))
+			return jsonvalue.TrimmedStringValue(messagePayload["id"])
 		}
 	}
 	return ""

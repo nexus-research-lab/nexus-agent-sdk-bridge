@@ -94,8 +94,9 @@ func directConnectLaunchSnapshot(
 	if err != nil {
 		return RuntimeLaunchSnapshot{}, err
 	}
+	authToken := strings.TrimSpace(config.AuthToken)
 	authTokenFingerprint := ""
-	if strings.TrimSpace(config.AuthToken) != "" {
+	if authToken != "" {
 		authTokenFingerprint = digestValue(config.AuthToken)
 	}
 	return RuntimeLaunchSnapshot{
@@ -107,7 +108,7 @@ func directConnectLaunchSnapshot(
 			SessionKey:           strings.TrimSpace(config.SessionKey),
 			DeleteSessionOnClose: config.DeleteSessionOnClose,
 			DialTimeoutMillis:    config.DialTimeout.Milliseconds(),
-			AuthTokenPresent:     strings.TrimSpace(config.AuthToken) != "",
+			AuthTokenPresent:     authToken != "",
 			AuthTokenFingerprint: authTokenFingerprint,
 		},
 		Fingerprint: fingerprint,
