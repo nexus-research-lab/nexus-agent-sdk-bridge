@@ -48,7 +48,10 @@ capabilities include typed usage, terminal categories, task stopping,
 in-process MCP, exact-boundary session forking, and provider-neutral runtime
 lifecycle events. Native-only controls currently include task follow-up,
 environment hot updates, and AutoDream. Hook response acknowledgement is
-negotiated during initialization.
+negotiated during initialization. Native runtimes may also negotiate
+`CapabilityMessageExecutionPolicy`; this allows a host to apply
+`tool_access=none` and `max_output_tokens` to one message without copying the
+Agent's ordinary allow/deny rules.
 
 Capability values are defined in [`client/capability.go`](../client/capability.go).
 Runtime names are not a substitute for capability checks.

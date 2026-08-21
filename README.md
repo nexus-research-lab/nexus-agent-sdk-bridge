@@ -100,6 +100,10 @@ fmt.Println(result.Result)
 
 Use `stream.Recv` for incremental messages. Before exposing optional controls,
 check `session.Supports(capability)` rather than branching on a runtime name.
+When `client.CapabilityMessageExecutionPolicy` is negotiated, hosts may use
+`OutboundMessageOptions.ToolAccess = "none"` and `MaxOutputTokens` for a
+single message-only turn; unsupported runtimes must be rejected rather than
+treated as safely restricted.
 Use `client.ForkSession(ctx, sourceSessionID, completedMessageID, options)` to
 start an independent session at an exact completed message boundary. Both
 `nxs` and Claude Code advertise `client.CapabilitySessionFork`.

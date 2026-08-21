@@ -96,6 +96,9 @@ fmt.Println(result.Result)
 
 增量消息通过 `stream.Recv` 消费。宿主暴露可选控制前，应调用
 `session.Supports(capability)`，不要按 runtime 名称猜测能力。
+协商 `client.CapabilityMessageExecutionPolicy` 后，宿主可以用
+`OutboundMessageOptions.ToolAccess = "none"` 和 `MaxOutputTokens` 签发单次
+message-only 回合；未支持该能力的 runtime 必须拒绝，不能假定已经安全收窄。
 使用 `client.ForkSession(ctx, sourceSessionID, completedMessageID, options)`
 可从精确的已完成消息边界创建独立 Session；`nxs` 与 Claude Code 都声明
 `client.CapabilitySessionFork`。

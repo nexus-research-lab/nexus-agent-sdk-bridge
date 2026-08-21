@@ -220,7 +220,10 @@ func (c *sessionCore) buildInitializeRequest() protocol.ControlRequest {
 		Subtype: "initialize",
 	}
 	if normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS {
-		request.ProtocolCapabilities = []string{hookResponseAckProtocolCapability}
+		request.ProtocolCapabilities = []string{
+			hookResponseAckProtocolCapability,
+			messageExecutionPolicyProtocolCapability,
+		}
 	}
 
 	if hooks := c.buildHookInitialization(); len(hooks) > 0 {

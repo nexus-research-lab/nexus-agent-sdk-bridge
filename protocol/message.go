@@ -384,13 +384,15 @@ type OutboundMessage interface {
 
 // OutboundMessageOptions 描述发送给 SDK 的用户消息附加语义。
 type OutboundMessageOptions struct {
-	Meta           bool              `json:"is_meta,omitempty"`
-	Synthetic      bool              `json:"is_synthetic,omitempty"`
-	HiddenFromUser bool              `json:"hidden_from_user,omitempty"`
-	RecallQuery    string            `json:"recall_query,omitempty"`
-	Purpose        string            `json:"purpose,omitempty"`
-	Priority       string            `json:"priority,omitempty"`
-	Metadata       map[string]string `json:"metadata,omitempty"`
+	Meta            bool              `json:"is_meta,omitempty"`
+	Synthetic       bool              `json:"is_synthetic,omitempty"`
+	HiddenFromUser  bool              `json:"hidden_from_user,omitempty"`
+	RecallQuery     string            `json:"recall_query,omitempty"`
+	Purpose         string            `json:"purpose,omitempty"`
+	Priority        string            `json:"priority,omitempty"`
+	ToolAccess      string            `json:"tool_access,omitempty"`
+	MaxOutputTokens int               `json:"max_output_tokens,omitempty"`
+	Metadata        map[string]string `json:"metadata,omitempty"`
 }
 
 // OutboundContentBlock 表示发送给 SDK 的结构化内容块。
@@ -721,6 +723,12 @@ func ApplyOutboundMessageOptions(payload map[string]any, options OutboundMessage
 	if options.Priority != "" {
 		result["priority"] = options.Priority
 	}
+	if options.ToolAccess != "" {
+		result["tool_access"] = options.ToolAccess
+	}
+	if options.MaxOutputTokens > 0 {
+		result["max_output_tokens"] = options.MaxOutputTokens
+	}
 	if len(options.Metadata) > 0 {
 		result["metadata"] = jsonvalue.CloneStringMap(options.Metadata)
 	}
@@ -746,6 +754,7 @@ func (o OutboundMessageOptions) normalized() OutboundMessageOptions {
 	o.RecallQuery = strings.TrimSpace(o.RecallQuery)
 	o.Purpose = strings.TrimSpace(o.Purpose)
 	o.Priority = strings.TrimSpace(o.Priority)
+	o.ToolAccess = strings.TrimSpace(o.ToolAccess)
 	o.Metadata = jsonvalue.CloneStringMap(o.Metadata)
 	if o.Meta {
 		o.Synthetic = true

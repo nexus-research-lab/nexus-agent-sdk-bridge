@@ -40,12 +40,21 @@ func TestSessionSupportsHostRuntimePrimitives(t *testing.T) {
 	if session.Supports(CapabilityHookResponseAck) {
 		t.Fatal("Supports(hook_response_ack) = true before negotiation, want false")
 	}
+	if session.Supports(CapabilityMessageExecutionPolicy) {
+		t.Fatal("Supports(message_execution_policy) = true before negotiation, want false")
+	}
 
 	session.core.lifecycle.setInitializeResponse(runtimeinfo.InitializeResponse{
-		ProtocolCapabilities: []string{hookResponseAckProtocolCapability},
+		ProtocolCapabilities: []string{
+			hookResponseAckProtocolCapability,
+			messageExecutionPolicyProtocolCapability,
+		},
 	})
 	if !session.Supports(CapabilityHookResponseAck) {
 		t.Fatal("Supports(hook_response_ack) = false after negotiation, want true")
+	}
+	if !session.Supports(CapabilityMessageExecutionPolicy) {
+		t.Fatal("Supports(message_execution_policy) = false after negotiation, want true")
 	}
 }
 

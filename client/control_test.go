@@ -62,9 +62,12 @@ func TestHandleControlRequestMarksTransportFailedWhenResponseWriteFails(t *testi
 	}
 }
 
-func TestBuildInitializeRequestAdvertisesHookResponseAckOnlyToNXS(t *testing.T) {
+func TestBuildInitializeRequestAdvertisesNXSProtocolCapabilities(t *testing.T) {
 	nxsRequest := newSessionCore(Options{}).buildInitializeRequest()
-	if len(nxsRequest.ProtocolCapabilities) != 1 || nxsRequest.ProtocolCapabilities[0] != hookResponseAckProtocolCapability {
+	if !reflect.DeepEqual(nxsRequest.ProtocolCapabilities, []string{
+		hookResponseAckProtocolCapability,
+		messageExecutionPolicyProtocolCapability,
+	}) {
 		t.Fatalf("nxs protocol capabilities = %#v", nxsRequest.ProtocolCapabilities)
 	}
 

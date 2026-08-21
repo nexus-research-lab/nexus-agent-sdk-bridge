@@ -66,12 +66,14 @@ func TestDecodeToolResultErrorCode(t *testing.T) {
 
 func TestEncodeOutboundMessageWithOptions(t *testing.T) {
 	message := NewUserTextMessageWithOptions("continue", OutboundMessageOptions{
-		Meta:           true,
-		HiddenFromUser: true,
-		RecallQuery:    "original user intent",
-		Purpose:        "host_continuation",
-		Priority:       "internal",
-		Metadata:       map[string]string{"task_id": "task-1"},
+		Meta:            true,
+		HiddenFromUser:  true,
+		RecallQuery:     "original user intent",
+		Purpose:         "host_continuation",
+		Priority:        "internal",
+		ToolAccess:      "none",
+		MaxOutputTokens: 400,
+		Metadata:        map[string]string{"task_id": "task-1"},
 	})
 
 	payload := EncodeOutboundMessage(message, "session-1")
@@ -80,6 +82,12 @@ func TestEncodeOutboundMessageWithOptions(t *testing.T) {
 	}
 	if payload["purpose"] != "host_continuation" || payload["priority"] != "internal" {
 		t.Fatalf("payload purpose/priority = %#v, want host continuation", payload)
+	}
+	if payload["tool_access"] != "none" {
+		t.Fatalf("payload tool_access = %#v, want none", payload["tool_access"])
+	}
+	if payload["max_output_tokens"] != 400 {
+		t.Fatalf("payload max_output_tokens = %#v, want 400", payload["max_output_tokens"])
 	}
 	if payload["recall_query"] != "original user intent" {
 		t.Fatalf("payload recall_query = %#v, want original user intent", payload["recall_query"])

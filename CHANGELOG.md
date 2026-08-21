@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Added capability-negotiated per-message execution policies for disabling all runtime tools and applying a bounded output-token budget.
+
 ## [0.1.29] - 2026-08-19
 
 ### Added

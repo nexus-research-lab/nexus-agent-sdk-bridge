@@ -7,21 +7,25 @@ type Capability string
 
 // 支持的会话后端能力。
 const (
-	CapabilitySendOptions       Capability = "send_options"
-	CapabilityInternalContext   Capability = "internal_context"
-	CapabilityTypedUsage        Capability = "typed_usage"
-	CapabilityTerminalCategory  Capability = "terminal_category"
-	CapabilityStopTask          Capability = "stop_task"
-	CapabilityInProcessMCP      Capability = "in_process_mcp"
-	CapabilitySendTaskMessage   Capability = "send_task_message"
-	CapabilityAutoDream         Capability = "auto_dream"
-	CapabilityUpdateEnvironment Capability = "update_environment"
-	CapabilityHookResponseAck   Capability = "hook_response_ack"
-	CapabilityRuntimeLifecycle  Capability = "runtime_lifecycle"
-	CapabilitySessionFork       Capability = "session_fork"
+	CapabilitySendOptions            Capability = "send_options"
+	CapabilityInternalContext        Capability = "internal_context"
+	CapabilityTypedUsage             Capability = "typed_usage"
+	CapabilityTerminalCategory       Capability = "terminal_category"
+	CapabilityStopTask               Capability = "stop_task"
+	CapabilityInProcessMCP           Capability = "in_process_mcp"
+	CapabilitySendTaskMessage        Capability = "send_task_message"
+	CapabilityAutoDream              Capability = "auto_dream"
+	CapabilityUpdateEnvironment      Capability = "update_environment"
+	CapabilityHookResponseAck        Capability = "hook_response_ack"
+	CapabilityMessageExecutionPolicy Capability = "message_execution_policy"
+	CapabilityRuntimeLifecycle       Capability = "runtime_lifecycle"
+	CapabilitySessionFork            Capability = "session_fork"
 )
 
-const hookResponseAckProtocolCapability = "hook_response_ack_v1"
+const (
+	hookResponseAckProtocolCapability        = "hook_response_ack_v1"
+	messageExecutionPolicyProtocolCapability = "message_execution_policy_v1"
+)
 
 // InternalContextBlock 表示下一轮可注入的内部上下文块。
 type InternalContextBlock struct {
@@ -58,6 +62,11 @@ func (c *sessionCore) supports(capability Capability) bool {
 		return slices.Contains(
 			c.lifecycle.initializeResponseValue().ProtocolCapabilities,
 			hookResponseAckProtocolCapability,
+		)
+	case CapabilityMessageExecutionPolicy:
+		return slices.Contains(
+			c.lifecycle.initializeResponseValue().ProtocolCapabilities,
+			messageExecutionPolicyProtocolCapability,
 		)
 	default:
 		return false
