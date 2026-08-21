@@ -384,6 +384,7 @@ type OutboundMessage interface {
 
 // OutboundMessageOptions 描述发送给 SDK 的用户消息附加语义。
 type OutboundMessageOptions struct {
+	MessageUUID     string            `json:"uuid,omitempty"`
 	Meta            bool              `json:"is_meta,omitempty"`
 	Synthetic       bool              `json:"is_synthetic,omitempty"`
 	HiddenFromUser  bool              `json:"hidden_from_user,omitempty"`
@@ -705,6 +706,9 @@ func ApplyOutboundMessageOptions(payload map[string]any, options OutboundMessage
 		result = map[string]any{}
 	}
 	options = options.normalized()
+	if options.MessageUUID != "" {
+		result["uuid"] = options.MessageUUID
+	}
 	if options.Meta {
 		result["is_meta"] = true
 	}
@@ -751,6 +755,7 @@ func buildUserOutboundMessage(sessionID string, parentToolUseID *string, content
 }
 
 func (o OutboundMessageOptions) normalized() OutboundMessageOptions {
+	o.MessageUUID = strings.TrimSpace(o.MessageUUID)
 	o.RecallQuery = strings.TrimSpace(o.RecallQuery)
 	o.Purpose = strings.TrimSpace(o.Purpose)
 	o.Priority = strings.TrimSpace(o.Priority)

@@ -66,6 +66,7 @@ func TestDecodeToolResultErrorCode(t *testing.T) {
 
 func TestEncodeOutboundMessageWithOptions(t *testing.T) {
 	message := NewUserTextMessageWithOptions("continue", OutboundMessageOptions{
+		MessageUUID:     " message-1 ",
 		Meta:            true,
 		HiddenFromUser:  true,
 		RecallQuery:     "original user intent",
@@ -77,6 +78,9 @@ func TestEncodeOutboundMessageWithOptions(t *testing.T) {
 	})
 
 	payload := EncodeOutboundMessage(message, "session-1")
+	if payload["uuid"] != "message-1" {
+		t.Fatalf("payload uuid = %#v, want message-1", payload["uuid"])
+	}
 	if payload["is_meta"] != true || payload["is_synthetic"] != true || payload["hidden_from_user"] != true {
 		t.Fatalf("payload options = %#v, want meta/synthetic/hidden", payload)
 	}

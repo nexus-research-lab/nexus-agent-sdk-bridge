@@ -104,6 +104,9 @@ When `client.CapabilityMessageExecutionPolicy` is negotiated, hosts may use
 `OutboundMessageOptions.ToolAccess = "none"` and `MaxOutputTokens` for a
 single message-only turn; unsupported runtimes must be rejected rather than
 treated as safely restricted.
+`OutboundMessageOptions.MessageUUID` lets a host assign the transcript identity
+needed to remove an uncommitted turn and its emitted messages with
+`Session.Control().RemoveMessages`.
 Use `client.ForkSession(ctx, sourceSessionID, completedMessageID, options)` to
 start an independent session at an exact completed message boundary. Both
 `nxs` and Claude Code advertise `client.CapabilitySessionFork`.
