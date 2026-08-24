@@ -4,10 +4,12 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.1.30] - 2026-08-24
+
 ### Added
 
-- Added capability-negotiated per-message execution policies for disabling all runtime tools and applying a bounded output-token budget.
-- Added host-assigned outbound message UUIDs so speculative turns can be removed from runtime history before they are committed.
+- Added capability-negotiated per-message execution policies for disabling runtime tools and bounding output tokens.
+- Added host-assigned outbound message UUIDs so speculative turns can be removed from runtime history before commit.
 
 ## [0.1.29] - 2026-08-19
 
