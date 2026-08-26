@@ -113,9 +113,6 @@ start an independent session at an exact completed message boundary. Both
 Hosts that run the child under another OS identity can use
 `WithProcessSignalHandler` as the trusted, PID-validating boundary for
 interrupt, shutdown, and descendant cleanup.
-SDK-hosted MCP tools receive the runtime's stable tool-use identity through
-`tools.Context.ToolUseID`; hosts can use it for receipts and idempotency instead
-of adding a model-authored request ID to the tool schema.
 
 ## Documentation
 

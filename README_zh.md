@@ -106,8 +106,6 @@ message-only 回合；未支持该能力的 runtime 必须拒绝，不能假定�
 `client.CapabilitySessionFork`。
 宿主若以另一个 OS 身份运行子进程，可通过 `WithProcessSignalHandler` 提供可信且
 校验 PID 的进程信号边界，统一处理中断、关闭和遗留子进程清理。
-SDK 托管的 MCP 工具会通过 `tools.Context.ToolUseID` 收到 runtime 的稳定工具调用
-身份；宿主可直接用于 receipt 与幂等对账，无需在工具 schema 中要求模型生成 request ID。
 
 ## 文档
 

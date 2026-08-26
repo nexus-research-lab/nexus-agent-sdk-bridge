@@ -6,7 +6,6 @@ import (
 )
 
 func TestCreateSDKMCPServerHandlesToolCall(t *testing.T) {
-	var callContext *Context
 	tool := New(
 		"echo",
 		"Echo input",
@@ -16,8 +15,7 @@ func TestCreateSDKMCPServerHandlesToolCall(t *testing.T) {
 				"text": map[string]any{"type": "string"},
 			},
 		},
-		func(_ context.Context, input map[string]any, current *Context) (Result, error) {
-			callContext = current
+		func(_ context.Context, input map[string]any, _ *Context) (Result, error) {
 			return Text(input["text"].(string)), nil
 		},
 	)
@@ -31,8 +29,7 @@ func TestCreateSDKMCPServerHandlesToolCall(t *testing.T) {
 		"id":      1,
 		"method":  "tools/call",
 		"params": map[string]any{
-			"name":  "echo",
-			"_meta": map[string]any{"claudecode/toolUseId": "toolu_123"},
+			"name": "echo",
 			"arguments": map[string]any{
 				"text": "hello",
 			},
@@ -45,9 +42,6 @@ func TestCreateSDKMCPServerHandlesToolCall(t *testing.T) {
 	content := result["content"].([]map[string]any)
 	if content[0]["text"] != "hello" {
 		t.Fatalf("content = %#v, want hello", content)
-	}
-	if callContext == nil || callContext.ToolUseID != "toolu_123" {
-		t.Fatalf("call context = %#v, want tool use identity", callContext)
 	}
 }
 
