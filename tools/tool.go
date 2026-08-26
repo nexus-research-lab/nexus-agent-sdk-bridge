@@ -228,8 +228,15 @@ func sdkTool(tool Tool) mcpserver.Tool {
 		SearchHint:  metadata.SearchHint,
 		AlwaysLoad:  metadata.AlwaysLoad,
 		Annotations: sdkAnnotations(metadata.Annotations),
-		Handler: func(ctx context.Context, input map[string]any) (mcpserver.ToolResult, error) {
-			result, err := tool.Call(ctx, input, &Context{})
+		Handler: func(
+			ctx context.Context,
+			input map[string]any,
+			meta map[string]any,
+		) (mcpserver.ToolResult, error) {
+			toolUseID, _ := meta["claudecode/toolUseId"].(string)
+			result, err := tool.Call(ctx, input, &Context{
+				ToolUseID: toolUseID,
+			})
 			if err != nil {
 				return mcpserver.ToolResult{}, err
 			}
@@ -242,7 +249,6 @@ func sdkTool(tool Tool) mcpserver.Tool {
 		},
 	}
 }
-
 func metadataForTool(tool Tool) Metadata {
 	var metadata Metadata
 	if provider, ok := tool.(MetadataProvider); ok {

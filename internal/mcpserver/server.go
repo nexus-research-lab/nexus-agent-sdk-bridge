@@ -9,7 +9,7 @@ import (
 )
 
 // ToolHandler handles one MCP tool call.
-type ToolHandler func(context.Context, map[string]any) (ToolResult, error)
+type ToolHandler func(context.Context, map[string]any, map[string]any) (ToolResult, error)
 
 // ToolAnnotations captures MCP tool annotations plus Anthropic metadata.
 type ToolAnnotations struct {
@@ -185,7 +185,11 @@ func (s *SimpleServer) HandleMessage(ctx context.Context, message map[string]any
 			return jsonRPCError(messageID, -32603, fmt.Sprintf("tool %q handler is nil", name)), nil
 		}
 
-		result, err := tool.Handler(ctx, mapValue(params["arguments"]))
+		result, err := tool.Handler(
+			ctx,
+			mapValue(params["arguments"]),
+			mapValue(params["_meta"]),
+		)
 		if err != nil {
 			return jsonRPCError(messageID, -32603, err.Error()), nil
 		}

@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Forwarded runtime MCP tool-use metadata into `tools.Context.ToolUseID`, allowing SDK-hosted tools to correlate mutations without model-authored request IDs.
+
 ## [0.1.30] - 2026-08-24
 
 ### Added
