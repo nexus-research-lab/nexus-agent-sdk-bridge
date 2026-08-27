@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -244,6 +246,35 @@ func TestProcessOptionsExposeOfficialCLIFlags(t *testing.T) {
 	assertArgValue(t, config.Args, "--name", "bridge session")
 	assertArg(t, config.Args, "--debug")
 	assertArgValue(t, config.Args, "--debug-file", "/tmp/bridge.log")
+}
+
+func TestClaudeResumeUsesExistingTranscriptPath(t *testing.T) {
+	configDir := t.TempDir()
+	projectDir := filepath.Join(configDir, "projects", "shared-project")
+	if err := os.MkdirAll(projectDir, 0o700); err != nil {
+		t.Fatalf("创建 transcript 目录失败: %v", err)
+	}
+	resumeID := "22222222-2222-4222-8222-222222222222"
+	transcriptPath := filepath.Join(projectDir, resumeID+".jsonl")
+	if err := os.WriteFile(transcriptPath, []byte("{}\n"), 0o600); err != nil {
+		t.Fatalf("写入 transcript 失败: %v", err)
+	}
+
+	claude := NewOptions().
+		WithRuntime(RuntimeClaude).
+		WithCLIPath("claude").
+		WithEnv(map[string]string{nexusConfigDirEnv: configDir}).
+		WithResume(resumeID).
+		processConfig()
+	assertArgValue(t, claude.Args, "--resume", transcriptPath)
+
+	nxs := NewOptions().
+		WithRuntime(RuntimeNXS).
+		WithCLIPath("nxs").
+		WithEnv(map[string]string{nexusConfigDirEnv: configDir}).
+		WithResume(resumeID).
+		processConfig()
+	assertArgValue(t, nxs.Args, "--resume", resumeID)
 }
 
 func TestSettingsObjectAndSandboxBecomeInlineSettings(t *testing.T) {

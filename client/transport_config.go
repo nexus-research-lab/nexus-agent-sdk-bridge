@@ -132,7 +132,7 @@ func buildProcessTransportArgs(o resolvedOptions) []string {
 		args = append(args, "--continue")
 	}
 	if o.Resume != "" {
-		args = append(args, "--resume", o.Resume)
+		args = append(args, "--resume", processResumeValue(o))
 	}
 	if o.SessionID != "" {
 		args = append(args, "--session-id", o.SessionID)
@@ -223,6 +223,43 @@ func buildProcessTransportArgs(o resolvedOptions) []string {
 	}
 
 	return args
+}
+
+func processResumeValue(o resolvedOptions) string {
+	resumeID := strings.TrimSpace(o.Resume)
+	if normalizedRuntimeKind(o.RuntimeKind) != RuntimeClaude ||
+		resumeID == "" ||
+		len(resumeID) != 36 ||
+		strings.HasSuffix(strings.ToLower(resumeID), ".jsonl") ||
+		strings.ContainsAny(resumeID, `/\`) {
+		return resumeID
+	}
+
+	projectsRoot := filepath.Join(resolveConfigDir(o.Env), "projects")
+	entries, err := os.ReadDir(projectsRoot)
+	if err != nil {
+		return resumeID
+	}
+	var newestPath string
+	var newestTime time.Time
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		path := filepath.Join(projectsRoot, entry.Name(), resumeID+".jsonl")
+		info, statErr := os.Stat(path)
+		if statErr != nil || !info.Mode().IsRegular() || info.Size() == 0 {
+			continue
+		}
+		if newestPath == "" || info.ModTime().After(newestTime) {
+			newestPath = path
+			newestTime = info.ModTime()
+		}
+	}
+	if newestPath != "" {
+		return newestPath
+	}
+	return resumeID
 }
 
 func processCommandPath(o resolvedOptions) string {
