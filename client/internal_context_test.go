@@ -6,10 +6,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/hook"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/protocol"
 )
 
-func TestSetNextTurnContextInjectsSystemReminderIntoNextUserMessage(t *testing.T) {
+func TestSetNextTurnContextAttachesSystemReminderForNXS(t *testing.T) {
 	transport := &capturingTransport{}
 	core := newSessionCoreWithTransport(Options{}, transport)
 	core.lifecycle.setConnected(true)
@@ -41,25 +42,64 @@ func TestSetNextTurnContextInjectsSystemReminderIntoNextUserMessage(t *testing.T
 		t.Fatalf("payload options = %#v, want hidden synthetic", payload)
 	}
 	message := payload["message"].(map[string]any)
-	content := message["content"].(string)
+	if content := message["content"].(string); content != "Continue." {
+		t.Fatalf("content = %q, want original user message", content)
+	}
+	reminder := payload[protocol.InternalContextPayloadKey].(string)
 	for _, want := range []string{
 		"<system-reminder>",
 		`<internal_context source="goal">`,
 		"Compare the current state against the goal",
-		"Continue.",
 	} {
-		if !strings.Contains(content, want) {
-			t.Fatalf("content missing %q:\n%s", want, content)
+		if !strings.Contains(reminder, want) {
+			t.Fatalf("reminder missing %q:\n%s", want, reminder)
 		}
 	}
 }
 
-func TestNextTurnContextIsConsumedOnce(t *testing.T) {
+func TestSetNextTurnContextUsesClaudeUserPromptSubmitHook(t *testing.T) {
+	transport := &capturingTransport{}
+	core := newSessionCoreWithTransport(Options{Runtime: RuntimeOptions{Kind: RuntimeClaude}}, transport)
+	core.lifecycle.setConnected(true)
+	request := core.buildInitializeRequest()
+
+	if err := core.setNextTurnContext(context.Background(), []InternalContextBlock{{Name: "goal", Content: "Claude context"}}); err != nil {
+		t.Fatalf("setNextTurnContext() error = %v", err)
+	}
+	if err := core.Send(context.Background(), "visible", nil, "session-1"); err != nil {
+		t.Fatalf("Send() error = %v", err)
+	}
+	payload := transport.writes[0]
+	if _, exists := payload[protocol.InternalContextPayloadKey]; exists {
+		t.Fatalf("payload = %#v, Claude stdin must not receive nxs-only context field", payload)
+	}
+	content := payload["message"].(map[string]any)["content"].(string)
+	if content != "visible" {
+		t.Fatalf("content = %q, want untouched user text", content)
+	}
+
+	matchers := request.Hooks[string(hook.EventUserPromptSubmit)].([]map[string]any)
+	callbackIDs := matchers[len(matchers)-1]["hookCallbackIds"].([]string)
+	response, _, err := core.resolveHookCallback(context.Background(), map[string]any{
+		"callback_id": callbackIDs[0],
+		"input":       map[string]any{"hook_event_name": string(hook.EventUserPromptSubmit)},
+	})
+	if err != nil {
+		t.Fatalf("resolveHookCallback() error = %v", err)
+	}
+	specific := response["hookSpecificOutput"].(map[string]any)
+	additionalContext := specific["additionalContext"].(string)
+	if !strings.Contains(additionalContext, "Claude context") || strings.Contains(additionalContext, "<system-reminder>") {
+		t.Fatalf("additionalContext = %q, want raw CC hook context", additionalContext)
+	}
+}
+
+func TestNextTurnContextBindsOnlyToNextMessage(t *testing.T) {
 	transport := &capturingTransport{}
 	core := newSessionCoreWithTransport(Options{}, transport)
 	core.lifecycle.setConnected(true)
 
-	if err := core.setNextTurnContext(context.Background(), []InternalContextBlock{{Name: "goal", Content: "one-shot context"}}); err != nil {
+	if err := core.setNextTurnContext(context.Background(), []InternalContextBlock{{Name: "goal", Content: "bound context"}}); err != nil {
 		t.Fatalf("setNextTurnContext() error = %v", err)
 	}
 	if err := core.Send(context.Background(), "first", nil, "session-1"); err != nil {
@@ -71,13 +111,12 @@ func TestNextTurnContextIsConsumedOnce(t *testing.T) {
 	if len(transport.writes) != 2 {
 		t.Fatalf("writes = %d, want 2", len(transport.writes))
 	}
-	firstContent := transport.writes[0]["message"].(map[string]any)["content"].(string)
-	secondContent := transport.writes[1]["message"].(map[string]any)["content"].(string)
-	if !strings.Contains(firstContent, "one-shot context") {
-		t.Fatalf("first content = %q, want injected context", firstContent)
+	firstContext := transport.writes[0][protocol.InternalContextPayloadKey].(string)
+	if !strings.Contains(firstContext, "bound context") {
+		t.Fatalf("first context = %q, want attached context", firstContext)
 	}
-	if strings.Contains(secondContent, "one-shot context") {
-		t.Fatalf("second content = %q, want context consumed", secondContent)
+	if _, exists := transport.writes[1][protocol.InternalContextPayloadKey]; exists {
+		t.Fatalf("second payload = %#v, want no duplicate binding", transport.writes[1])
 	}
 }
 
@@ -94,16 +133,14 @@ func TestNextTurnContextPrependsStructuredContentBlock(t *testing.T) {
 		t.Fatalf("SendMessage() error = %v", err)
 	}
 	content := transport.writes[0]["message"].(map[string]any)["content"].([]any)
-	if len(content) != 2 {
-		t.Fatalf("len(content) = %d, want 2", len(content))
+	if len(content) != 1 {
+		t.Fatalf("len(content) = %d, want original block only", len(content))
 	}
-	firstBlock := content[0].(map[string]any)
-	if firstBlock["type"] != "text" || !strings.Contains(firstBlock["text"].(string), "structured context") {
-		t.Fatalf("first block = %#v, want internal context reminder", firstBlock)
+	if content[0].(map[string]any)["text"] != "visible content" {
+		t.Fatalf("content = %#v, want original content", content)
 	}
-	secondBlock := content[1].(map[string]any)
-	if secondBlock["text"] != "visible content" {
-		t.Fatalf("second block = %#v, want original content", secondBlock)
+	if reminder := transport.writes[0][protocol.InternalContextPayloadKey].(string); !strings.Contains(reminder, "structured context") {
+		t.Fatalf("reminder = %q, want structured context", reminder)
 	}
 }
 

@@ -270,11 +270,22 @@ func (c *sessionCore) buildInitializeRequest() protocol.ControlRequest {
 
 func (c *sessionCore) buildHookInitialization() map[string]any {
 	result := map[string]any{}
-	if len(c.options.Hooks.Matchers) == 0 {
+	matchersByEvent := c.options.Hooks.Matchers
+	if normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeClaude {
+		matchersByEvent = cloneHooks(matchersByEvent)
+		if matchersByEvent == nil {
+			matchersByEvent = map[hook.Event][]hook.Matcher{}
+		}
+		matchersByEvent[hook.EventUserPromptSubmit] = append(
+			matchersByEvent[hook.EventUserPromptSubmit],
+			hook.Matcher{Hooks: []hook.Callback{c.claudeInternalContextHook}},
+		)
+	}
+	if len(matchersByEvent) == 0 {
 		return result
 	}
 
-	for event, matchers := range c.options.Hooks.Matchers {
+	for event, matchers := range matchersByEvent {
 		if len(matchers) == 0 {
 			continue
 		}

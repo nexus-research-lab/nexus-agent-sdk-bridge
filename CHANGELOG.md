@@ -7,6 +7,7 @@ All notable changes to this project are documented in this file.
 ### Fixed
 
 - Resolved Claude Code resumes to the existing shared transcript JSONL so NXS and Claude runtime switches keep the same session outside Claude's current project directory.
+- Normalized internal-context blocks into a deterministic order; nxs keeps them in non-persistent live history, while Claude Code receives them through its native `UserPromptSubmit` hook attachment path.
 
 ## [0.1.30] - 2026-08-24
 
@@ -71,7 +72,7 @@ All notable changes to this project are documented in this file.
 ### Added
 
 - Added `Session.Control().ClearNextTurnContext` so hosts can send atomic Slash text without
-  leaking a stale one-shot internal context block from an interrupted turn.
+  leaking pending internal context from an interrupted turn into a later message.
 
 ### Fixed
 
@@ -260,7 +261,7 @@ All notable changes to this project are documented in this file.
 
 - Runtime primitives for long-running host features: typed token usage helpers, terminal result classification, outbound send options, capability detection, and structured stream-close errors.
 - Additive session APIs for meta/synthetic outbound messages via `SendWithOptions` and `SendMessageWithOptions`.
-- `SetNextTurnContext` now maps runtime-owned next-turn context to a one-shot Claude Code `<system-reminder>` block instead of forcing hosts to prepend their own fallback text.
+- `SetNextTurnContext` now binds runtime-owned context to the next user message as a Claude Code `<system-reminder>` block instead of forcing hosts to prepend their own fallback text.
 
 ## [0.1.2] - 2026-05-30
 

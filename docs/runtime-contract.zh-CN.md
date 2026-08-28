@@ -43,6 +43,11 @@ Hook 输入或 Provider payload 做全局 snake_case/camelCase 转换。
 阶段协商。原生 runtime 还可协商 `CapabilityMessageExecutionPolicy`，让宿主对单条消息
 执行 `tool_access=none` 与 `max_output_tokens`，无需复制 Agent 的普通 allow/deny 规则。
 
+`SetNextTurnContext` 会按优先级降序，再按名称、正文和 metadata 确定性排序内部
+上下文块。NXS 在持久化 user 消息前提取隐藏提醒，将它保留在当前模型历史中但不写入
+transcript。Claude Code 则通过原生 `UserPromptSubmit` hook 的 `additionalContext`
+生成 attachment。
+
 Capability 真相源位于 [`client/capability.go`](../client/capability.go)。不能用 Runtime
 名称替代 capability 检查。
 

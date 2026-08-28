@@ -464,7 +464,7 @@ func (c *SessionControl) ServerInfo(ctx context.Context) (map[string]any, error)
 	return core.serverInfo(ctx)
 }
 
-// SetNextTurnContext 尝试为下一轮注入内部上下文。
+// SetNextTurnContext 为下一条 user 消息绑定内部上下文。
 func (c *SessionControl) SetNextTurnContext(ctx context.Context, blocks []InternalContextBlock) error {
 	core, err := c.activeCore()
 	if err != nil {
@@ -473,7 +473,7 @@ func (c *SessionControl) SetNextTurnContext(ctx context.Context, blocks []Intern
 	return core.setNextTurnContext(ctx, blocks)
 }
 
-// ClearNextTurnContext 清除尚未消费的下一轮内部上下文。
+// ClearNextTurnContext 清除尚未绑定到 user 消息的下一轮内部上下文。
 //
 // Slash command 等原子输入在发送前调用此方法，避免上一轮在设置上下文后中断时，
 // 遗留内容被拼入本轮用户文本。

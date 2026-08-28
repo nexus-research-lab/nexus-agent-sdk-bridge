@@ -99,6 +99,9 @@ fmt.Println(result.Result)
 协商 `client.CapabilityMessageExecutionPolicy` 后，宿主可以用
 `OutboundMessageOptions.ToolAccess = "none"` 和 `MaxOutputTokens` 签发单次
 message-only 回合；未支持该能力的 runtime 必须拒绝，不能假定已经安全收窄。
+`Session.Control().SetNextTurnContext` 接受内部上下文块。bridge 确定性排序后，把它们
+绑定到下一条 user 消息。NXS 把提醒保留在当前模型历史中但不写入 transcript；Claude
+Code 则通过原生 `UserPromptSubmit` hook 的 `additionalContext` 生成 attachment。
 `OutboundMessageOptions.MessageUUID` 允许宿主指定 transcript 消息身份，便于在
 提交前通过 `Session.Control().RemoveMessages` 删除未准入回合及其输出。
 使用 `client.ForkSession(ctx, sourceSessionID, completedMessageID, options)`

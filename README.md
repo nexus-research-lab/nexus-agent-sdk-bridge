@@ -104,6 +104,11 @@ When `client.CapabilityMessageExecutionPolicy` is negotiated, hosts may use
 `OutboundMessageOptions.ToolAccess = "none"` and `MaxOutputTokens` for a
 single message-only turn; unsupported runtimes must be rejected rather than
 treated as safely restricted.
+`Session.Control().SetNextTurnContext` accepts internal context blocks. The
+bridge orders and binds them to the next user message. NXS retains the reminder
+in live model history without writing it to the transcript. Claude Code's public
+stdin schema has no attachment input, so the bridge returns it as native
+`UserPromptSubmit` hook `additionalContext`; Claude Code creates the attachment.
 `OutboundMessageOptions.MessageUUID` lets a host assign the transcript identity
 needed to remove an uncommitted turn and its emitted messages with
 `Session.Control().RemoveMessages`.

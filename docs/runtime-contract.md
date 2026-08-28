@@ -53,6 +53,13 @@ negotiated during initialization. Native runtimes may also negotiate
 `tool_access=none` and `max_output_tokens` to one message without copying the
 Agent's ordinary allow/deny rules.
 
+`SetNextTurnContext` orders internal context blocks by descending priority and
+then by name, content, and metadata. NXS extracts the resulting hidden reminder
+before persisting the user message, keeps it in the live model history, and does
+not write it to the transcript. Claude Code's public stdin accepts only user and
+control messages, so the bridge returns the context through its native
+`UserPromptSubmit` hook and lets Claude Code create the attachment.
+
 Capability values are defined in [`client/capability.go`](../client/capability.go).
 Runtime names are not a substitute for capability checks.
 

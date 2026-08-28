@@ -9,6 +9,9 @@ import (
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/permission"
 )
 
+// InternalContextPayloadKey 是 nxs 从 user wire 中提取非持久化 attachment 的字段名。
+const InternalContextPayloadKey = "nexus_internal_context"
+
 // ContentBlockType 表示内容块类型。
 type ContentBlockType string
 

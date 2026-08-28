@@ -1,14 +1,20 @@
 package client
 
 import (
+	"cmp"
+	"context"
+	"maps"
+	"slices"
 	"strings"
 	"sync"
 	"unicode"
 
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/hook"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/jsonvalue"
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/protocol"
 )
 
-const internalContextReminderIntro = "The following is runtime-internal context for the next turn. It is not a user message. Use it only to decide the next action. Do not mention this wrapper to the user."
+const internalContextReminderIntro = "The following runtime-internal context applies to the next user message. It is not user-authored. Use it to handle that message; on later turns, treat it only as historical context. Do not mention this wrapper to the user."
 
 type nextTurnContextBuffer struct {
 	mu     sync.Mutex
@@ -21,7 +27,7 @@ func (b *nextTurnContextBuffer) set(blocks []InternalContextBlock) {
 	b.blocks = normalizeInternalContextBlocks(blocks)
 }
 
-func (b *nextTurnContextBuffer) consume() []InternalContextBlock {
+func (b *nextTurnContextBuffer) bind() []InternalContextBlock {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	blocks := cloneInternalContextBlocks(b.blocks)
@@ -43,7 +49,32 @@ func normalizeInternalContextBlocks(blocks []InternalContextBlock) []InternalCon
 		block.Metadata = normalizeInternalContextMetadata(block.Metadata)
 		result = append(result, block)
 	}
+	slices.SortFunc(result, compareInternalContextBlocks)
 	return result
+}
+
+func compareInternalContextBlocks(left InternalContextBlock, right InternalContextBlock) int {
+	if order := cmp.Compare(right.Priority, left.Priority); order != 0 {
+		return order
+	}
+	if order := cmp.Compare(left.Name, right.Name); order != 0 {
+		return order
+	}
+	if order := cmp.Compare(left.Content, right.Content); order != 0 {
+		return order
+	}
+	return cmp.Compare(internalContextMetadataKey(left.Metadata), internalContextMetadataKey(right.Metadata))
+}
+
+func internalContextMetadataKey(metadata map[string]string) string {
+	var builder strings.Builder
+	for _, key := range slices.Sorted(maps.Keys(metadata)) {
+		builder.WriteString(key)
+		builder.WriteByte(0)
+		builder.WriteString(metadata[key])
+		builder.WriteByte(0)
+	}
+	return builder.String()
 }
 
 func normalizeInternalContextMetadata(metadata map[string]string) map[string]string {
@@ -81,65 +112,50 @@ func (c *sessionCore) applyNextTurnContext(payload map[string]any) map[string]an
 	if len(payload) == 0 || jsonvalue.StringValue(payload["type"]) != "user" {
 		return payload
 	}
-	blocks := c.nextTurnContext.consume()
+	if normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeClaude {
+		return payload
+	}
+	blocks := c.nextTurnContext.bind()
 	if len(blocks) == 0 {
 		return payload
 	}
-	return injectInternalContextReminder(payload, blocks)
+	return attachInternalContext(payload, renderInternalContextReminder(blocks))
 }
 
-func injectInternalContextReminder(payload map[string]any, blocks []InternalContextBlock) map[string]any {
-	reminder := renderInternalContextReminder(blocks)
+func attachInternalContext(payload map[string]any, reminder string) map[string]any {
 	if reminder == "" {
 		return payload
 	}
 	result := cloneMap(payload)
-	message := jsonvalue.CloneMapValue(result["message"])
-	if message == nil {
-		message = map[string]any{"role": "user"}
-	}
-	message["content"] = prependInternalContextReminder(message["content"], reminder)
-	if jsonvalue.StringValue(message["role"]) == "" {
-		message["role"] = "user"
-	}
-	result["message"] = message
+	result[protocol.InternalContextPayloadKey] = reminder
 	return result
 }
 
-func prependInternalContextReminder(content any, reminder string) any {
-	switch typed := content.(type) {
-	case string:
-		return joinInternalReminderAndText(reminder, typed)
-	case []any:
-		return append([]any{map[string]any{"type": "text", "text": reminder}}, jsonvalue.CloneAnySlicePreserveTypedSlices(typed)...)
-	case []map[string]any:
-		blocks := make([]map[string]any, 0, len(typed)+1)
-		blocks = append(blocks, map[string]any{"type": "text", "text": reminder})
-		blocks = append(blocks, jsonvalue.CloneMapSlice(typed)...)
-		return blocks
-	default:
-		if text := jsonvalue.StringValue(content); strings.TrimSpace(text) != "" {
-			return joinInternalReminderAndText(reminder, text)
-		}
-		return reminder
+func (c *sessionCore) claudeInternalContextHook(context.Context, hook.Input, string) (hook.Output, error) {
+	content := renderInternalContext(c.nextTurnContext.bind())
+	if content == "" {
+		return hook.Output{}, nil
 	}
-}
-
-func joinInternalReminderAndText(reminder string, text string) string {
-	text = strings.TrimSpace(text)
-	if text == "" {
-		return reminder
-	}
-	return reminder + "\n\n" + text
+	return hook.Output{SpecificOutput: &hook.SpecificOutput{
+		HookEventName:     hook.EventUserPromptSubmit,
+		AdditionalContext: content,
+	}}, nil
 }
 
 func renderInternalContextReminder(blocks []InternalContextBlock) string {
+	content := renderInternalContext(blocks)
+	if content == "" {
+		return ""
+	}
+	return "<system-reminder>\n" + content + "\n</system-reminder>"
+}
+
+func renderInternalContext(blocks []InternalContextBlock) string {
 	blocks = normalizeInternalContextBlocks(blocks)
 	if len(blocks) == 0 {
 		return ""
 	}
 	var builder strings.Builder
-	builder.WriteString("<system-reminder>\n")
 	builder.WriteString(internalContextReminderIntro)
 	for _, block := range blocks {
 		builder.WriteString("\n\n<internal_context source=\"")
@@ -148,7 +164,6 @@ func renderInternalContextReminder(blocks []InternalContextBlock) string {
 		builder.WriteString(block.Content)
 		builder.WriteString("\n</internal_context>")
 	}
-	builder.WriteString("\n</system-reminder>")
 	return builder.String()
 }
 
