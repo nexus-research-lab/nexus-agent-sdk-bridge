@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.1.31] - 2026-08-31
+
 ### Fixed
 
 - Resolved Claude Code resumes to the existing shared transcript JSONL so NXS and Claude runtime switches keep the same session outside Claude's current project directory.
