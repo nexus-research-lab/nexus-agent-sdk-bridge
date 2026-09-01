@@ -396,6 +396,7 @@ type OutboundMessageOptions struct {
 	Priority        string            `json:"priority,omitempty"`
 	ToolAccess      string            `json:"tool_access,omitempty"`
 	MaxOutputTokens int               `json:"max_output_tokens,omitempty"`
+	SkipAutoMemory  bool              `json:"skip_auto_memory,omitempty"`
 	Metadata        map[string]string `json:"metadata,omitempty"`
 }
 
@@ -735,6 +736,9 @@ func ApplyOutboundMessageOptions(payload map[string]any, options OutboundMessage
 	}
 	if options.MaxOutputTokens > 0 {
 		result["max_output_tokens"] = options.MaxOutputTokens
+	}
+	if options.SkipAutoMemory {
+		result["skip_auto_memory"] = true
 	}
 	if len(options.Metadata) > 0 {
 		result["metadata"] = jsonvalue.CloneStringMap(options.Metadata)

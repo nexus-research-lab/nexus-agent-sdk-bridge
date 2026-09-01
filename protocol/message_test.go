@@ -74,6 +74,7 @@ func TestEncodeOutboundMessageWithOptions(t *testing.T) {
 		Priority:        "internal",
 		ToolAccess:      "none",
 		MaxOutputTokens: 400,
+		SkipAutoMemory:  true,
 		Metadata:        map[string]string{"task_id": "task-1"},
 	})
 
@@ -92,6 +93,9 @@ func TestEncodeOutboundMessageWithOptions(t *testing.T) {
 	}
 	if payload["max_output_tokens"] != 400 {
 		t.Fatalf("payload max_output_tokens = %#v, want 400", payload["max_output_tokens"])
+	}
+	if payload["skip_auto_memory"] != true {
+		t.Fatalf("payload skip_auto_memory = %#v, want true", payload["skip_auto_memory"])
 	}
 	if payload["recall_query"] != "original user intent" {
 		t.Fatalf("payload recall_query = %#v, want original user intent", payload["recall_query"])

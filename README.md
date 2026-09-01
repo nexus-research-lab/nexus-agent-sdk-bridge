@@ -101,9 +101,9 @@ fmt.Println(result.Result)
 Use `stream.Recv` for incremental messages. Before exposing optional controls,
 check `session.Supports(capability)` rather than branching on a runtime name.
 When `client.CapabilityMessageExecutionPolicy` is negotiated, hosts may use
-`OutboundMessageOptions.ToolAccess = "none"` and `MaxOutputTokens` for a
-single message-only turn; unsupported runtimes must be rejected rather than
-treated as safely restricted.
+`OutboundMessageOptions.ToolAccess = "none"`, `MaxOutputTokens`, and
+`SkipAutoMemory` to restrict one turn; unsupported runtimes must be rejected
+rather than treated as safely restricted.
 `Session.Control().SetNextTurnContext` accepts internal context blocks. The
 bridge orders and binds them to the next user message. NXS retains the reminder
 in live model history without writing it to the transcript. Claude Code's public

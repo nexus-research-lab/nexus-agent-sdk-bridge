@@ -41,7 +41,7 @@ Hook 输入或 Provider payload 做全局 snake_case/camelCase 转换。
 停止任务、进程内 MCP、精确边界 Session fork 和 provider-neutral runtime lifecycle。
 当前原生专属控制包括任务续聊、环境热更新和 AutoDream。Hook response ack 在初始化
 阶段协商。原生 runtime 还可协商 `CapabilityMessageExecutionPolicy`，让宿主对单条消息
-执行 `tool_access=none` 与 `max_output_tokens`，无需复制 Agent 的普通 allow/deny 规则。
+执行 `tool_access=none`、`max_output_tokens` 与 `skip_auto_memory`，无需修改 Agent 的持久配置。
 
 `SetNextTurnContext` 会按优先级降序，再按名称、正文和 metadata 确定性排序内部
 上下文块。NXS 在持久化 user 消息前提取隐藏提醒，将它保留在当前模型历史中但不写入
