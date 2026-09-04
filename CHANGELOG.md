@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.1.32] - 2026-09-04
+
 ### Added
 
 - Added a per-message option for skipping native AutoMemory extraction without disabling the turn's tools or other memory maintenance.
