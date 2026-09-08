@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Integrate Claude native auto mode without the nxs capability requirement; require explicit runtime confirmation on connect and mode changes, preserving runtime errors and rejecting silent downgrades.
+
 ### Automatic permission review
 
 - Negotiate `auto_review_v1` before allowing automatic review; preserve structured review evidence on human permission requests and reject unsupported runtimes.

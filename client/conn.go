@@ -86,9 +86,17 @@ func (c *sessionCore) Connect(ctx context.Context) error {
 
 	initializeResponse := runtimeinfo.DecodeInitializeResponse(response)
 	lifecycle.setInitializeResponse(initializeResponse)
-	if c.options.Runtime.PermissionMode == permission.ModeAuto && !c.supports(CapabilityAutoReview) {
-		_ = c.Disconnect(ctx)
-		return errors.New("当前运行时不支持帮我批准，请升级 nxs 或选择请求批准")
+	if c.options.Runtime.PermissionMode == permission.ModeAuto {
+		var modeErr error
+		if !c.supports(CapabilityAutoReview) {
+			modeErr = errors.New("当前运行时未提供自动审核能力，请升级运行时或选择请求批准")
+		} else if normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeClaude {
+			modeErr = c.setPermissionMode(ctx, permission.ModeAuto)
+		}
+		if modeErr != nil {
+			_ = c.Disconnect(ctx)
+			return modeErr
+		}
 	}
 	if initializeResponse.SessionID != "" {
 		lifecycle.setSessionID(initializeResponse.SessionID)

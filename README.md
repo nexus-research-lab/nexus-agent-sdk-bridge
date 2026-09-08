@@ -152,4 +152,4 @@ make test
 
 Apache License 2.0 · [LICENSE](./LICENSE)
 
-Automatic permission review (`permission_mode=auto`) requires the negotiated `auto_review_v1` capability. It reviews unresolved actions and falls back to human approval when uncertain. Unsupported runtimes are rejected.
+Automatic permission review (`permission_mode=auto`) uses negotiated `auto_review_v1` on nxs and native mode confirmation on Claude Code. Claude owns its classifier and rejection behavior; unsupported or unconfirmed mode changes return an error. See [runtime contract](docs/runtime-contract.md).

@@ -61,7 +61,8 @@ func (c *sessionCore) supports(capability Capability) bool {
 	case CapabilityUpdateEnvironment:
 		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS
 	case CapabilityAutoReview:
-		return slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, autoReviewProtocolCapability)
+		// Claude 使用原生控制确认模式；nxs 使用扩展协议协商。此能力不代表账号或模型可用性。
+		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeClaude || slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, autoReviewProtocolCapability)
 	case CapabilityHookResponseAck:
 		return slices.Contains(
 			c.lifecycle.initializeResponseValue().ProtocolCapabilities,

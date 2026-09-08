@@ -36,4 +36,4 @@ Nexus product
 - 全量验证使用 `go test ./...`
 - 提交使用 emoji 前缀和英文摘要，例如 `:sparkles: Add native AutoDream control`
 
-自动审核必须协商 `auto_review_v1`；bridge 校验能力并传递审核证据，不执行审核模型。
+nxs 自动审核必须协商 `auto_review_v1`；Claude 使用原生 `set_permission_mode` 并明确确认 `mode=auto`。bridge 不执行审核模型；能力入口表示协议适配，账号、模型和策略可用性由 runtime 确认。

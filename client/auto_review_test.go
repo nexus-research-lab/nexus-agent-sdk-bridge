@@ -5,7 +5,9 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/runtimeinfo"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/permission"
@@ -42,5 +44,52 @@ func TestAutoReviewModeRejectsUnsupportedRuntime(t *testing.T) {
 	core.lifecycle.setConnectedLocked(true)
 	if err := core.setPermissionMode(context.Background(), permission.ModeAuto); err == nil {
 		t.Fatal("unsupported runtime accepted automatic review")
+	}
+}
+
+// TestClaudeAutoModeConfirmation 验证启动和运行中切换都使用 Claude 原生确认，拒绝时不伪装成功。
+func TestClaudeAutoModeConfirmation(t *testing.T) {
+	for _, startup := range []bool{false, true} {
+		for _, outcome := range []string{"auto", "default", "error"} {
+			t.Run(fmt.Sprintf("startup=%v/%s", startup, outcome), func(t *testing.T) {
+				transport := newScriptedTransport()
+				mode := permission.ModeDefault
+				if startup {
+					mode = permission.ModeAuto
+				}
+				core := newSessionCoreWithTransport(Options{Transport: transport, Runtime: RuntimeOptions{Kind: RuntimeClaude, PermissionMode: mode, InitializeTimeout: time.Second}}, transport)
+				defer func() { _ = core.Disconnect(context.Background()) }()
+				done := make(chan error, 1)
+				go func() { done <- core.Connect(context.Background()) }()
+				assertInitializeRequest(t, receiveWrite(t, transport))
+				transport.pushRead(successfulInitializeResponse(map[string]any{"current_permission_mode": "default"}))
+				if !startup {
+					if err := receiveDone(t, done); err != nil {
+						t.Fatal(err)
+					}
+					go func() { done <- core.setPermissionMode(context.Background(), permission.ModeAuto) }()
+				}
+				request := receiveWrite(t, transport)
+				assertControlRequest(t, request, "set_permission_mode")
+				if request["request"].(map[string]any)["mode"] != "auto" {
+					t.Fatalf("request=%v", request)
+				}
+				if outcome == "error" {
+					transport.pushRead(map[string]any{"type": "control_response", "response": map[string]any{"subtype": "error", "request_id": request["request_id"], "error": "auto mode unavailable"}})
+				} else {
+					transport.pushRead(successfulControlResponse(request["request_id"].(string), map[string]any{"mode": outcome}))
+				}
+				err := receiveDone(t, done)
+				if (err == nil) != (outcome == "auto") {
+					t.Fatalf("outcome=%s error=%v", outcome, err)
+				}
+				if !startup && outcome != "auto" && core.options.Runtime.PermissionMode != permission.ModeDefault {
+					t.Fatal("failed switch changed saved mode")
+				}
+				if startup && outcome != "auto" && core.isConnected() {
+					t.Fatal("failed startup remained connected")
+				}
+			})
+		}
 	}
 }
