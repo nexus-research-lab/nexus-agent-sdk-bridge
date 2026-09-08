@@ -141,3 +141,5 @@ make test
 ## 许可证
 
 Apache License 2.0 · [LICENSE](./LICENSE)
+
+自动审核模式 `permission_mode=auto` 必须协商 `auto_review_v1` 能力。SDK 审核未决操作，无法确认时转人工；不支持的运行时明确拒绝该模式，详见 [运行时契约](docs/runtime-contract.md)。

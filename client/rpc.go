@@ -67,6 +67,9 @@ func (c *sessionCore) setPermissionMode(ctx context.Context, mode permission.Mod
 		return ErrNotConnected
 	}
 	normalizedMode := normalizePermissionMode(mode)
+	if normalizedMode == permission.ModeAuto && !c.supports(CapabilityAutoReview) {
+		return fmt.Errorf("当前运行时不支持帮我批准，请升级 nxs 或选择请求批准")
+	}
 	if normalizedMode == permission.ModeBypassPermissions && !c.options.allowsDangerouslySkipPermissions() {
 		return ErrBypassPermissionsNotAllowed
 	}

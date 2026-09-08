@@ -151,3 +151,5 @@ make test
 ## License
 
 Apache License 2.0 · [LICENSE](./LICENSE)
+
+Automatic permission review (`permission_mode=auto`) requires the negotiated `auto_review_v1` capability. It reviews unresolved actions and falls back to human approval when uncertain. Unsupported runtimes are rejected.

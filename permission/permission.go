@@ -20,7 +20,7 @@ const (
 	ModePlan Mode = "plan"
 	// ModeDontAsk 表示不询问，直接按预设规则处理。
 	ModeDontAsk Mode = "dontAsk"
-	// ModeAuto 表示自动决策。
+	// ModeAuto 使用基础权限规则，对未决操作进行独立模型审核。
 	ModeAuto Mode = "auto"
 )
 
@@ -107,6 +107,9 @@ type Update struct {
 
 // Request 表示运行时发出的权限请求。
 type Request struct {
+	// RequiresHuman 禁止自动审核代替用户显式确认。
+	RequiresHuman         bool           `json:"requires_human,omitempty"`
+	Review                *Review        `json:"review,omitempty"`
 	ToolName              string         `json:"tool_name"`
 	Input                 map[string]any `json:"input,omitempty"`
 	PermissionSuggestions []Update       `json:"permission_suggestions,omitempty"`
@@ -193,4 +196,12 @@ func (d Decision) ToMap() map[string]any {
 		result["updatedPermissions"] = append([]Update(nil), d.UpdatedPermissions...)
 	}
 	return result
+}
+
+// Review 是一次准确工具操作的自动审核结果，不授予持续权限。
+type Review struct {
+	Status        string `json:"status"`
+	Risk          string `json:"risk"`
+	Authorization string `json:"authorization"`
+	Rationale     string `json:"rationale"`
 }

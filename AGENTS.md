@@ -35,3 +35,5 @@ Nexus product
 - Go 代码执行 `gofmt`，实现遵循 Google Go Style
 - 全量验证使用 `go test ./...`
 - 提交使用 emoji 前缀和英文摘要，例如 `:sparkles: Add native AutoDream control`
+
+自动审核必须协商 `auto_review_v1`；bridge 校验能力并传递审核证据，不执行审核模型。

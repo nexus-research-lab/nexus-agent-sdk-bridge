@@ -7,6 +7,7 @@ type Capability string
 
 // 支持的会话后端能力。
 const (
+	CapabilityAutoReview             Capability = "auto_review"
 	CapabilitySendOptions            Capability = "send_options"
 	CapabilityInternalContext        Capability = "internal_context"
 	CapabilityTypedUsage             Capability = "typed_usage"
@@ -23,6 +24,7 @@ const (
 )
 
 const (
+	autoReviewProtocolCapability             = "auto_review_v1"
 	hookResponseAckProtocolCapability        = "hook_response_ack_v1"
 	messageExecutionPolicyProtocolCapability = "message_execution_policy_v1"
 )
@@ -58,6 +60,8 @@ func (c *sessionCore) supports(capability Capability) bool {
 		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS
 	case CapabilityUpdateEnvironment:
 		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS
+	case CapabilityAutoReview:
+		return slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, autoReviewProtocolCapability)
 	case CapabilityHookResponseAck:
 		return slices.Contains(
 			c.lifecycle.initializeResponseValue().ProtocolCapabilities,

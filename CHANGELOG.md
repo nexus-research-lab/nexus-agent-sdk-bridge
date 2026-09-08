@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Automatic permission review
+
+- Negotiate `auto_review_v1` before allowing automatic review; preserve structured review evidence on human permission requests and reject unsupported runtimes.
+
 ## [0.1.32] - 2026-09-04
 
 ### Added

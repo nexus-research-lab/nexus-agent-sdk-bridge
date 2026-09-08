@@ -72,6 +72,11 @@ func (c *sessionCore) resolvePermissionRequest(ctx context.Context, request map[
 		AgentID:               jsonvalue.StringValue(request["agent_id"]),
 	}
 
+	permissionRequest.RequiresHuman, _ = request["requires_human"].(bool)
+	if review := jsonvalue.MapValue(request["review"]); len(review) > 0 {
+		permissionRequest.Review = &permission.Review{Status: jsonvalue.StringValue(review["status"]), Risk: jsonvalue.StringValue(review["risk"]), Authorization: jsonvalue.StringValue(review["authorization"]), Rationale: jsonvalue.StringValue(review["rationale"])}
+	}
+
 	decision, err := c.options.Callbacks.PermissionHandler(ctx, permissionRequest)
 	if err != nil {
 		return map[string]any{
@@ -223,6 +228,7 @@ func (c *sessionCore) buildInitializeRequest() protocol.ControlRequest {
 		request.ProtocolCapabilities = []string{
 			hookResponseAckProtocolCapability,
 			messageExecutionPolicyProtocolCapability,
+			autoReviewProtocolCapability,
 		}
 	}
 

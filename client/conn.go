@@ -11,6 +11,7 @@ import (
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/jsonvalue"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/runtimeinfo"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/transport"
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/permission"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/protocol"
 )
 
@@ -85,6 +86,10 @@ func (c *sessionCore) Connect(ctx context.Context) error {
 
 	initializeResponse := runtimeinfo.DecodeInitializeResponse(response)
 	lifecycle.setInitializeResponse(initializeResponse)
+	if c.options.Runtime.PermissionMode == permission.ModeAuto && !c.supports(CapabilityAutoReview) {
+		_ = c.Disconnect(ctx)
+		return errors.New("当前运行时不支持帮我批准，请升级 nxs 或选择请求批准")
+	}
 	if initializeResponse.SessionID != "" {
 		lifecycle.setSessionID(initializeResponse.SessionID)
 		c.signalInitialSessionReady()
