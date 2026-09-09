@@ -67,11 +67,14 @@ func (c *sessionCore) setPermissionMode(ctx context.Context, mode permission.Mod
 		return ErrNotConnected
 	}
 	normalizedMode := normalizePermissionMode(mode)
+	if normalizedMode == permission.ModeAuto && !c.supports(CapabilityAutoReview) {
+		return fmt.Errorf("当前运行时未提供自动审核能力，请升级运行时或选择请求批准")
+	}
 	if normalizedMode == permission.ModeBypassPermissions && !c.options.allowsDangerouslySkipPermissions() {
 		return ErrBypassPermissionsNotAllowed
 	}
 
-	_, err := c.sendControlRequest(
+	response, err := c.sendControlRequest(
 		ctx,
 		protocol.ControlRequest{
 			Subtype: "set_permission_mode",
@@ -81,6 +84,10 @@ func (c *sessionCore) setPermissionMode(ctx context.Context, mode permission.Mod
 	)
 	if err != nil {
 		return err
+	}
+	// Claude 启动参数可能被设置或模型限制降级，必须收到明确确认才算启用。
+	if normalizedMode == permission.ModeAuto && normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeClaude && jsonvalue.StringValue(response["mode"]) != "auto" {
+		return errors.New("Claude 未确认启用自动审核，请检查运行时版本、模型和组织设置，或选择请求批准")
 	}
 	c.options.Runtime.PermissionMode = normalizedMode
 	if normalizedMode == permission.ModeBypassPermissions {

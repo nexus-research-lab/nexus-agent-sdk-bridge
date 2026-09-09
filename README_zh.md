@@ -143,3 +143,5 @@ make test
 ## 许可证
 
 Apache License 2.0 · [LICENSE](./LICENSE)
+
+自动审核模式 `permission_mode=auto` 在 nxs 上协商 `auto_review_v1`，在 Claude Code 上确认原生模式。Claude 自行负责分类审核与拒绝处理；不支持或未确认启用时返回错误，详见 [运行时契约](docs/runtime-contract.md)。
