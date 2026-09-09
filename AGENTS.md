@@ -21,6 +21,7 @@ Nexus product
 - `internal/transport/`：子进程和传输实现，不向产品泄漏
 - `runtimes/`：runtime kind 的公开能力差异
 - `docs/`：面向开源使用者的文档索引与 runtime 契约，不收录宿主产品内部设计
+- Subagent control 只在 `subagent_control_v1` 协商后按活跃父 MCP identity 调用；不实现执行循环。
 - 新能力必须先定义 capability；产品不能按 runtime 名称猜测 control 是否存在
 - 单条消息的无工具与输出预算共用 `message_execution_policy_v1`；未协商时宿主必须拒绝受限消息
 - 下一条消息的宿主上下文由 bridge 确定性排序；nxs 将其作为只进入 live model history、不落 transcript 的隐藏 reminder，Claude Code 通过 `UserPromptSubmit` hook 的 `additionalContext` 生成同语义 attachment

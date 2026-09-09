@@ -87,3 +87,18 @@ func TestClaudeSessionDistinguishesSubagentTaskCapabilities(t *testing.T) {
 		t.Fatalf("TryAutoDream() error = %v, want ErrUnsupportedCapability", err)
 	}
 }
+
+func TestSubagentControlRequiresNegotiation(t *testing.T) {
+	session := &Session{core: newSessionCore(Options{})}
+	if session.Supports(CapabilitySubagentControl) {
+		t.Fatal("unnegotiated capability advertised")
+	}
+	_, err := session.Control().ControlSubagent(context.Background(), "tool-1", "list", nil)
+	if !errors.Is(err, ErrUnsupportedCapability) {
+		t.Fatalf("unnegotiated control: %v", err)
+	}
+	session.core.lifecycle.setInitializeResponse(runtimeinfo.InitializeResponse{ProtocolCapabilities: []string{subagentControlProtocolCapability}})
+	if !session.Supports(CapabilitySubagentControl) {
+		t.Fatal("negotiated capability unavailable")
+	}
+}

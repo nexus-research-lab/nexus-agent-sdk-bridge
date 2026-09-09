@@ -6,6 +6,8 @@ All notable changes to this project are documented in this file.
 
 ### Added
 
+- Added capability-negotiated subagent control with current MCP caller identity and cancellation propagated over the existing control transport.
+
 - Added a per-message option for skipping native AutoMemory extraction without disabling the turn's tools or other memory maintenance.
 
 ## [0.1.31] - 2026-08-31

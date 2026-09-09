@@ -222,6 +222,7 @@ func (c *sessionCore) buildInitializeRequest() protocol.ControlRequest {
 	if normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS {
 		request.ProtocolCapabilities = []string{
 			hookResponseAckProtocolCapability,
+			subagentControlProtocolCapability,
 			messageExecutionPolicyProtocolCapability,
 		}
 	}

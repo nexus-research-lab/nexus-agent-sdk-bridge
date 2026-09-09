@@ -13,6 +13,8 @@ The bridge starts or connects to a runtime, streams typed messages, and exposes
 runtime controls. It does not implement the agent loop or include a model
 runtime.
 
+Hosts can use `Session.Control().ControlSubagent` after negotiating `CapabilitySubagentControl` with nxs. This control runs within an active parent MCP call; see the [runtime contract](docs/runtime-contract.md#subagent-control). Claude Code does not provide this extension.
+
 ## Requirements
 
 - Go 1.24 or later

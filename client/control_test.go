@@ -66,6 +66,7 @@ func TestBuildInitializeRequestAdvertisesNXSProtocolCapabilities(t *testing.T) {
 	nxsRequest := newSessionCore(Options{}).buildInitializeRequest()
 	if !reflect.DeepEqual(nxsRequest.ProtocolCapabilities, []string{
 		hookResponseAckProtocolCapability,
+		subagentControlProtocolCapability,
 		messageExecutionPolicyProtocolCapability,
 	}) {
 		t.Fatalf("nxs protocol capabilities = %#v", nxsRequest.ProtocolCapabilities)

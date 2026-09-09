@@ -20,9 +20,11 @@ const (
 	CapabilityMessageExecutionPolicy Capability = "message_execution_policy"
 	CapabilityRuntimeLifecycle       Capability = "runtime_lifecycle"
 	CapabilitySessionFork            Capability = "session_fork"
+	CapabilitySubagentControl        Capability = "subagent_control"
 )
 
 const (
+	subagentControlProtocolCapability        = "subagent_control_v1"
 	hookResponseAckProtocolCapability        = "hook_response_ack_v1"
 	messageExecutionPolicyProtocolCapability = "message_execution_policy_v1"
 )
@@ -63,6 +65,8 @@ func (c *sessionCore) supports(capability Capability) bool {
 			c.lifecycle.initializeResponseValue().ProtocolCapabilities,
 			hookResponseAckProtocolCapability,
 		)
+	case CapabilitySubagentControl:
+		return slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, subagentControlProtocolCapability)
 	case CapabilityMessageExecutionPolicy:
 		return slices.Contains(
 			c.lifecycle.initializeResponseValue().ProtocolCapabilities,

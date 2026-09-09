@@ -12,6 +12,8 @@ Agent runtime。
 Bridge 负责启动或连接 runtime、传递类型化消息并暴露运行期控制。它不实现
 agent loop，也不包含模型 runtime。
 
+宿主在 nxs 协商 `CapabilitySubagentControl` 后，可通过 `Session.Control().ControlSubagent` 在当前父会话 MCP 调用内管理子任务。协议与取消边界见 [runtime contract](docs/runtime-contract.md#subagent-control)；Claude Code 不提供此扩展。
+
 ## 前置条件
 
 - Go 1.24 及以上版本

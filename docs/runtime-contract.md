@@ -100,3 +100,20 @@ Public Go packages follow repository releases. `internal/` packages are not
 supported imports. New runtime-specific behavior must first receive a public
 capability and a typed protocol shape; hosts should not branch on undocumented
 payload fields.
+
+## Subagent control
+
+`CapabilitySubagentControl` requires the initialize response to acknowledge
+`subagent_control_v1`; runtime kind alone is insufficient. `Session.Control().ControlSubagent`
+sends a `subagent_control` request containing `tool_use_id`, `operation` and `input`.
+The caller identity must be taken from the current SDK MCP call metadata
+(`claudecode/toolUseId`), never from model business input. Operations are spawn,
+list, get, wait, send and stop; operation input semantics belong to the runtime.
+
+The runtime validates the active parent-session call and retains native permission
+and task hooks. Spawn returns an asynchronous child identity; acceptance is not
+completion. The host must service incoming hooks while awaiting the control
+response. Context cancellation sends cancellation for that exact request ID; it
+must not trigger automatic replay of a spawn whose result is unknown. The bridge
+does not add an Agent tool, CLI shim, durable mutation receipt or recursive child
+capability. Older nxs versions and Claude Code report unsupported capability.
