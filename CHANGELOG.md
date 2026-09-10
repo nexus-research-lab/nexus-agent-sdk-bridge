@@ -4,19 +4,20 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.1.33] - 2026-09-10
+
+### Added
+
+- Added capability-negotiated subagent control with active parent MCP identity and cancellation over the existing control transport.
+- Added automatic permission review negotiation and structured review evidence on human approval requests.
+
 ### Changed
 
-- Integrate Claude native auto mode without the nxs capability requirement; require explicit runtime confirmation on connect and mode changes, preserving runtime errors and rejecting silent downgrades.
-
-### Automatic permission review
-
-- Negotiate `auto_review_v1` before allowing automatic review; preserve structured review evidence on human permission requests and reject unsupported runtimes.
+- Integrated Claude Code native automatic permission mode with explicit runtime confirmation on connection and mode changes, preserving errors and rejecting silent downgrades.
 
 ## [0.1.32] - 2026-09-04
 
 ### Added
-
-- Added capability-negotiated subagent control with current MCP caller identity and cancellation propagated over the existing control transport.
 
 - Added a per-message option for skipping native AutoMemory extraction without disabling the turn's tools or other memory maintenance.
 
