@@ -4,28 +4,28 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
-- Wait for transport/process exit after Close, including failed termination attempts, before releasing the session cleanup fence. Preserve both termination and exit diagnostics.
+### Changed
 
+- Wait for transport/process exit after Close, including failed termination attempts, before releasing the session cleanup fence. Preserve both termination and exit diagnostics.
+- Return sandbox_policy_changed before applying any hot controls when Sandbox configuration changes; require process replacement instead of silently saving an unapplied policy.
+- Block concurrent raw, user and internal continuation messages until the required sandbox capability has been acknowledged for the current connection.
+- Negotiate opt-in required sandbox execution before sending tasks; reject unsupported runtimes and missing nxs acknowledgement instead of silently ignoring the requirement.
+
+## [0.1.33] - 2026-09-10
+
+### Added
+
+- Added capability-negotiated subagent control with active parent MCP identity and cancellation over the existing control transport.
+- Added automatic permission review negotiation and structured review evidence on human approval requests.
 
 ### Changed
 
-- Return sandbox_policy_changed before applying any hot controls when Sandbox configuration changes; require process replacement instead of silently saving an unapplied policy.
+- Integrated Claude Code native automatic permission mode with explicit runtime confirmation on connection and mode changes, preserving errors and rejecting silent downgrades.
 
-- Block concurrent raw, user and internal continuation messages until the required sandbox capability has been acknowledged for the current connection.
-
-- Negotiate opt-in required sandbox execution before sending tasks; reject unsupported runtimes and missing nxs acknowledgement instead of silently ignoring the requirement.
-
-- Integrate Claude native auto mode without the nxs capability requirement; require explicit runtime confirmation on connect and mode changes, preserving runtime errors and rejecting silent downgrades.
-
-### Automatic permission review
-
-- Negotiate `auto_review_v1` before allowing automatic review; preserve structured review evidence on human permission requests and reject unsupported runtimes.
 
 ## [0.1.32] - 2026-09-04
 
 ### Added
-
-- Added capability-negotiated subagent control with current MCP caller identity and cancellation propagated over the existing control transport.
 
 - Added a per-message option for skipping native AutoMemory extraction without disabling the turn's tools or other memory maintenance.
 
