@@ -69,6 +69,7 @@ func TestBuildInitializeRequestAdvertisesNXSProtocolCapabilities(t *testing.T) {
 		subagentControlProtocolCapability,
 		messageExecutionPolicyProtocolCapability,
 		autoReviewProtocolCapability,
+		requiredSandboxProtocolCapability,
 	}) {
 		t.Fatalf("nxs protocol capabilities = %#v", nxsRequest.ProtocolCapabilities)
 	}

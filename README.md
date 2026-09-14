@@ -15,6 +15,9 @@ runtime.
 
 Hosts can use `Session.Control().ControlSubagent` after negotiating `CapabilitySubagentControl` with nxs. This control runs within an active parent MCP call; see the [runtime contract](docs/runtime-contract.md#subagent-control). Claude Code does not provide this extension.
 
+
+Hosts may set `SandboxSettings.RequireSandbox` to require `required_sandbox_v1` from nxs before sending a task. Unsupported runtimes fail connection. This guarantees required execution handling, not platform backend availability; see [the contract](docs/runtime-contract.md#required-sandbox-execution).
+
 ## Requirements
 
 - Go 1.24 or later

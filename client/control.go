@@ -230,7 +230,13 @@ func (c *sessionCore) buildInitializeRequest() protocol.ControlRequest {
 			subagentControlProtocolCapability,
 			messageExecutionPolicyProtocolCapability,
 			autoReviewProtocolCapability,
+			requiredSandboxProtocolCapability,
 		}
+	}
+
+	if c.options.Sandbox != nil && c.options.Sandbox.RequireSandbox {
+		request.RequiredSandbox = true
+		request.SandboxPolicy = sandboxSettingsMap(c.options.Sandbox)
 	}
 
 	if hooks := c.buildHookInitialization(); len(hooks) > 0 {

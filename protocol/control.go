@@ -19,6 +19,8 @@ type ControlRequestEnvelope struct {
 //
 // 它保留底层 wire 层 subtype union 形状，领域语义由 client、mcp、permission 等公开包承接。
 type ControlRequest struct {
+	SandboxPolicy             map[string]any      `json:"sandbox_policy,omitempty"`
+	RequiredSandbox           bool                `json:"required_sandbox,omitempty"`
 	Operation                 string              `json:"operation,omitempty"`
 	Subtype                   string              `json:"subtype"`
 	ProtocolCapabilities      []string            `json:"protocol_capabilities,omitempty"`

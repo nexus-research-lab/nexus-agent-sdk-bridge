@@ -4,7 +4,16 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Wait for transport/process exit after Close, including failed termination attempts, before releasing the session cleanup fence. Preserve both termination and exit diagnostics.
+
+
 ### Changed
+
+- Return sandbox_policy_changed before applying any hot controls when Sandbox configuration changes; require process replacement instead of silently saving an unapplied policy.
+
+- Block concurrent raw, user and internal continuation messages until the required sandbox capability has been acknowledged for the current connection.
+
+- Negotiate opt-in required sandbox execution before sending tasks; reject unsupported runtimes and missing nxs acknowledgement instead of silently ignoring the requirement.
 
 - Integrate Claude native auto mode without the nxs capability requirement; require explicit runtime confirmation on connect and mode changes, preserving runtime errors and rejecting silent downgrades.
 

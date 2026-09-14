@@ -14,6 +14,9 @@ agent loop，也不包含模型 runtime。
 
 宿主在 nxs 协商 `CapabilitySubagentControl` 后，可通过 `Session.Control().ControlSubagent` 在当前父会话 MCP 调用内管理子任务。协议与取消边界见 [runtime contract](docs/runtime-contract.md#subagent-control)；Claude Code 不提供此扩展。
 
+
+宿主可用 `SandboxSettings.RequireSandbox` 要求 nxs 确认 `required_sandbox_v1` 后才发送任务；不支持的运行时连接失败。这表示必需执行约束，不表示平台后端已可用，详见 [协议](docs/runtime-contract.zh-CN.md#必需沙箱执行)。
+
 ## 前置条件
 
 - Go 1.24 及以上版本

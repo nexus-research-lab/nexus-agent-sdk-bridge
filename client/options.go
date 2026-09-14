@@ -124,6 +124,8 @@ type SandboxSeccompConfig struct {
 
 // SandboxSettings 表示命令执行隔离配置。
 type SandboxSettings struct {
+	// RequireSandbox 要求协商宿主执行保证；不代表当前平台已有可用后端。
+	RequireSandbox               bool                     `json:"requireSandbox,omitempty"`
 	Enabled                      *bool                    `json:"enabled,omitempty"`
 	FailIfUnavailable            *bool                    `json:"failIfUnavailable,omitempty"`
 	AutoAllowBashIfSandboxed     *bool                    `json:"autoAllowBashIfSandboxed,omitempty"`
@@ -167,7 +169,7 @@ func (s SandboxSettings) MarshalJSON() ([]byte, error) {
 // 静默改写成另一份 JSON。
 func mergeSandboxExtra(value map[string]any, extra map[string]any) {
 	known := map[string]struct{}{
-		"enabled": {}, "failIfUnavailable": {}, "autoAllowBashIfSandboxed": {},
+		"requireSandbox": {}, "enabled": {}, "failIfUnavailable": {}, "autoAllowBashIfSandboxed": {},
 		"allowUnsandboxedCommands": {}, "enabledPlatforms": {}, "network": {},
 		"filesystem": {}, "ignoreViolations": {}, "enableWeakerNestedSandbox": {},
 		"enableWeakerNetworkIsolation": {}, "allowAppleEvents": {},

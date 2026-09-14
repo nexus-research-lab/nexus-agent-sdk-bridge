@@ -525,3 +525,46 @@ type fakeSDKMCPServer struct{}
 func (fakeSDKMCPServer) HandleMessage(context.Context, map[string]any) (map[string]any, error) {
 	return map[string]any{"ok": true}, nil
 }
+
+func TestReconfigureRejectsSandboxChangeBeforeOtherControls(t *testing.T) {
+	tr := newScriptedTransport()
+	core := newSessionCoreWithTransport(Options{Transport: tr, Runtime: RuntimeOptions{InitializeTimeout: time.Second}}, tr)
+	done := make(chan error, 1)
+	go func() { done <- core.Connect(context.Background()) }()
+	assertInitializeRequest(t, receiveWrite(t, tr))
+	tr.pushRead(successfulInitializeResponse(map[string]any{"session_id": "reconfigure-sandbox"}))
+	if err := receiveDone(t, done); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = core.Disconnect(context.Background()) }()
+	next := core.options
+	next.Sandbox = &SandboxSettings{RequireSandbox: true}
+	next.Model = "must-not-change"
+	err := core.reconfigure(context.Background(), next)
+	var restart *RestartRequiredError
+	if !errors.As(err, &restart) || restart.Reason != RestartReasonSandboxPolicyChanged {
+		t.Fatalf("expected sandbox restart, got %v", err)
+	}
+	if core.options.Sandbox != nil || core.options.Model == "must-not-change" {
+		t.Fatal("failed reconfigure changed effective options")
+	}
+	select {
+	case write := <-tr.writes:
+		t.Fatalf("control sent before sandbox replacement: %v", write)
+	default:
+	}
+}
+
+func TestSandboxPolicyChangeRequiresRestartInBothDirections(t *testing.T) {
+	restricted := Options{Sandbox: &SandboxSettings{RequireSandbox: true}}
+	unrestricted := Options{}
+	for _, pair := range [][2]Options{{restricted, unrestricted}, {unrestricted, restricted}} {
+		reason, required := restartReasonForReconfigure(pair[0], pair[1])
+		if !required || reason != RestartReasonSandboxPolicyChanged {
+			t.Fatalf("sandbox transition silently reused process: %s", reason)
+		}
+	}
+	if reason, required := restartReasonForReconfigure(restricted, restricted); required {
+		t.Fatalf("unchanged sandbox requires restart: %s", reason)
+	}
+}

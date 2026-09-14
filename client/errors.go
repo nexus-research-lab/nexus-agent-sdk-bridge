@@ -29,6 +29,8 @@ var (
 type RestartReason string
 
 const (
+	// RestartReasonSandboxPolicyChanged 表示沙箱执行/资源策略必须通过新进程安装。
+	RestartReasonSandboxPolicyChanged RestartReason = "sandbox_policy_changed"
 	// RestartReasonProcessEnvChanged 表示进程环境变量变化。
 	RestartReasonProcessEnvChanged RestartReason = "process_env_changed"
 	// RestartReasonToolPolicyChanged 表示启动期工具策略变化。

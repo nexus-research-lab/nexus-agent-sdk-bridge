@@ -69,7 +69,7 @@ Runtime names are not a substitute for capability checks.
 2. `Session.Send` or `SendWithOptions` starts a turn.
 3. The host consumes typed messages with `Recv` or waits for `Result`.
 4. Controls use the active session and preserve the runtime request identity.
-5. `Session.Close` releases the transport and owned process resources.
+5. `Session.Close` waits for both transport `Close` and `Wait`, then the read loop, before completing cleanup. A failed termination attempt does not prove process exit. Caller cancellation stops only that caller's wait; shared cleanup remains pending. Close and exit diagnostics are both preserved.
 
 `client.ForkSession` creates an independent target from a source session through
 the exact supplied message ID. Claude Code may not persist the target transcript
@@ -135,3 +135,31 @@ capability. Older nxs versions and Claude Code report unsupported capability.
 Claude 的 `permission_mode=auto` 直接交给 Claude Code，自行使用其分类器、缓存与拒绝策略，不要求 nxs 专用 `auto_review_v1`，也不执行第二层 nxs 审核。`CapabilityAutoReview` 在 Claude 上表示已适配原生控制接口，不保证账号、模型或组织策略允许启用。启动和动态切换均要求 `set_permission_mode` 明确回复 `mode=auto`；错误、空确认或降级模式返回错误，启动失败关闭连接。
 
 Claude 的未通过请求可能被拒绝并交给模型尝试替代方案，非交互回退也可能结束执行；现有 `can_use_tool` 人工回调保持不变。宿主不得假定 Claude 会发出 nxs 的审核事件或包含其审核证据。支持情况服从 Claude 当前版本、模型、服务可用性与组织设置。
+
+## Required sandbox execution
+
+`SandboxSettings.RequireSandbox=true` requires nxs capability `required_sandbox_v1`.
+Bridge sends boolean `required_sandbox` on initialize, independently of ordinary
+settings. nxs validates the type and capability before creating its SDK session,
+then installs the host requirement and acknowledges the capability. Missing
+acknowledgement disconnects Bridge before ConnectWithPrompt sends its user message.
+Claude is rejected before starting transport for this option.
+
+This is an execution contract: exclusions and unavailable backends cannot silently
+select direct execution. It is not a claim of Windows backend availability, complete
+filesystem/network policy ownership, or live permission-mode/sandbox synchronization.
+The option defaults to false. Mode changes do not clear the requirement; a new
+session with a changed effective policy is currently required.
+
+Required sandbox admission also gates raw and internal continuation writes. A transport
+being connected is not enough: concurrent sends during initialization fail until
+the current connection acknowledges the capability, without consuming queued context.
+
+For required execution, initialize includes object `sandbox_policy` containing the
+explicit host Sandbox settings. nxs rejects malformed objects before session creation;
+ordinary inline/project settings do not expand required-mode resource grants.
+
+`Session.Reconfigure` returns `ErrRestartRequired` with reason `sandbox_policy_changed`
+when Sandbox settings change in either direction. It applies no other hot controls
+and preserves current options. The host must retire/drain the old process and create
+a new session; changing permission mode alone is not a sandbox policy transition.

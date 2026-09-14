@@ -57,7 +57,7 @@ Capability 真相源位于 [`client/capability.go`](../client/capability.go)。�
 2. `Session.Send` 或 `SendWithOptions` 启动一轮执行。
 3. 宿主通过 `Recv` 消费类型化消息，或通过 `Result` 等待终态。
 4. 控制请求复用活跃 session，并保留 runtime request identity。
-5. `Session.Close` 释放 transport 和 bridge 拥有的进程资源。
+5. `Session.Close` 依次等待 transport 的 `Close`、`Wait` 和读取循环退出，之后才确认清理完成。终止尝试失败不代表进程已经退出；调用方取消只结束自身等待，不解除共享清理栅栏。关闭与退出错误均保留。
 
 `client.ForkSession` 会复制源 Session 到传入消息 ID 的精确边界，并创建独立目标。
 Claude Code 可能到首个用户回合才持久化目标 transcript，但 bridge 会在返回 Session
@@ -81,3 +81,24 @@ Runtime 强制隔离与产品授权不属于本库职责。
 
 公开 Go package 按仓库版本演进，`internal/` 不属于可依赖 API。新增 runtime 专属行为
 必须先定义公开 capability 和类型化协议；宿主不应依赖未文档化 payload 字段。
+
+## 必需沙箱执行
+
+`SandboxSettings.RequireSandbox=true` 要求 nxs 协商 `required_sandbox_v1`。
+Bridge 在 initialize 发送布尔 `required_sandbox`，独立于普通 settings；nxs 在创建 SDK
+会话前校验类型和能力、安装约束并确认能力。缺少确认时 Bridge 断开连接，
+ConnectWithPrompt 不发送用户消息。Claude 对该选项在启动 transport 前拒绝。
+
+该合同保证命令排除和后端不可用不触发隐式直跑，不表示 Windows 后端可用、文件/网络
+策略已全部归宿主控制或运行中权限模式已与沙箱同步。默认关闭；切换权限模式不清除此
+要求，当前需要以新的有效策略创建新会话。
+
+必需沙箱还在普通/原始消息和内部续跑的写入入口检查本次连接的能力确认；
+transport 已连接不代表握手完成。提前并发发送会失败，且不会消费待发送的轮次上下文。
+
+必需模式在 initialize 的对象 `sandbox_policy` 中传递显式宿主 Sandbox 配置；
+nxs 在创建会话前拒绝类型错误。普通 inline/project settings 不扩展必需模式的资源授权。
+
+`Session.Reconfigure` 遇到任一方向的 Sandbox 变化时，在其他热更新前返回
+`ErrRestartRequired`（`sandbox_policy_changed`），保留当前 options。宿主必须退出旧进程
+并创建新会话；仅修改权限模式不代表沙箱策略切换。

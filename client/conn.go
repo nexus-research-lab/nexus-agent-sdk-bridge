@@ -16,6 +16,9 @@ import (
 )
 
 func (c *sessionCore) Connect(ctx context.Context) error {
+	if c.options.Sandbox != nil && c.options.Sandbox.RequireSandbox && normalizedRuntimeKind(c.options.Runtime.Kind) != RuntimeNXS {
+		return errors.New("当前运行时不支持宿主必需沙箱协议，请使用支持该能力的 nxs 运行时")
+	}
 	lifecycle := c.lifecycle
 	var activeStreams *sessionStreams
 	var activeTransport Transport
@@ -86,6 +89,10 @@ func (c *sessionCore) Connect(ctx context.Context) error {
 
 	initializeResponse := runtimeinfo.DecodeInitializeResponse(response)
 	lifecycle.setInitializeResponse(initializeResponse)
+	if c.options.Sandbox != nil && c.options.Sandbox.RequireSandbox && !c.supports(CapabilityRequiredSandbox) {
+		_ = c.Disconnect(ctx)
+		return errors.New("运行时未确认必需沙箱能力，已停止连接；请升级运行时")
+	}
 	if c.options.Runtime.PermissionMode == permission.ModeAuto {
 		var modeErr error
 		if !c.supports(CapabilityAutoReview) {
@@ -243,6 +250,10 @@ func (c *sessionCore) finishSessionClose(
 	var closeErr error
 	if activeTransport != nil {
 		closeErr = activeTransport.Close()
+		// Close may report a failed termination attempt while the process still
+		// exists. Only Wait confirms transport/process exit; caller cancellation
+		// stops its wait without releasing this shared lifecycle fence.
+		closeErr = joinErrors(closeErr, activeTransport.Wait())
 	}
 	<-readDone
 	closeState.err = joinErrors(closeErr, c.getReadError())
@@ -373,6 +384,9 @@ func (c *sessionCore) SendMessageWithOptions(ctx context.Context, message protoc
 
 // SendRawMessage 发送一条原始 SDK 消息。
 func (c *sessionCore) SendRawMessage(ctx context.Context, message map[string]any, sessionID string) error {
+	if err := c.requireSandboxReadyForSend(); err != nil {
+		return err
+	}
 	if !c.isConnected() {
 		return ErrNotConnected
 	}
@@ -645,6 +659,9 @@ func (c *sessionCore) emitStreamDiagnostic(streamStop StreamStopDiagnostics) {
 }
 
 func (c *sessionCore) sendInternalRawMessage(message map[string]any, sessionID string) error {
+	if err := c.requireSandboxReadyForSend(); err != nil {
+		return err
+	}
 	if !c.isConnected() {
 		return ErrNotConnected
 	}

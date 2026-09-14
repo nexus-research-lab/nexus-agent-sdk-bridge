@@ -46,6 +46,9 @@ func (c *sessionCore) reconfigure(ctx context.Context, options Options) error {
 }
 
 func restartReasonForReconfigure(currentOptions Options, nextOptions Options) (RestartReason, bool) {
+	if !reflect.DeepEqual(currentOptions.Sandbox, nextOptions.Sandbox) {
+		return RestartReasonSandboxPolicyChanged, true
+	}
 	if !stringMapsEqual(currentOptions.Env, nextOptions.Env) && normalizedRuntimeKind(nextOptions.Runtime.Kind) != RuntimeNXS {
 		return RestartReasonProcessEnvChanged, true
 	}
