@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Preserve one-connection sandbox network approval boundaries through the permission transport.
+
 ### Changed
 
 - Preserve typed sandbox-escape approval boundaries and reject unknown classifications before invoking host approval callbacks.

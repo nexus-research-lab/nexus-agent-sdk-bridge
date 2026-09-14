@@ -6,6 +6,7 @@ package permission
 type Boundary string
 
 const (
-	BoundaryTool          Boundary = "tool"
-	BoundarySandboxEscape Boundary = "sandbox_escape"
+	BoundaryTool           Boundary = "tool"
+	BoundarySandboxEscape  Boundary = "sandbox_escape"
+	BoundarySandboxNetwork Boundary = "sandbox_network"
 )

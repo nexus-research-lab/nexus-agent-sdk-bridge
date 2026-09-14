@@ -16,6 +16,7 @@ func TestSandboxPermissionBoundaryTransport(t *testing.T) {
 		{name: "legacy", accepted: true},
 		{name: "ordinary", raw: "tool", include: true, accepted: true},
 		{name: "escape", raw: "sandbox_escape", include: true, accepted: true},
+		{name: "network", raw: "sandbox_network", include: true, accepted: true},
 		{name: "unknown", raw: "future_boundary", include: true},
 		{name: "malformed", raw: 42, include: true},
 	} {
