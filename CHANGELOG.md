@@ -6,6 +6,8 @@ All notable changes to this project are documented in this file.
 
 ### Changed
 
+- Preserve typed sandbox-escape approval boundaries and reject unknown classifications before invoking host approval callbacks.
+
 - Wait for transport/process exit after Close, including failed termination attempts, before releasing the session cleanup fence. Preserve both termination and exit diagnostics.
 - Return sandbox_policy_changed before applying any hot controls when Sandbox configuration changes; require process replacement instead of silently saving an unapplied policy.
 - Block concurrent raw, user and internal continuation messages until the required sandbox capability has been acknowledged for the current connection.

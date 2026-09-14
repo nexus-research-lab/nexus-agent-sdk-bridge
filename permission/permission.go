@@ -107,6 +107,7 @@ type Update struct {
 
 // Request 表示运行时发出的权限请求。
 type Request struct {
+	Boundary Boundary `json:"permission_boundary,omitempty"`
 	// RequiresHuman 禁止自动审核代替用户显式确认。
 	RequiresHuman         bool           `json:"requires_human,omitempty"`
 	Review                *Review        `json:"review,omitempty"`

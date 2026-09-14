@@ -59,7 +59,16 @@ func (c *sessionCore) resolvePermissionRequest(ctx context.Context, request map[
 		}
 	}
 
+	boundary := permission.Boundary("")
+	if raw, exists := request["permission_boundary"]; exists {
+		value, ok := raw.(string)
+		if !ok || (value != "" && value != string(permission.BoundaryTool) && value != string(permission.BoundarySandboxEscape)) {
+			return map[string]any{"behavior": "deny", "message": "unsupported permission boundary"}
+		}
+		boundary = permission.Boundary(value)
+	}
 	permissionRequest := permission.Request{
+		Boundary:              boundary,
 		ToolName:              jsonvalue.StringValue(request["tool_name"]),
 		Input:                 jsonvalue.MapValue(request["input"]),
 		PermissionSuggestions: decodePermissionUpdates(request["permission_suggestions"]),
