@@ -163,3 +163,11 @@ ordinary inline/project settings do not expand required-mode resource grants.
 when Sandbox settings change in either direction. It applies no other hot controls
 and preserves current options. The host must retire/drain the old process and create
 a new session; changing permission mode alone is not a sandbox policy transition.
+
+## Native file-tool confinement
+
+`SandboxSettings.RequireFileTools=true` additionally requires `RequireSandbox=true` and nxs capability `sandbox_file_tools_v1`. Bridge sends boolean `required_sandbox_file_tools` in initialize; it is not an inline sandbox setting. Invalid combinations fail before starting transport. Missing either required acknowledgement disconnects before the first task, and raw/internal/concurrent task sends use the same gate. Changing this requirement requires process replacement.
+
+The capability covers the built-in Read/Write/Edit file execution boundary, including content, directory suggestions, link/metadata and freshness reads. Preparation or execution failure must not fall back to direct host IO. Current nxs declares it only on macOS. It does not prove current dependencies, effective policy, whole-process confinement, Glob/Grep, Notebook, startup settings, Skills, memory or external MCP coverage.
+
+An old host can still request only `required_sandbox_v1`; a host requiring native file confinement must request both. `Session.Supports(CapabilitySandboxFileTools)` reports the current nxs acknowledgement, not a user permission or an activation switch. Claude Code does not implement this nxs extension; its native sandbox remains a separate adapter contract.

@@ -84,6 +84,8 @@ Runtime 强制隔离与产品授权不属于本库职责。
 
 ## 必需沙箱执行
 
+原生 Read/Write/Edit 覆盖须额外使用下述分项合同；基本命令能力不能推断文件工具隔离。
+
 `SandboxSettings.RequireSandbox=true` 要求 nxs 协商 `required_sandbox_v1`。
 Bridge 在 initialize 发送布尔 `required_sandbox`，独立于普通 settings；nxs 在创建 SDK
 会话前校验类型和能力、安装约束并确认能力。缺少确认时 Bridge 断开连接，
@@ -102,3 +104,11 @@ nxs 在创建会话前拒绝类型错误。普通 inline/project settings 不扩
 `Session.Reconfigure` 遇到任一方向的 Sandbox 变化时，在其他热更新前返回
 `ErrRestartRequired`（`sandbox_policy_changed`），保留当前 options。宿主必须退出旧进程
 并创建新会话；仅修改权限模式不代表沙箱策略切换。
+
+## 原生文件工具隔离
+
+`SandboxSettings.RequireFileTools=true` 额外要求 `RequireSandbox=true` 及 nxs 的 `sandbox_file_tools_v1`。Bridge 只在 initialize 发送布尔 `required_sandbox_file_tools`，普通 settings 不承载此要求。矛盾配置在启动 transport 前拒绝；缺少任一能力确认时先断开，再返回错误，不发送任务。原始/内部/并发消息使用同一准入检查；改变要求必须替换进程。
+
+该能力覆盖内置 Read/Write/Edit 的文件执行边界，包括内容、目录建议、链接/元数据及读取新鲜度检查；准备或执行失败不能回退为宿主直接 IO。当前 nxs 仅在 macOS 声明此能力，不表示依赖可用、当次策略生效、整个 SDK 主进程或 Glob/Grep、Notebook、启动配置、Skill、记忆与外部 MCP 已受限。
+
+旧宿主仍可只要求基本命令合同；需要原生文件隔离的宿主必须同时要求两个合同。`Session.Supports(CapabilitySandboxFileTools)` 只报告当前 nxs 确认，不授予权限，也不是用户启停开关。Claude Code 的原生沙箱另行适配，不使用该扩展。

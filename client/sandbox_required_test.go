@@ -105,7 +105,7 @@ func TestRequiredSandboxRealProcess(t *testing.T) {
 
 func TestRequiredSandboxConcurrentSendDuringInitialize(t *testing.T) {
 	tr := newScriptedTransport()
-	core := newSessionCoreWithTransport(Options{Transport: tr, Sandbox: &SandboxSettings{RequireSandbox: true}, Runtime: RuntimeOptions{Kind: RuntimeNXS, InitializeTimeout: time.Second}}, tr)
+	core := newSessionCoreWithTransport(Options{Transport: tr, Sandbox: &SandboxSettings{RequireSandbox: true, RequireFileTools: true}, Runtime: RuntimeOptions{Kind: RuntimeNXS, InitializeTimeout: time.Second}}, tr)
 	defer func() { _ = core.Disconnect(context.Background()) }()
 	done := make(chan error, 1)
 	go func() { done <- core.Connect(context.Background()) }()
@@ -125,7 +125,7 @@ func TestRequiredSandboxConcurrentSendDuringInitialize(t *testing.T) {
 		t.Fatalf("message sent before confirmation: %v", w)
 	default:
 	}
-	tr.pushRead(successfulInitializeResponse(map[string]any{"session_id": "ready", "protocol_capabilities": []string{requiredSandboxProtocolCapability}}))
+	tr.pushRead(successfulInitializeResponse(map[string]any{"session_id": "ready", "protocol_capabilities": []string{requiredSandboxProtocolCapability, sandboxFileToolsProtocolCapability}}))
 	if err := receiveDone(t, done); err != nil {
 		t.Fatal(err)
 	}

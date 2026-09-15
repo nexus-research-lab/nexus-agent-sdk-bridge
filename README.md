@@ -18,6 +18,8 @@ Hosts can use `Session.Control().ControlSubagent` after negotiating `CapabilityS
 
 Hosts may set `SandboxSettings.RequireSandbox` to require `required_sandbox_v1` from nxs before sending a task. Unsupported runtimes fail connection. This guarantees required execution handling, not platform backend availability; see [the contract](docs/runtime-contract.md#required-sandbox-execution).
 
+Add `RequireFileTools: true` to require the separate `sandbox_file_tools_v1` contract for native Read/Write/Edit. A command-only runtime is rejected before receiving a task. This does not claim that all SDK IO is isolated; see [file-tool scope](docs/runtime-contract.md#native-file-tool-confinement).
+
 ## Requirements
 
 - Go 1.24 or later

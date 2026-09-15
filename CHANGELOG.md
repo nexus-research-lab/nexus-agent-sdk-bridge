@@ -6,6 +6,8 @@ All notable changes to this project are documented in this file.
 
 ### Added
 
+- Add `SandboxSettings.RequireFileTools` and `CapabilitySandboxFileTools` for native nxs Read/Write/Edit confinement. Missing file capability rejects initialization and all task writes independently of command sandbox support; ordinary settings do not carry this requirement.
+
 - Add bounded `RuntimeInspector.SandboxStatus` queries against the explicitly configured nxs, preserving unknown results and independent runtime-path availability.
 
 - Preserve one-connection sandbox network approval boundaries through the permission transport.

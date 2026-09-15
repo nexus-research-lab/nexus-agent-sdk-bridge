@@ -16,8 +16,8 @@ import (
 )
 
 func (c *sessionCore) Connect(ctx context.Context) error {
-	if c.options.Sandbox != nil && c.options.Sandbox.RequireSandbox && normalizedRuntimeKind(c.options.Runtime.Kind) != RuntimeNXS {
-		return errors.New("当前运行时不支持宿主必需沙箱协议，请使用支持该能力的 nxs 运行时")
+	if err := c.validateSandboxRequirements(); err != nil {
+		return err
 	}
 	lifecycle := c.lifecycle
 	var activeStreams *sessionStreams
@@ -89,9 +89,9 @@ func (c *sessionCore) Connect(ctx context.Context) error {
 
 	initializeResponse := runtimeinfo.DecodeInitializeResponse(response)
 	lifecycle.setInitializeResponse(initializeResponse)
-	if c.options.Sandbox != nil && c.options.Sandbox.RequireSandbox && !c.supports(CapabilityRequiredSandbox) {
+	if err := c.requireSandboxReadyForSend(); err != nil {
 		_ = c.Disconnect(ctx)
-		return errors.New("运行时未确认必需沙箱能力，已停止连接；请升级运行时")
+		return fmt.Errorf("运行时未确认必需沙箱能力，已停止连接；请升级运行时: %w", err)
 	}
 	if c.options.Runtime.PermissionMode == permission.ModeAuto {
 		var modeErr error

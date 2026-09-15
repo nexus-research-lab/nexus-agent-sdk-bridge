@@ -21,6 +21,7 @@ type ControlRequestEnvelope struct {
 type ControlRequest struct {
 	SandboxPolicy             map[string]any      `json:"sandbox_policy,omitempty"`
 	RequiredSandbox           bool                `json:"required_sandbox,omitempty"`
+	RequiredSandboxFileTools  bool                `json:"required_sandbox_file_tools,omitempty"`
 	Operation                 string              `json:"operation,omitempty"`
 	Subtype                   string              `json:"subtype"`
 	ProtocolCapabilities      []string            `json:"protocol_capabilities,omitempty"`

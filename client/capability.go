@@ -8,6 +8,7 @@ type Capability string
 // 支持的会话后端能力。
 const (
 	CapabilityRequiredSandbox        Capability = "required_sandbox"
+	CapabilitySandboxFileTools       Capability = "sandbox_file_tools"
 	CapabilityAutoReview             Capability = "auto_review"
 	CapabilitySendOptions            Capability = "send_options"
 	CapabilityInternalContext        Capability = "internal_context"
@@ -29,6 +30,7 @@ const (
 	subagentControlProtocolCapability        = "subagent_control_v1"
 	autoReviewProtocolCapability             = "auto_review_v1"
 	requiredSandboxProtocolCapability        = "required_sandbox_v1"
+	sandboxFileToolsProtocolCapability       = "sandbox_file_tools_v1"
 	hookResponseAckProtocolCapability        = "hook_response_ack_v1"
 	messageExecutionPolicyProtocolCapability = "message_execution_policy_v1"
 )
@@ -66,6 +68,8 @@ func (c *sessionCore) supports(capability Capability) bool {
 		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS
 	case CapabilityRequiredSandbox:
 		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS && slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, requiredSandboxProtocolCapability)
+	case CapabilitySandboxFileTools:
+		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS && slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, sandboxFileToolsProtocolCapability)
 	case CapabilityAutoReview:
 		// Claude 使用原生控制确认模式；nxs 使用扩展协议协商。此能力不代表账号或模型可用性。
 		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeClaude || slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, autoReviewProtocolCapability)

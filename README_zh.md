@@ -17,6 +17,8 @@ agent loop，也不包含模型 runtime。
 
 宿主可用 `SandboxSettings.RequireSandbox` 要求 nxs 确认 `required_sandbox_v1` 后才发送任务；不支持的运行时连接失败。这表示必需执行约束，不表示平台后端已可用，详见 [协议](docs/runtime-contract.zh-CN.md#必需沙箱执行)。
 
+同时设置 `RequireFileTools: true` 可单独要求原生 Read/Write/Edit 的 `sandbox_file_tools_v1` 合同；只确认命令沙箱的旧运行时不能收到任务。这不代表所有 SDK IO 已受限，详见 [覆盖范围](docs/runtime-contract.zh-CN.md#原生文件工具隔离)。
+
 ## 前置条件
 
 - Go 1.24 及以上版本

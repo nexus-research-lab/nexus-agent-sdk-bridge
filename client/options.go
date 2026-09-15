@@ -124,6 +124,9 @@ type SandboxSeccompConfig struct {
 
 // SandboxSettings 表示命令执行隔离配置。
 type SandboxSettings struct {
+	// RequireFileTools 单独要求原生 Read/Write/Edit 隔离；必须同时设置 RequireSandbox。
+	// 只通过 nxs initialize 传递，不能作为普通 settings 或其他 runtime 的保证。
+	RequireFileTools bool `json:"-"`
 	// RequireSandbox 要求协商宿主执行保证；不代表当前平台已有可用后端。
 	RequireSandbox               bool                     `json:"requireSandbox,omitempty"`
 	Enabled                      *bool                    `json:"enabled,omitempty"`
@@ -169,7 +172,7 @@ func (s SandboxSettings) MarshalJSON() ([]byte, error) {
 // 静默改写成另一份 JSON。
 func mergeSandboxExtra(value map[string]any, extra map[string]any) {
 	known := map[string]struct{}{
-		"requireSandbox": {}, "enabled": {}, "failIfUnavailable": {}, "autoAllowBashIfSandboxed": {},
+		"requireSandbox": {}, "requireFileTools": {}, "enabled": {}, "failIfUnavailable": {}, "autoAllowBashIfSandboxed": {},
 		"allowUnsandboxedCommands": {}, "enabledPlatforms": {}, "network": {},
 		"filesystem": {}, "ignoreViolations": {}, "enableWeakerNestedSandbox": {},
 		"enableWeakerNetworkIsolation": {}, "allowAppleEvents": {},
