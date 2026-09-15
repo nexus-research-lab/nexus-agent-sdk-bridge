@@ -122,6 +122,12 @@ nxs 在创建会话前拒绝类型错误。普通 inline/project settings 不扩
 
 旧宿主仍可只要求基本命令合同；需要原生文件隔离的宿主必须同时要求两个合同。`Session.Supports(CapabilitySandboxFileTools)` 只报告当前 nxs 确认，不授予权限，也不是用户启停开关。Claude Code 的原生沙箱另行适配，不使用该扩展。
 
+## 搜索工具隔离
+
+`SandboxSettings.RequireSearchTools=true` 同时依赖 `RequireSandbox` 和 `RequireFileTools`。Bridge 仅在 initialize 发送 `required_sandbox_search_tools`，并在所有任务写入前要求 nxs 独立确认 `sandbox_search_tools_v1`。普通 settings 和 Extra 不能塞入该宿主要求；矛盾配置在启动 transport 前拒绝，要求变化必须替换进程。旧版本具备命令和 Read/Write/Edit 能力不代表搜索受限。
+
+当前 macOS nxs 将 Glob/Grep 的路径检查、缺失路径建议、rg 和结果元数据交给同一文件执行边界。辅助进程使用最小环境、拒绝网络并复用资源策略；准备、取消、输出限额及执行失败不得回退宿主 IO、重放或报告部分成功，单文件内容/计数保留文件名。该合同不证明当前策略已生效、全 SDK IO、脱离后代清理、scratch 回收、其他平台或 Claude 原生沙箱已验收。
+
 ## 宿主资源写入范围
 
 `SandboxSettings.Resources` 使用 `SandboxResourcePolicy`（`version`、`write_scope`、`scratch_root`），另要求 `sandbox_resources_v1`。Bridge 在普通 `sandbox_policy` 外独立发送 `required_sandbox_resources`，同时要求命令和文件合同，并在任何任务写入前检查三项确认。Resources 和 Extra 不能把该对象放进普通 settings。选项复制持有独立策略值，改变策略必须替换进程。

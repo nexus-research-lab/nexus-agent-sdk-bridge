@@ -19,6 +19,8 @@ agent loop，也不包含模型 runtime。
 
 同时设置 `RequireFileTools: true` 可单独要求原生 Read/Write/Edit 的 `sandbox_file_tools_v1` 合同；只确认命令沙箱的旧运行时不能收到任务。这不代表所有 SDK IO 已受限，详见 [覆盖范围](docs/runtime-contract.zh-CN.md#原生文件工具隔离)。
 
+再设置 `RequireSearchTools: true` 可要求 `sandbox_search_tools_v1`，确认 Glob/Grep 的路径检查、rg 和结果元数据边界。只具备旧文件能力的运行时不能收到任务，详见 [搜索合同](docs/runtime-contract.zh-CN.md#搜索工具隔离)。
+
 `SandboxSettings.Resources` 另要求 `sandbox_resources_v1`，选择工作区写入范围及宿主已准备的私有 scratch；当前 macOS 支持范围与生命周期责任见 [资源合同](docs/runtime-contract.zh-CN.md#宿主资源写入范围)。
 
 ## 前置条件

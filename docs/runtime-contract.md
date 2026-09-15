@@ -186,6 +186,12 @@ The capability covers the built-in Read/Write/Edit file execution boundary, incl
 
 An old host can still request only `required_sandbox_v1`; a host requiring native file confinement must request both. `Session.Supports(CapabilitySandboxFileTools)` reports the current nxs acknowledgement, not a user permission or an activation switch. Claude Code does not implement this nxs extension; its native sandbox remains a separate adapter contract.
 
+## Search-tool confinement
+
+`SandboxSettings.RequireSearchTools=true` additionally requires both `RequireSandbox` and `RequireFileTools`. Bridge sends `required_sandbox_search_tools` only in initialize and requires the separate nxs `sandbox_search_tools_v1` acknowledgement before all task writes. Ordinary settings and Extra cannot insert the host requirement. Invalid combinations fail before transport startup; changes require process replacement. An older runtime can support commands and Read/Write/Edit while lacking search confinement, so those capabilities cannot substitute for this acknowledgement.
+
+Current macOS nxs routes Glob/Grep path checks, missing-path suggestions, rg and result metadata through the file execution boundary. Search auxiliaries use a minimal environment, deny network and inherit the same resource policy. Preparation, cancellation, output limits and execution failure must not cause host IO fallback, replay or partial success; single-file content/count results preserve filenames. This contract does not establish current effective policy, whole-SDK IO, detached-process cleanup, scratch reclamation, other platforms or Claude native sandbox support.
+
 ## Host resource write scope
 
 `SandboxSettings.Resources` uses `SandboxResourcePolicy` (`version`, `write_scope`, `scratch_root`) and additionally requires `sandbox_resources_v1`. Bridge sends it as `required_sandbox_resources` outside ordinary `sandbox_policy`, requires both command and file contracts, and checks all three acknowledgements before any task write. `Resources` and Extra cannot insert the object into inline settings. Cloned options own their policy value; changing it requires process replacement.

@@ -6,6 +6,8 @@ All notable changes to this project are documented in this file.
 
 ### Added
 
+- Add host-only `RequireSearchTools` and `CapabilitySandboxSearchTools` for nxs Glob/Grep confinement. Require separate search, file and command acknowledgements before task writes; reject contradictory settings before transport, and replace the process when this requirement changes. Claude native sandbox adaptation remains independent.
+
 - Add host-only `SandboxSettings.Resources`, independent `sandbox_resources_v1` admission and the typed initialize resource policy. Require command and file acknowledgement as well; reject contradictory scopes before transport and require process replacement for resource changes. Scratch ownership and platform enforcement remain runtime/host responsibilities.
 
 - Add `SandboxSettings.RequireFileTools` and `CapabilitySandboxFileTools` for native nxs Read/Write/Edit confinement. Missing file capability rejects initialization and all task writes independently of command sandbox support; ordinary settings do not carry this requirement.

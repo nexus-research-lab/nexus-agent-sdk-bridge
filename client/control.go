@@ -241,6 +241,7 @@ func (c *sessionCore) buildInitializeRequest() protocol.ControlRequest {
 			autoReviewProtocolCapability,
 			requiredSandboxProtocolCapability,
 			sandboxFileToolsProtocolCapability,
+			sandboxSearchToolsProtocolCapability,
 			sandboxResourcesProtocolCapability,
 		}
 	}
@@ -248,6 +249,7 @@ func (c *sessionCore) buildInitializeRequest() protocol.ControlRequest {
 	if c.options.Sandbox != nil && c.options.Sandbox.RequireSandbox {
 		request.RequiredSandbox = true
 		request.RequiredSandboxFileTools = c.options.Sandbox.RequireFileTools
+		request.RequiredSandboxSearchTools = c.options.Sandbox.RequireSearchTools
 		request.RequiredSandboxResources = c.options.Sandbox.Resources
 		request.SandboxPolicy = sandboxSettingsMap(c.options.Sandbox)
 	}

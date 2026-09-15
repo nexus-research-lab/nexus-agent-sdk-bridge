@@ -2,6 +2,7 @@
 // subagent.go 提供协商后、当前父 MCP 调用内的原生子任务控制；不实现任务执行。
 // 必需沙箱通过 required_sandbox_v1 初始化协商，旧运行时不得静默降级。
 // RequireFileTools 额外要求 sandbox_file_tools_v1；不以命令能力推断原生文件工具已隔离。
+// RequireSearchTools 另要求 sandbox_search_tools_v1，Glob/Grep 覆盖不从旧文件合同推断。
 // Resources 通过独立版本合同确认只读/工作区写及宿主 scratch；复制选项、启动准入和进程替换保持此边界。
 // sandbox.go 在消息写入前独立校验当前初始化能力，阻止握手期间的并发提前发送。
 // reconfigure.go 对沙箱策略变化返回明确的重启要求，禁止仅更新本地 options 伪装生效。
