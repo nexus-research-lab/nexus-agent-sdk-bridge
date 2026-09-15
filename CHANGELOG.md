@@ -6,6 +6,8 @@ All notable changes to this project are documented in this file.
 
 ### Added
 
+- Add bounded `RuntimeInspector.SandboxStatus` queries against the explicitly configured nxs, preserving unknown results and independent runtime-path availability.
+
 - Preserve one-connection sandbox network approval boundaries through the permission transport.
 
 ### Changed
