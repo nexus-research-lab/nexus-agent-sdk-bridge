@@ -6,6 +6,8 @@ All notable changes to this project are documented in this file.
 
 ### Added
 
+- Add host-only `SandboxSettings.Resources`, independent `sandbox_resources_v1` admission and the typed initialize resource policy. Require command and file acknowledgement as well; reject contradictory scopes before transport and require process replacement for resource changes. Scratch ownership and platform enforcement remain runtime/host responsibilities.
+
 - Add `SandboxSettings.RequireFileTools` and `CapabilitySandboxFileTools` for native nxs Read/Write/Edit confinement. Missing file capability rejects initialization and all task writes independently of command sandbox support; ordinary settings do not carry this requirement.
 
 - Add bounded `RuntimeInspector.SandboxStatus` queries against the explicitly configured nxs, preserving unknown results and independent runtime-path availability.
@@ -13,6 +15,8 @@ All notable changes to this project are documented in this file.
 - Preserve one-connection sandbox network approval boundaries through the permission transport.
 
 ### Changed
+
+- Finish cleanup for sessions rejected before transport startup without waiting for a read loop that was never started; retain transport exit and active-read-loop fences.
 
 - Preserve typed sandbox-escape approval boundaries and reject unknown classifications before invoking host approval callbacks.
 

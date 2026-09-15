@@ -166,6 +166,7 @@ type sessionStreams struct {
 	messages            chan protocol.ReceivedMessage
 	readStop            chan struct{}
 	readDone            chan struct{}
+	readClaimed         bool // 连接锁保护；Start 受理后，读取循环或启动失败路径负责关闭 readDone。
 	closeState          *sessionCloseState
 	firstResult         chan struct{}
 	initialSessionReady chan struct{}
@@ -192,6 +193,7 @@ func (s *sessionStreams) reset() {
 	s.messages = make(chan protocol.ReceivedMessage, s.buffer)
 	s.readStop = make(chan struct{})
 	s.readDone = make(chan struct{})
+	s.readClaimed = false
 	s.closeState = nil
 	s.firstResult = make(chan struct{})
 	s.initialSessionReady = make(chan struct{})

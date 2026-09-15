@@ -11,6 +11,9 @@ func (c *sessionCore) validateSandboxRequirements() error {
 	if settings == nil {
 		return nil
 	}
+	if err := validateSandboxResources(settings); err != nil {
+		return err
+	}
 	if settings.RequireFileTools && !settings.RequireSandbox {
 		return errors.New("文件工具沙箱要求同时启用必需沙箱")
 	}
@@ -31,6 +34,9 @@ func (c *sessionCore) requireSandboxReadyForSend() error {
 	}
 	if c.options.Sandbox != nil && c.options.Sandbox.RequireFileTools && !c.supports(CapabilitySandboxFileTools) {
 		return &UnsupportedCapabilityError{Capability: CapabilitySandboxFileTools}
+	}
+	if c.options.Sandbox != nil && c.options.Sandbox.Resources != nil && !c.supports(CapabilitySandboxResources) {
+		return &UnsupportedCapabilityError{Capability: CapabilitySandboxResources}
 	}
 	return nil
 }

@@ -24,6 +24,7 @@ Nexus product
 - Subagent control 只在 `subagent_control_v1` 协商后按活跃父 MCP identity 调用；不实现执行循环。
 - 新能力必须先定义 capability；产品不能按 runtime 名称猜测 control 是否存在
 - 原生 Read/Write/Edit 通过 sandbox_file_tools_v1 单独确认；RequireFileTools 依赖 RequireSandbox，只走 initialize，不进入普通 settings
+- Resources 通过 sandbox_resources_v1 独立协商写范围与宿主 scratch，依赖命令和文件合同；Bridge 不拥有目录生命周期，也不推断全 SDK IO 隔离
 - 单条消息的无工具与输出预算共用 `message_execution_policy_v1`；未协商时宿主必须拒绝受限消息
 - 下一条消息的宿主上下文由 bridge 确定性排序；nxs 将其作为只进入 live model history、不落 transcript 的隐藏 reminder，Claude Code 通过 `UserPromptSubmit` hook 的 `additionalContext` 生成同语义 attachment
 - AutoDream 只由原生 nxs 提供；宿主负责唤醒，nxs 负责最终执行判断

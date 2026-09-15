@@ -124,6 +124,8 @@ type SandboxSeccompConfig struct {
 
 // SandboxSettings 表示命令执行隔离配置。
 type SandboxSettings struct {
+	// Resources 只走独立 initialize 合同，要求命令与文件能力；变化必须替换进程。
+	Resources *SandboxResourcePolicy `json:"-"`
 	// RequireFileTools 单独要求原生 Read/Write/Edit 隔离；必须同时设置 RequireSandbox。
 	// 只通过 nxs initialize 传递，不能作为普通 settings 或其他 runtime 的保证。
 	RequireFileTools bool `json:"-"`
@@ -172,7 +174,7 @@ func (s SandboxSettings) MarshalJSON() ([]byte, error) {
 // 静默改写成另一份 JSON。
 func mergeSandboxExtra(value map[string]any, extra map[string]any) {
 	known := map[string]struct{}{
-		"requireSandbox": {}, "requireFileTools": {}, "enabled": {}, "failIfUnavailable": {}, "autoAllowBashIfSandboxed": {},
+		"resources": {}, "requireSandbox": {}, "requireFileTools": {}, "enabled": {}, "failIfUnavailable": {}, "autoAllowBashIfSandboxed": {},
 		"allowUnsandboxedCommands": {}, "enabledPlatforms": {}, "network": {},
 		"filesystem": {}, "ignoreViolations": {}, "enableWeakerNestedSandbox": {},
 		"enableWeakerNetworkIsolation": {}, "allowAppleEvents": {},
@@ -519,6 +521,10 @@ func cloneSandboxSettings(input *SandboxSettings) *SandboxSettings {
 		return nil
 	}
 	result := *input
+	if input.Resources != nil {
+		resources := *input.Resources
+		result.Resources = &resources
+	}
 	if input.Network != nil {
 		network := *input.Network
 		network.AllowedDomains = append([]string(nil), input.Network.AllowedDomains...)

@@ -20,6 +20,8 @@ Hosts may set `SandboxSettings.RequireSandbox` to require `required_sandbox_v1` 
 
 Add `RequireFileTools: true` to require the separate `sandbox_file_tools_v1` contract for native Read/Write/Edit. A command-only runtime is rejected before receiving a task. This does not claim that all SDK IO is isolated; see [file-tool scope](docs/runtime-contract.md#native-file-tool-confinement).
 
+`SandboxSettings.Resources` additionally requires `sandbox_resources_v1` to select a workspace write scope and a host-prepared private scratch directory. See [resource scope](docs/runtime-contract.md#host-resource-write-scope) for current macOS support and lifecycle limits.
+
 ## Requirements
 
 - Go 1.24 or later

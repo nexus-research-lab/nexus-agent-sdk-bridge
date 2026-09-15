@@ -63,6 +63,7 @@ func (c *sessionCore) Connect(ctx context.Context) error {
 		}
 		activeStreams = streams
 		activeTransport = c.transport
+		streams.readClaimed = true
 		lifecycle.setConnectedLocked(true)
 		lifecycle.unlockConnection()
 		break
@@ -213,6 +214,11 @@ func (c *sessionCore) Disconnect(ctx context.Context) error {
 		}
 		lifecycle.setConnectedLocked(false)
 		close(streams.readStop)
+		if !streams.readClaimed {
+			// 配置在 Start 前拒绝时没有读取循环；关闭仍要核对已提供 transport 的退出。
+			close(streams.messages)
+			close(streams.readDone)
+		}
 		closeState = &sessionCloseState{done: make(chan struct{})}
 		streams.closeState = closeState
 		activeTransport = c.transport
