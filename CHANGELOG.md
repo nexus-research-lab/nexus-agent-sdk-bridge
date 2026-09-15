@@ -16,6 +16,8 @@ All notable changes to this project are documented in this file.
 
 ### Changed
 
+- Return typed process cleanup failures through Wait, forced shutdown and repeated Close. Reject failed process observations or residual Unix session members; the session sweep does not cover detached sessions or prove scratch reclamation.
+
 - Finish cleanup for sessions rejected before transport startup without waiting for a read loop that was never started; retain transport exit and active-read-loop fences.
 
 - Preserve typed sandbox-escape approval boundaries and reject unknown classifications before invoking host approval callbacks.

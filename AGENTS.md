@@ -29,6 +29,7 @@ Nexus product
 - 下一条消息的宿主上下文由 bridge 确定性排序；nxs 将其作为只进入 live model history、不落 transcript 的隐藏 reminder，Claude Code 通过 `UserPromptSubmit` hook 的 `additionalContext` 生成同语义 attachment
 - AutoDream 只由原生 nxs 提供；宿主负责唤醒，nxs 负责最终执行判断
 - 长时 control 的 context 取消必须携带同一 `request_id` 传播到 runtime
+- 进程清理错误通过 ProcessCleanupError 穿过 Wait 与重复 Close；Unix session 清理不代表全部脱离后代或宿主资源租约已经回收
 
 ## 开发约定
 

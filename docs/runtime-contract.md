@@ -71,6 +71,20 @@ Runtime names are not a substitute for capability checks.
 4. Controls use the active session and preserve the runtime request identity.
 5. `Session.Close` waits for both transport `Close` and `Wait`, then the read loop, before completing cleanup. A failed termination attempt does not prove process exit. Caller cancellation stops only that caller's wait; shared cleanup remains pending. Close and exit diagnostics are both preserved.
 
+Process cleanup failures are returned as `client.ProcessCleanupError`, matchable
+with `errors.As`. They survive a successful main-process exit, forced shutdown,
+and repeated process `Close` calls. The Unix sweep performs a final observation
+after bounded signaling and rejects observation errors or remaining visible
+members. It ignores only processes that disappeared during enumeration.
+
+This is a session sweep, not a complete process-tree receipt. Descendants can
+create another Unix session; Linux PID namespaces and `/proc` visibility also
+bound the observation. A host signal callback supplies its own cleanup semantics;
+its success is not independent exit verification by Bridge. Native Windows,
+process identity reuse, crash recovery and private scratch ownership need separate
+host/platform lifecycle guarantees. Hosts must retain a failed cleanup boundary
+instead of treating a closed stream as proof that resources can be reused.
+
 `client.ForkSession` creates an independent target from a source session through
 the exact supplied message ID. Claude Code may not persist the target transcript
 until its first user turn, but the bridge assigns the target session ID before

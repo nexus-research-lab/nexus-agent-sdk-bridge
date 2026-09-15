@@ -7,5 +7,7 @@
 // reconfigure.go 对沙箱策略变化返回明确的重启要求，禁止仅更新本地 options 伪装生效。
 // conn.go 的共享关闭先等待 transport Close 与 Wait，再确认清理完成；调用方超时不释放退出栅栏。
 // Start 前拒绝配置的会话没有读取循环，关闭不会等待未启动的循环；已启动的循环仍必须终态。
+// ProcessCleanupError 保留后代清理失败；主进程退出、主动终止和重复 Close 都不能消除它。
+// Unix session 清理只观察仍属于该 session 的进程，不提供脱离后代或跨重启回收证明。
 // permission_boundary distinguishes tool access from a single sandbox escape; unknown boundaries are rejected at transport admission.
 package client

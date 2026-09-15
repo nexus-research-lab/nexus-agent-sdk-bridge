@@ -127,6 +127,10 @@ start an independent session at an exact completed message boundary. Both
 Hosts that run the child under another OS identity can use
 `WithProcessSignalHandler` as the trusted, PID-validating boundary for
 interrupt, shutdown, and descendant cleanup.
+`client.ProcessCleanupError` preserves cleanup failures through `Wait` and repeated
+`Close`, including forced termination. The built-in Unix sweep covers visible
+members of the original session; detached sessions and durable resource recovery
+require separate host supervision. See [lifecycle limits](docs/runtime-contract.md#session-lifecycle).
 
 ## Documentation
 

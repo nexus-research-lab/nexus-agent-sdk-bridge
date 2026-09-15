@@ -118,6 +118,9 @@ Code 则通过原生 `UserPromptSubmit` hook 的 `additionalContext` 生成 atta
 `client.CapabilitySessionFork`。
 宿主若以另一个 OS 身份运行子进程，可通过 `WithProcessSignalHandler` 提供可信且
 校验 PID 的进程信号边界，统一处理中断、关闭和遗留子进程清理。
+`client.ProcessCleanupError` 在 Wait、主动终止和重复 Close 中保留清理失败。
+内置 Unix 清理只覆盖原 session 的可见成员；另建 session 的后代与跨重启资源恢复
+仍需宿主监督，详见 [生命周期边界](docs/runtime-contract.zh-CN.md#session-生命周期)。
 
 ## 文档
 

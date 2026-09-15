@@ -59,6 +59,15 @@ Capability 真相源位于 [`client/capability.go`](../client/capability.go)。�
 4. 控制请求复用活跃 session，并保留 runtime request identity。
 5. `Session.Close` 依次等待 transport 的 `Close`、`Wait` 和读取循环退出，之后才确认清理完成。终止尝试失败不代表进程已经退出；调用方取消只结束自身等待，不解除共享清理栅栏。关闭与退出错误均保留。
 
+进程清理失败通过 `client.ProcessCleanupError` 返回，可用 `errors.As` 匹配。
+主进程正常退出、主动终止以及重复调用进程 Close 都不能消除该错误。Unix 清理在
+有界发送信号后再次观察；枚举失败或仍有可见成员时返回错误，只忽略观察期间已消失的进程。
+
+这是 session 内清理步骤，不是完整进程树回执。后代可以另建 Unix session，Linux 的
+PID namespace 和 `/proc` 可见范围也限制观察。宿主信号回调自行定义清理语义，回调
+返回成功不代表 Bridge 又独立验证了退出。原生 Windows、进程身份复用、崩溃恢复及
+私有 scratch 所有权仍需独立平台/宿主保证。宿主必须保留失败边界，不能因流已关闭就复用资源。
+
 `client.ForkSession` 会复制源 Session 到传入消息 ID 的精确边界，并创建独立目标。
 Claude Code 可能到首个用户回合才持久化目标 transcript，但 bridge 会在返回 Session
 前分配目标 Session ID。

@@ -1,3 +1,6 @@
+// INPUT: 可信 runtime 路径、进程身份、stdio 和宿主信号回调。
+// OUTPUT: 进程传输、主进程退出与独立后代清理错误。
+// POS: Bridge 的进程生命周期；Unix session 清理不代表完整进程树回收。
 package transport
 
 import (
@@ -140,6 +143,7 @@ type ProcessManager struct {
 	reader        *bufio.Reader
 	writeMu       sync.Mutex
 	closeOnce     sync.Once
+	closeErr      error // closeOnce 发布的共享结果；重复关闭保留同一失败。
 	done          chan struct{}
 	waitErr       error
 	waitMu        sync.Mutex
@@ -272,9 +276,8 @@ func (m *ProcessManager) Start(ctx context.Context) error {
 
 	go func() {
 		defer close(m.done)
-		err := cmd.Wait()
+		err := errors.Join(cmd.Wait(), m.cleanupProcessSession(processSession))
 		m.setWaitError(err)
-		m.cleanupProcessSession(processSession)
 		m.waitForStderrReader()
 		stderrTail := strings.TrimSpace(m.stderrTail.String())
 		attributes := map[string]any{"pid": cmd.Process.Pid}
@@ -290,18 +293,20 @@ func (m *ProcessManager) Start(ctx context.Context) error {
 	return nil
 }
 
-func (m *ProcessManager) cleanupProcessSession(session processSession) {
+// cleanupProcessSession 将平台或宿主清理失败传到 Wait/Close，不能只写诊断。
+func (m *ProcessManager) cleanupProcessSession(session processSession) error {
 	if m.config.SignalProcess != nil && session.id() > 1 {
 		if err := m.config.SignalProcess(session.id(), ProcessSignalKill); err != nil {
 			m.emitDiagnostic("process_descendant_cleanup_error", map[string]any{
 				"session_id": session.id(),
 				"error":      err.Error(),
 			})
+			return &ProcessCleanupError{SessionID: session.id(), Err: err}
 		}
-		return
+		return nil
 	}
 	terminated, err := session.cleanup()
-	if terminated > 0 {
+	if terminated > 0 && err == nil {
 		m.emitDiagnostic("process_descendants_terminated", map[string]any{
 			"session_id":       session.id(),
 			"terminated_count": terminated,
@@ -312,7 +317,9 @@ func (m *ProcessManager) cleanupProcessSession(session processSession) {
 			"session_id": session.id(),
 			"error":      err.Error(),
 		})
+		return &ProcessCleanupError{SessionID: session.id(), Err: err}
 	}
+	return nil
 }
 
 // ReadJSON 读取下一条 JSON 消息。
@@ -454,8 +461,7 @@ func (m *ProcessManager) abortStartedProcess(cmd *exec.Cmd, session processSessi
 		return fmt.Errorf("process: kill started command failed: %w", err)
 	}
 	_ = cmd.Wait()
-	m.cleanupProcessSession(session)
-	return nil
+	return m.cleanupProcessSession(session)
 }
 
 func (m *ProcessManager) killStartedProcess(process *os.Process) error {
@@ -852,6 +858,7 @@ func (m *ProcessManager) Wait() error {
 func (m *ProcessManager) Close() error {
 	var closeErr error
 	m.closeOnce.Do(func() {
+		defer func() { m.closeErr = closeErr }()
 		_ = m.EndInput()
 
 		if m.cmd == nil || m.cmd.Process == nil {
@@ -892,9 +899,14 @@ func (m *ProcessManager) Close() error {
 		m.waitForStderrReader()
 		if !forcedExit {
 			closeErr = normalizeExitErrorWithStderr(m.waitError(), m.stderrTail.String())
+		} else {
+			var cleanupErr *ProcessCleanupError
+			if errors.As(m.waitError(), &cleanupErr) {
+				closeErr = errors.Join(closeErr, cleanupErr)
+			}
 		}
 	})
-	return closeErr
+	return m.closeErr
 }
 
 func (m *ProcessManager) closeOutputPipes() {

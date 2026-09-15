@@ -1,3 +1,6 @@
+// INPUT: 宿主提供的 transport、进程信号和 direct-connect 配置。
+// OUTPUT: 公开 transport 选项与可匹配的进程清理错误。
+// POS: 产品到 Bridge 传输生命周期的公开配置边界。
 package client
 
 import (
@@ -28,6 +31,9 @@ const (
 
 // ProcessSignalHandler 允许宿主跨 OS 身份边界发送进程信号。
 type ProcessSignalHandler = transport.ProcessSignalHandler
+
+// ProcessCleanupError 表示后代清理失败，不能因主进程退出而忽略。
+type ProcessCleanupError = transport.ProcessCleanupError
 
 // DirectConnectOptions 表示 direct-connect transport 配置。
 type DirectConnectOptions struct {
