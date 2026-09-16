@@ -4,5 +4,6 @@
 // required_sandbox_search_tools 独立要求搜索执行边界，依赖前两项，不进入普通 settings。
 // required_sandbox_media_files 独立要求本地图片读取，同样依赖命令及文件合同。
 // required_sandbox_skill_files 独立要求 Skill 文件读取，也仅通过 initialize 消费。
+// required_sandbox_context_files 独立要求指令与 compact 文件读取，仅用于 nxs initialize。
 // sandbox.go 定义 required_sandbox_resources 的唯一版本化线格式，不进入普通 sandbox_policy。
 package protocol

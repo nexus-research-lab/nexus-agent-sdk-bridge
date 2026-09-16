@@ -26,6 +26,7 @@ Nexus product
 - 原生 Read/Write/Edit 通过 sandbox_file_tools_v1 单独确认；RequireFileTools 依赖 RequireSandbox，只走 initialize，不进入普通 settings
 - Glob/Grep 通过 sandbox_search_tools_v1 独立确认；RequireSearchTools 依赖命令和文件合同，要求变化必须替换进程，不借用 Claude 的原生沙箱声明
 - 本地图片读取通过 sandbox_media_files_v1 独立确认；RequireMediaFiles 依赖命令和文件合同，只走 initialize，不能代表远程图片网络或 Claude 的沙箱。
+- 上下文文件通过 sandbox_context_files_v1 与 RequireContextFiles 独立确认，覆盖指令及 compact 恢复，不推断全 SDK 配置或后台 IO。
 - Skill 目录、正文、动态发现及 remember 设置通过 sandbox_skill_files_v1 独立确认；RequireSkillFiles 依赖命令和文件合同，不代表启动配置、hook 或后台 IO 已收口。
 - Resources 通过 sandbox_resources_v1 独立协商写范围与宿主 scratch，依赖命令和文件合同；Bridge 不拥有目录生命周期，也不推断全 SDK IO 隔离
 - 单条消息的无工具与输出预算共用 `message_execution_policy_v1`；未协商时宿主必须拒绝受限消息

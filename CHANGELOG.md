@@ -6,6 +6,8 @@ All notable changes to this project are documented in this file.
 
 ### Added
 
+- Add host-only `RequireContextFiles` and `CapabilitySandboxContextFiles` for startup/dynamic instructions and compact file reads. Require independent nxs acknowledgement before every task write; preserve process replacement and reject older runtimes. Global configuration, background IO and Claude adaptation remain separate.
+
 - Add host-only `RequireSkillFiles` and `CapabilitySandboxSkillFiles` for nxs Skill discovery, bodies, Git ignore queries and memory-availability settings. Require separate Skill, command and file acknowledgements before tasks; changed requirements replace the process. Startup settings, hooks, background IO and Claude native adaptation remain separate contracts.
 
 - Add `RequireMediaFiles` and `CapabilitySandboxMediaFiles` for local image reads in nxs ViewImage and model preprocessing. Require the separate media, command and file acknowledgements before task writes, reject contradictory options before transport startup, and replace the process when the requirement changes. This does not claim remote media network confinement or Claude support.

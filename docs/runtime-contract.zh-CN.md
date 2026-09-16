@@ -147,3 +147,9 @@ nxs 在创建会话前拒绝类型错误。普通 inline/project settings 不扩
 版本 1 接受 `read-only`、`workspace-write` 及显式绝对 scratch 目录。只读模式拒绝额外写授权，两种模式都拒绝明确允许未隔离命令。当前 nxs 只在 macOS 支持，并在初始化前拒绝无效、不支持或与工作区重叠的目录输入。已覆盖的命令/文件执行器不再从 HOME/TMPDIR、旧工作区临时位置或缓存兼容项扩大写入范围。
 
 宿主负责独占准备 scratch，并在执行和后代结束后回收；Bridge 不创建租约或证明目录私有性。此合同不覆盖全 SDK IO，也不是实际生效回执。普通读/deny 和网络保持各自合同，Claude 原生适配、其他平台及宿主默认接入仍需分别验收。未提供 Resources 时保留现有合同。启动前拒绝的会话仍能完成清理；已受理启动的 transport 和读取循环继续必须退出。
+
+## 上下文文件隔离
+
+`SandboxSettings.RequireContextFiles=true` 依赖命令和文件合同，并在每次任务写入前独立要求 nxs 确认 `sandbox_context_files_v1`。覆盖启动/动态指令、指令排除设置及 compact 文件恢复；缺少确认先断开，不发送任务。普通 settings 与 Extra 不能注入该要求，变化必须替换进程。
+
+排除配置不可读取时拒绝启动/重载；失败重载清除旧缓存，恢复读取之前阻止后续模型请求。权限/Provider 设置、项目定义、hook、持久化、后台 IO 与 Claude 原生接入仍独立验收。

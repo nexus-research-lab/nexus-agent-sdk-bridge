@@ -211,3 +211,9 @@ Current macOS nxs routes Glob/Grep path checks, missing-path suggestions, rg and
 Version 1 supports `read-only` or `workspace-write` and an explicit absolute private scratch directory. Read-only rejects additional write grants; both scopes reject explicit unsandboxed command permission. Current nxs supports these modes only on macOS and rejects malformed, unsupported or overlapping directory inputs before session initialization. Within the covered command/file executors, ambient HOME/TMPDIR and legacy workspace/cache write grants cannot expand the selected scope.
 
 The host prepares, owns and reclaims scratch after execution and descendants end; Bridge does not create a lease or prove privacy. This is not a whole-SDK IO or effective-policy receipt guarantee. Ordinary read/deny and network settings retain their separate contracts. Claude native integration, unsupported platforms and host product defaults remain separate acceptance work. Omitting Resources preserves the existing contract. A session rejected before startup can still finish cleanup; active transport and read-loop termination remain required once startup has been admitted.
+
+## Context file confinement
+
+`SandboxSettings.RequireContextFiles=true` requires the command and file contracts and a separate nxs `sandbox_context_files_v1` acknowledgement before task writes. It covers startup/dynamic instructions, instruction exclusion settings, and compact file restoration. Missing acknowledgement disconnects without sending a prompt; changed requirements replace the process. The host-only option cannot enter ordinary settings through Extra.
+
+Unreadable exclusion settings prevent startup/reload; failed reloads clear stale instructions and block subsequent model requests until reading recovers. Global permission/provider configuration, project definitions, hooks, persistence and background IO remain separate. Claude native adaptation does not advertise this capability.
