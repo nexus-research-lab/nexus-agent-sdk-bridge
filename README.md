@@ -182,3 +182,5 @@ Add `RequireProjectFiles: true` with command and file requirements for project d
 Use `RequireManagedPolicy: true` alongside command and file requirements to require fixed managed-policy sources and integrity checks. See [managed policy scope](docs/runtime-contract.md#managed-policy-integrity).
 
 Use `RequireSettingsFiles: true` to require confined ordinary settings reads and checked snapshots. See [ordinary settings scope](docs/runtime-contract.md#ordinary-settings-files-and-snapshots).
+
+SDK-hosted tools preserve `params._meta["claudecode/toolUseId"]` as `tools.Context.ToolUseID`. Missing metadata stays empty; business arguments and JSON-RPC request IDs are never treated as tool-use identity.

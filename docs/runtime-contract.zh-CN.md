@@ -157,3 +157,5 @@ nxs 在创建会话前拒绝类型错误。普通 inline/project settings 不扩
 ## 项目定义文件隔离
 
 `SandboxSettings.RequireProjectFiles=true` 同时要求命令、文件合同及独立 `sandbox_project_files_v1` 确认。覆盖项目 Agent/命令/Skill 定义和所选 hook 设置的启动/显式刷新读取；失败阻止后续执行，Agent/hook 绑定变更须重建 runtime。每次任务写入前检查，变化须替换进程，普通 settings/Extra 不得注入此宿主要求。全局权限/Provider 设置、持久化、hook 执行及其他后端不在本能力中。
+
+SDK 托管 MCP 调用上下文：nxs 和使用同一线格式的 runtime 所发 `params._meta["claudecode/toolUseId"]` 原样进入 `tools.Context.ToolUseID`。每次调用的元数据独立，不从参数或 JSON-RPC id 生成身份，也不推断 SessionID/RoundID；缺省元数据不继承父调用身份。

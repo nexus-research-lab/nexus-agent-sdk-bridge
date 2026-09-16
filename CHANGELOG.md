@@ -42,6 +42,10 @@ All notable changes to this project are documented in this file.
 - Block concurrent raw, user and internal continuation messages until the required sandbox capability has been acknowledged for the current connection.
 - Negotiate opt-in required sandbox execution before sending tasks; reject unsupported runtimes and missing nxs acknowledgement instead of silently ignoring the requirement.
 
+### Fixed
+
+- Preserve runtime MCP tool-use metadata in SDK-hosted tool callbacks instead of discarding it.
+
 ## [0.1.33] - 2026-09-10
 
 ### Added

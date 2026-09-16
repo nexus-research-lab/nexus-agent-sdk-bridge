@@ -48,7 +48,7 @@ func (s *SimpleSDKMCPServer) HandleMessage(ctx context.Context, message map[stri
 	if s == nil || s.server == nil {
 		return nil, errors.New("tools: sdk mcp server is nil")
 	}
-	return s.server.HandleMessage(ctx, message)
+	return s.server.HandleMessage(withMCPCallContext(ctx, message), message)
 }
 
 func sdkTools(definitions []Tool) []mcpserver.Tool {
