@@ -122,6 +122,12 @@ nxs 在创建会话前拒绝类型错误。普通 inline/project settings 不扩
 
 旧宿主仍可只要求基本命令合同；需要原生文件隔离的宿主必须同时要求两个合同。`Session.Supports(CapabilitySandboxFileTools)` 只报告当前 nxs 确认，不授予权限，也不是用户启停开关。Claude Code 的原生沙箱另行适配，不使用该扩展。
 
+## Skill 文件隔离
+
+`SandboxSettings.RequireSkillFiles=true` 依赖 `RequireSandbox` 和 `RequireFileTools`。Bridge 只在 initialize 发送 `required_sandbox_skill_files`，并在所有任务写入前要求 nxs 独立确认 `sandbox_skill_files_v1`。矛盾要求在启动 transport 前拒绝；缺少确认时先断开、不发送任务。普通 settings 和 Extra 不能注入此要求，改变要求必须替换进程。
+
+当前 macOS nxs 将 Skill 目录、正文、动态发现、Git 忽略与 remember 可见性设置绑定到同一文件边界；动态发现保留触发 Read 的上下文和 cwd，允许的来源、条件激活及 Git 忽略行为继续成立。Git 使用最小环境并拒绝网络；拒绝、取消和未知结果不回退宿主 IO，未知观察可以在下次实际文件访问时重新核对。该能力不代表全局启动配置、hook、后台记忆、生效回执、其他平台或 Claude 原生沙箱已验收。
+
 ## 本地媒体文件隔离
 
 `SandboxSettings.RequireMediaFiles=true` 依赖 `RequireSandbox` 和 `RequireFileTools`。Bridge 只在 initialize 发送 `required_sandbox_media_files`，并在所有任务写入前要求 nxs 独立确认 `sandbox_media_files_v1`。矛盾配置在启动 transport 前拒绝；缺少确认时先断开，不发送任务。普通 settings 和 Extra 不能塞入该宿主要求，要求变化必须替换进程。

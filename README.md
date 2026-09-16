@@ -24,6 +24,8 @@ Add `RequireSearchTools: true` alongside both requirements to require `sandbox_s
 
 Add `RequireMediaFiles: true` with the command and file requirements to require local image confinement for ViewImage and model preprocessing. Older runtimes are rejected before task writes. Remote image networking is separate; see [media scope](docs/runtime-contract.md#local-media-file-confinement).
 
+Add `RequireSkillFiles: true` with the command and file requirements for Skill catalogs, bodies, dynamic discovery, Git ignore queries and memory-availability settings. Startup settings, hooks and background IO remain separate; see [Skill scope](docs/runtime-contract.md#skill-file-confinement).
+
 `SandboxSettings.Resources` additionally requires `sandbox_resources_v1` to select a workspace write scope and a host-prepared private scratch directory. See [resource scope](docs/runtime-contract.md#host-resource-write-scope) for current macOS support and lifecycle limits.
 
 ## Requirements

@@ -21,6 +21,7 @@ type ControlRequestEnvelope struct {
 type ControlRequest struct {
 	RequiredSandboxSearchTools bool `json:"required_sandbox_search_tools,omitempty"`
 	RequiredSandboxMediaFiles  bool `json:"required_sandbox_media_files,omitempty"`
+	RequiredSandboxSkillFiles  bool `json:"required_sandbox_skill_files,omitempty"`
 
 	RequiredSandboxResources  *SandboxResourcePolicy `json:"required_sandbox_resources,omitempty"`
 	SandboxPolicy             map[string]any         `json:"sandbox_policy,omitempty"`

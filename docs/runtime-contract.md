@@ -186,6 +186,12 @@ The capability covers the built-in Read/Write/Edit file execution boundary, incl
 
 An old host can still request only `required_sandbox_v1`; a host requiring native file confinement must request both. `Session.Supports(CapabilitySandboxFileTools)` reports the current nxs acknowledgement, not a user permission or an activation switch. Claude Code does not implement this nxs extension; its native sandbox remains a separate adapter contract.
 
+## Skill file confinement
+
+`SandboxSettings.RequireSkillFiles=true` requires `RequireSandbox` and `RequireFileTools`. Bridge sends `required_sandbox_skill_files` only in initialize and requires the separate nxs `sandbox_skill_files_v1` acknowledgement before every task write. Invalid combinations fail before transport startup; missing acknowledgement disconnects without a prompt. Ordinary settings and Extra cannot inject this requirement. Changing it requires process replacement.
+
+Current macOS nxs routes Skill catalogs, bodies, dynamic discovery, Git ignore checks and remember-availability settings through the same file boundary. Dynamic discovery captures the triggering Read context and cwd; allowed sources, conditional activation and Git ignore behavior remain supported. Git receives a minimal environment with network denied. Denial, cancellation and unknown command results do not fall back to host IO; unknown observations can be checked again on a later file access. This contract does not cover all startup settings, hooks, background memory IO, effective-policy receipts, other platforms or Claude native sandbox behavior.
+
 ## Local media-file confinement
 
 `SandboxSettings.RequireMediaFiles=true` requires both `RequireSandbox` and `RequireFileTools`. Bridge sends `required_sandbox_media_files` only in initialize, then checks the separate nxs `sandbox_media_files_v1` acknowledgement before all task writes. Invalid combinations fail before transport startup; missing acknowledgement disconnects before a prompt. Ordinary settings and Extra cannot inject the requirement, and changing it requires process replacement.

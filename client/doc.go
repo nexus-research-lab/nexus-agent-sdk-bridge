@@ -4,6 +4,7 @@
 // RequireFileTools 额外要求 sandbox_file_tools_v1；不以命令能力推断原生文件工具已隔离。
 // RequireSearchTools 另要求 sandbox_search_tools_v1，Glob/Grep 覆盖不从旧文件合同推断。
 // RequireMediaFiles 独立确认图片入口的本地读取，不能推断远程网络或 Claude 能力。
+// RequireSkillFiles 独立确认 Skill 发现/正文、Git 忽略与 remember 设置；不推断全 SDK IO。
 // Resources 通过独立版本合同确认只读/工作区写及宿主 scratch；复制选项、启动准入和进程替换保持此边界。
 // sandbox.go 在消息写入前独立校验当前初始化能力，阻止握手期间的并发提前发送。
 // reconfigure.go 对沙箱策略变化返回明确的重启要求，禁止仅更新本地 options 伪装生效。
