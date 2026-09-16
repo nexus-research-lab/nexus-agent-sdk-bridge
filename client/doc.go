@@ -16,4 +16,5 @@
 // permission_boundary distinguishes tool access from a single sandbox escape; unknown boundaries are rejected at transport admission.
 // RequireProjectFiles 独立确认项目定义和 hook 设置读取；变化要求替换进程。
 // RequireManagedPolicy 独立确认托管来源和完整性；依赖命令/文件合同并参与进程替换。
+// RequireSettingsFiles 独立要求普通配置读取和快照完整性；不能推断凭据或持久化保证。
 package client

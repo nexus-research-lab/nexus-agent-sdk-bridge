@@ -227,3 +227,12 @@ Unreadable exclusion settings prevent startup/reload; failed reloads clear stale
 `SandboxSettings.RequireManagedPolicy=true` requires both the command and file contracts and a separate nxs `sandbox_managed_policy_v1` acknowledgement before any task write. It is sent only as initialize `required_sandbox_managed_policy`, excluded from ordinary settings, and participates in process replacement.
 
 The runtime fixes the managed-policy source before settings environment projection, keeps an immutable snapshot, rejects invalid managed files and checks effective policy integrity before query, compact, tool dispatch and permission updates. Changed policy requires runtime recreation; restoring the original effective content permits recovery. Required execution excludes task settings before reading them. This capability currently acknowledges the verified macOS implementation. Ordinary settings, credentials, persistence, other platforms and Claude native adaptation remain separate contracts.
+
+
+## Ordinary settings files and snapshots
+
+`SandboxSettings.RequireSettingsFiles=true` requires the command and file contracts and a separate nxs `sandbox_settings_files_v1` acknowledgement before task admission. It travels only as initialize `required_sandbox_settings_files`, is excluded from ordinary settings, and participates in process replacement. Claude cannot advertise this nxs capability.
+
+The runtime fixes config roots and selected sources before settings profile projection. Required execution reads ordinary files through the confined worker, rejects incomplete/invalid snapshots, and checks source integrity before query, compact, tools and configuration controls. Disabled sources are filtered before IO. Children keep independent bound snapshots; external changes require runtime recreation or restoration of the original content. Dynamic updates reject static execution fields instead of reporting unapplied changes as successful; get_settings uses the bound snapshot.
+
+The acknowledgement currently covers verified native macOS. Provider credential separation, rooted atomic permission writes, cross-process concurrency, durable approval/receipts, background IO and other platforms remain separate contracts. Snapshot checks do not undo side effects or establish a complete persistence transaction.

@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Add host-only `RequireSettingsFiles` and `CapabilitySandboxSettingsFiles`. Require separate nxs acknowledgement of confined ordinary settings reads and checked snapshots before task admission; replace the process when the requirement changes. This does not claim credential separation or atomic settings persistence.
+
 - Add host-only `RequireManagedPolicy` and `CapabilitySandboxManagedPolicy`. Require separate nxs acknowledgement of fixed managed-policy sources and integrity checks before task writes; replace the process when the requirement changes. Ordinary configuration, credentials and persistence remain separate contracts.
 
 - Require a separate nxs `sandbox_project_files_v1` acknowledgement for project definitions and hook-setting reads. Keep the requirement host-only, reject old runtimes before task writes, and replace the process when it changes.

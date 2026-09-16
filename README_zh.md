@@ -167,3 +167,5 @@ Apache License 2.0 · [LICENSE](./LICENSE)
 宿主可调用 `nxs.NewRuntimeInspector().SandboxStatus(ctx)` 查询配置运行时的版本化原生后端诊断。查询有时间和输出上限，独立于文件可用性，不代表隔离已经生效，详见 [运行时探测](runtimes/nxs/README.md)。
 
 宿主可在命令/文件要求之外设置 `RequireManagedPolicy: true`，独立确认托管来源固定与执行前完整性。详见 [托管策略合同](docs/runtime-contract.md#managed-policy-integrity)。
+
+普通配置受限读取与完整快照由 `RequireSettingsFiles` 独立要求，依赖命令/文件合同。见 [普通配置合同](docs/runtime-contract.md#ordinary-settings-files-and-snapshots)。凭据隔离与原子权限写入仍独立验收。
