@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Preserve runtime MCP tool-use metadata in SDK-hosted tool callbacks instead of discarding it.
+
 ## [0.1.33] - 2026-09-10
 
 ### Added

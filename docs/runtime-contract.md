@@ -135,3 +135,5 @@ capability. Older nxs versions and Claude Code report unsupported capability.
 Claude 的 `permission_mode=auto` 直接交给 Claude Code，自行使用其分类器、缓存与拒绝策略，不要求 nxs 专用 `auto_review_v1`，也不执行第二层 nxs 审核。`CapabilityAutoReview` 在 Claude 上表示已适配原生控制接口，不保证账号、模型或组织策略允许启用。启动和动态切换均要求 `set_permission_mode` 明确回复 `mode=auto`；错误、空确认或降级模式返回错误，启动失败关闭连接。
 
 Claude 的未通过请求可能被拒绝并交给模型尝试替代方案，非交互回退也可能结束执行；现有 `can_use_tool` 人工回调保持不变。宿主不得假定 Claude 会发出 nxs 的审核事件或包含其审核证据。支持情况服从 Claude 当前版本、模型、服务可用性与组织设置。
+
+SDK-hosted MCP call context: `params._meta["claudecode/toolUseId"]` is propagated unchanged to `tools.Context.ToolUseID`, for nxs and compatible runtimes using this existing wire field. Each call receives isolated metadata. SessionID/RoundID are not inferred. Missing metadata does not inherit a parent call identity.
