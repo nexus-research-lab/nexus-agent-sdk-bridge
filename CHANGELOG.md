@@ -4,6 +4,9 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Require a separate nxs `sandbox_project_files_v1` acknowledgement for project definitions and hook-setting reads. Keep the requirement host-only, reject old runtimes before task writes, and replace the process when it changes.
+
+
 ### Added
 
 - Add host-only `RequireContextFiles` and `CapabilitySandboxContextFiles` for startup/dynamic instructions and compact file reads. Require independent nxs acknowledgement before every task write; preserve process replacement and reject older runtimes. Global configuration, background IO and Claude adaptation remain separate.

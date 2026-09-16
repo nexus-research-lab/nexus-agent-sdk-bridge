@@ -23,6 +23,7 @@ type ControlRequest struct {
 	RequiredSandboxMediaFiles   bool `json:"required_sandbox_media_files,omitempty"`
 	RequiredSandboxSkillFiles   bool `json:"required_sandbox_skill_files,omitempty"`
 	RequiredSandboxContextFiles bool `json:"required_sandbox_context_files,omitempty"`
+	RequiredSandboxProjectFiles bool `json:"required_sandbox_project_files,omitempty"`
 
 	RequiredSandboxResources  *SandboxResourcePolicy `json:"required_sandbox_resources,omitempty"`
 	SandboxPolicy             map[string]any         `json:"sandbox_policy,omitempty"`

@@ -14,4 +14,5 @@
 // ProcessCleanupError 保留后代清理失败；主进程退出、主动终止和重复 Close 都不能消除它。
 // Unix session 清理只观察仍属于该 session 的进程，不提供脱离后代或跨重启回收证明。
 // permission_boundary distinguishes tool access from a single sandbox escape; unknown boundaries are rejected at transport admission.
+// RequireProjectFiles 独立确认项目定义和 hook 设置读取；变化要求替换进程。
 package client

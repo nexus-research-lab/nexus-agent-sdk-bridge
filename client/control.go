@@ -245,6 +245,7 @@ func (c *sessionCore) buildInitializeRequest() protocol.ControlRequest {
 			sandboxMediaFilesProtocolCapability,
 			sandboxSkillFilesProtocolCapability,
 			sandboxContextFilesProtocolCapability,
+			sandboxProjectFilesProtocolCapability,
 			sandboxResourcesProtocolCapability,
 		}
 	}
@@ -256,6 +257,7 @@ func (c *sessionCore) buildInitializeRequest() protocol.ControlRequest {
 		request.RequiredSandboxMediaFiles = c.options.Sandbox.RequireMediaFiles
 		request.RequiredSandboxSkillFiles = c.options.Sandbox.RequireSkillFiles
 		request.RequiredSandboxContextFiles = c.options.Sandbox.RequireContextFiles
+		request.RequiredSandboxProjectFiles = c.options.Sandbox.RequireProjectFiles
 		request.RequiredSandboxResources = c.options.Sandbox.Resources
 		request.SandboxPolicy = sandboxSettingsMap(c.options.Sandbox)
 	}

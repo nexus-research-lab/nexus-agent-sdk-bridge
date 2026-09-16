@@ -217,3 +217,7 @@ The host prepares, owns and reclaims scratch after execution and descendants end
 `SandboxSettings.RequireContextFiles=true` requires the command and file contracts and a separate nxs `sandbox_context_files_v1` acknowledgement before task writes. It covers startup/dynamic instructions, instruction exclusion settings, and compact file restoration. Missing acknowledgement disconnects without sending a prompt; changed requirements replace the process. The host-only option cannot enter ordinary settings through Extra.
 
 Unreadable exclusion settings prevent startup/reload; failed reloads clear stale instructions and block subsequent model requests until reading recovers. Global permission/provider configuration, project definitions, hooks, persistence and background IO remain separate. Claude native adaptation does not advertise this capability.
+
+## Project definition file confinement
+
+`SandboxSettings.RequireProjectFiles=true` requires the command and file contracts and a separate nxs `sandbox_project_files_v1` acknowledgement before task writes. It covers startup and explicit refresh of project Agent/command/Skill definitions and selected hook-setting files. Read failure prevents execution; changed Agent/hook bindings require a new runtime. The host-only requirement participates in process replacement and cannot be injected through ordinary settings. Global permission/provider settings, persistence, hook execution and other backends remain outside this capability.

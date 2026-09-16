@@ -6,4 +6,5 @@
 // required_sandbox_skill_files 独立要求 Skill 文件读取，也仅通过 initialize 消费。
 // required_sandbox_context_files 独立要求指令与 compact 文件读取，仅用于 nxs initialize。
 // sandbox.go 定义 required_sandbox_resources 的唯一版本化线格式，不进入普通 sandbox_policy。
+// required_sandbox_project_files 只通过 nxs initialize 传递项目定义文件要求。
 package protocol

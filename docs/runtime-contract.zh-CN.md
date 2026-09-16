@@ -153,3 +153,7 @@ nxs 在创建会话前拒绝类型错误。普通 inline/project settings 不扩
 `SandboxSettings.RequireContextFiles=true` 依赖命令和文件合同，并在每次任务写入前独立要求 nxs 确认 `sandbox_context_files_v1`。覆盖启动/动态指令、指令排除设置及 compact 文件恢复；缺少确认先断开，不发送任务。普通 settings 与 Extra 不能注入该要求，变化必须替换进程。
 
 排除配置不可读取时拒绝启动/重载；失败重载清除旧缓存，恢复读取之前阻止后续模型请求。权限/Provider 设置、项目定义、hook、持久化、后台 IO 与 Claude 原生接入仍独立验收。
+
+## 项目定义文件隔离
+
+`SandboxSettings.RequireProjectFiles=true` 同时要求命令、文件合同及独立 `sandbox_project_files_v1` 确认。覆盖项目 Agent/命令/Skill 定义和所选 hook 设置的启动/显式刷新读取；失败阻止后续执行，Agent/hook 绑定变更须重建 runtime。每次任务写入前检查，变化须替换进程，普通 settings/Extra 不得注入此宿主要求。全局权限/Provider 设置、持久化、hook 执行及其他后端不在本能力中。

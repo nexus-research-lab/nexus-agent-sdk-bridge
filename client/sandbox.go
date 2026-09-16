@@ -29,6 +29,9 @@ func (c *sessionCore) validateSandboxRequirements() error {
 	if settings.RequireContextFiles && (!settings.RequireSandbox || !settings.RequireFileTools) {
 		return errors.New("上下文文件沙箱要求同时启用必需沙箱和文件工具合同")
 	}
+	if settings.RequireProjectFiles && (!settings.RequireSandbox || !settings.RequireFileTools) {
+		return errors.New("项目定义文件沙箱要求同时启用必需沙箱和文件工具合同")
+	}
 	if settings.RequireSandbox && normalizedRuntimeKind(c.options.Runtime.Kind) != RuntimeNXS {
 		return &UnsupportedCapabilityError{Capability: CapabilityRequiredSandbox}
 	}
@@ -58,6 +61,9 @@ func (c *sessionCore) requireSandboxReadyForSend() error {
 	}
 	if c.options.Sandbox != nil && c.options.Sandbox.RequireContextFiles && !c.supports(CapabilitySandboxContextFiles) {
 		return &UnsupportedCapabilityError{Capability: CapabilitySandboxContextFiles}
+	}
+	if c.options.Sandbox != nil && c.options.Sandbox.RequireProjectFiles && !c.supports(CapabilitySandboxProjectFiles) {
+		return &UnsupportedCapabilityError{Capability: CapabilitySandboxProjectFiles}
 	}
 	if c.options.Sandbox != nil && c.options.Sandbox.Resources != nil && !c.supports(CapabilitySandboxResources) {
 		return &UnsupportedCapabilityError{Capability: CapabilitySandboxResources}

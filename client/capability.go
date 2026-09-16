@@ -13,6 +13,7 @@ const (
 	CapabilitySandboxMediaFiles      Capability = "sandbox_media_files"
 	CapabilitySandboxSkillFiles      Capability = "sandbox_skill_files"
 	CapabilitySandboxContextFiles    Capability = "sandbox_context_files"
+	CapabilitySandboxProjectFiles    Capability = "sandbox_project_files"
 	CapabilitySandboxResources       Capability = "sandbox_resources"
 	CapabilityAutoReview             Capability = "auto_review"
 	CapabilitySendOptions            Capability = "send_options"
@@ -40,6 +41,7 @@ const (
 	sandboxMediaFilesProtocolCapability      = "sandbox_media_files_v1"
 	sandboxSkillFilesProtocolCapability      = "sandbox_skill_files_v1"
 	sandboxContextFilesProtocolCapability    = "sandbox_context_files_v1"
+	sandboxProjectFilesProtocolCapability    = "sandbox_project_files_v1"
 	sandboxResourcesProtocolCapability       = "sandbox_resources_v1"
 	hookResponseAckProtocolCapability        = "hook_response_ack_v1"
 	messageExecutionPolicyProtocolCapability = "message_execution_policy_v1"
@@ -88,6 +90,8 @@ func (c *sessionCore) supports(capability Capability) bool {
 		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS && slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, sandboxSkillFilesProtocolCapability)
 	case CapabilitySandboxContextFiles:
 		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS && slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, sandboxContextFilesProtocolCapability)
+	case CapabilitySandboxProjectFiles:
+		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS && slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, sandboxProjectFilesProtocolCapability)
 	case CapabilitySandboxResources:
 		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS && slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, sandboxResourcesProtocolCapability)
 	case CapabilityAutoReview:

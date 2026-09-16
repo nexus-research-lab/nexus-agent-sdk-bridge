@@ -176,3 +176,5 @@ Apache License 2.0 · [LICENSE](./LICENSE)
 Automatic permission review (`permission_mode=auto`) uses negotiated `auto_review_v1` on nxs and native mode confirmation on Claude Code. Claude owns its classifier and rejection behavior; unsupported or unconfirmed mode changes return an error. See [runtime contract](docs/runtime-contract.md).
 
 Hosts can call `nxs.NewRuntimeInspector().SandboxStatus(ctx)` to query the configured runtime for versioned native backend diagnostics. This bounded local query is separate from runtime-path availability and does not prove effective isolation. See [runtime inspection](runtimes/nxs/README.md).
+
+Add `RequireProjectFiles: true` with command and file requirements for project definitions and hook-setting reads. See [project file scope](docs/runtime-contract.md#project-definition-file-confinement).
