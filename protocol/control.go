@@ -19,11 +19,12 @@ type ControlRequestEnvelope struct {
 //
 // 它保留底层 wire 层 subtype union 形状，领域语义由 client、mcp、permission 等公开包承接。
 type ControlRequest struct {
-	RequiredSandboxSearchTools  bool `json:"required_sandbox_search_tools,omitempty"`
-	RequiredSandboxMediaFiles   bool `json:"required_sandbox_media_files,omitempty"`
-	RequiredSandboxSkillFiles   bool `json:"required_sandbox_skill_files,omitempty"`
-	RequiredSandboxContextFiles bool `json:"required_sandbox_context_files,omitempty"`
-	RequiredSandboxProjectFiles bool `json:"required_sandbox_project_files,omitempty"`
+	RequiredSandboxSearchTools   bool `json:"required_sandbox_search_tools,omitempty"`
+	RequiredSandboxMediaFiles    bool `json:"required_sandbox_media_files,omitempty"`
+	RequiredSandboxSkillFiles    bool `json:"required_sandbox_skill_files,omitempty"`
+	RequiredSandboxContextFiles  bool `json:"required_sandbox_context_files,omitempty"`
+	RequiredSandboxProjectFiles  bool `json:"required_sandbox_project_files,omitempty"`
+	RequiredSandboxManagedPolicy bool `json:"required_sandbox_managed_policy,omitempty"`
 
 	RequiredSandboxResources  *SandboxResourcePolicy `json:"required_sandbox_resources,omitempty"`
 	SandboxPolicy             map[string]any         `json:"sandbox_policy,omitempty"`

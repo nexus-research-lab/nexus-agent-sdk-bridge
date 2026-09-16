@@ -139,6 +139,8 @@ type SandboxSettings struct {
 	RequireContextFiles bool `json:"-"`
 	// RequireProjectFiles 要求项目 Agent/命令/Skill 和 hook 设置读取受限。
 	RequireProjectFiles bool `json:"-"`
+	// RequireManagedPolicy 要求托管来源固定，执行前核对完整性。
+	RequireManagedPolicy bool `json:"-"`
 	// RequireSandbox 要求协商宿主执行保证；不代表当前平台已有可用后端。
 	RequireSandbox               bool                     `json:"requireSandbox,omitempty"`
 	Enabled                      *bool                    `json:"enabled,omitempty"`
@@ -184,7 +186,7 @@ func (s SandboxSettings) MarshalJSON() ([]byte, error) {
 // 静默改写成另一份 JSON。
 func mergeSandboxExtra(value map[string]any, extra map[string]any) {
 	known := map[string]struct{}{
-		"resources": {}, "requireSandbox": {}, "requireFileTools": {}, "requireSearchTools": {}, "requireMediaFiles": {}, "requireSkillFiles": {}, "requireContextFiles": {}, "requireProjectFiles": {}, "enabled": {}, "failIfUnavailable": {}, "autoAllowBashIfSandboxed": {},
+		"resources": {}, "requireSandbox": {}, "requireFileTools": {}, "requireSearchTools": {}, "requireMediaFiles": {}, "requireSkillFiles": {}, "requireContextFiles": {}, "requireProjectFiles": {}, "requireManagedPolicy": {}, "enabled": {}, "failIfUnavailable": {}, "autoAllowBashIfSandboxed": {},
 		"allowUnsandboxedCommands": {}, "enabledPlatforms": {}, "network": {},
 		"filesystem": {}, "ignoreViolations": {}, "enableWeakerNestedSandbox": {},
 		"enableWeakerNetworkIsolation": {}, "allowAppleEvents": {},

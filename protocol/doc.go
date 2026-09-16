@@ -7,4 +7,5 @@
 // required_sandbox_context_files 独立要求指令与 compact 文件读取，仅用于 nxs initialize。
 // sandbox.go 定义 required_sandbox_resources 的唯一版本化线格式，不进入普通 sandbox_policy。
 // required_sandbox_project_files 只通过 nxs initialize 传递项目定义文件要求。
+// required_sandbox_managed_policy 只通过 nxs initialize 要求托管策略保证。
 package protocol

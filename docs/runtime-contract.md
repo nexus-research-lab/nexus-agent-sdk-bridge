@@ -221,3 +221,9 @@ Unreadable exclusion settings prevent startup/reload; failed reloads clear stale
 ## Project definition file confinement
 
 `SandboxSettings.RequireProjectFiles=true` requires the command and file contracts and a separate nxs `sandbox_project_files_v1` acknowledgement before task writes. It covers startup and explicit refresh of project Agent/command/Skill definitions and selected hook-setting files. Read failure prevents execution; changed Agent/hook bindings require a new runtime. The host-only requirement participates in process replacement and cannot be injected through ordinary settings. Global permission/provider settings, persistence, hook execution and other backends remain outside this capability.
+
+## Managed policy integrity
+
+`SandboxSettings.RequireManagedPolicy=true` requires both the command and file contracts and a separate nxs `sandbox_managed_policy_v1` acknowledgement before any task write. It is sent only as initialize `required_sandbox_managed_policy`, excluded from ordinary settings, and participates in process replacement.
+
+The runtime fixes the managed-policy source before settings environment projection, keeps an immutable snapshot, rejects invalid managed files and checks effective policy integrity before query, compact, tool dispatch and permission updates. Changed policy requires runtime recreation; restoring the original effective content permits recovery. Required execution excludes task settings before reading them. This capability currently acknowledges the verified macOS implementation. Ordinary settings, credentials, persistence, other platforms and Claude native adaptation remain separate contracts.

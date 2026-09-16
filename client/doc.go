@@ -15,4 +15,5 @@
 // Unix session 清理只观察仍属于该 session 的进程，不提供脱离后代或跨重启回收证明。
 // permission_boundary distinguishes tool access from a single sandbox escape; unknown boundaries are rejected at transport admission.
 // RequireProjectFiles 独立确认项目定义和 hook 设置读取；变化要求替换进程。
+// RequireManagedPolicy 独立确认托管来源和完整性；依赖命令/文件合同并参与进程替换。
 package client

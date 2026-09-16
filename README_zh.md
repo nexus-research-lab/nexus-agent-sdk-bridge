@@ -165,3 +165,5 @@ Apache License 2.0 · [LICENSE](./LICENSE)
 自动审核模式 `permission_mode=auto` 在 nxs 上协商 `auto_review_v1`，在 Claude Code 上确认原生模式。Claude 自行负责分类审核与拒绝处理；不支持或未确认启用时返回错误，详见 [运行时契约](docs/runtime-contract.md)。
 
 宿主可调用 `nxs.NewRuntimeInspector().SandboxStatus(ctx)` 查询配置运行时的版本化原生后端诊断。查询有时间和输出上限，独立于文件可用性，不代表隔离已经生效，详见 [运行时探测](runtimes/nxs/README.md)。
+
+宿主可在命令/文件要求之外设置 `RequireManagedPolicy: true`，独立确认托管来源固定与执行前完整性。详见 [托管策略合同](docs/runtime-contract.md#managed-policy-integrity)。

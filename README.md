@@ -178,3 +178,5 @@ Automatic permission review (`permission_mode=auto`) uses negotiated `auto_revie
 Hosts can call `nxs.NewRuntimeInspector().SandboxStatus(ctx)` to query the configured runtime for versioned native backend diagnostics. This bounded local query is separate from runtime-path availability and does not prove effective isolation. See [runtime inspection](runtimes/nxs/README.md).
 
 Add `RequireProjectFiles: true` with command and file requirements for project definitions and hook-setting reads. See [project file scope](docs/runtime-contract.md#project-definition-file-confinement).
+
+Use `RequireManagedPolicy: true` alongside command and file requirements to require fixed managed-policy sources and integrity checks. See [managed policy scope](docs/runtime-contract.md#managed-policy-integrity).
