@@ -22,6 +22,8 @@ Add `RequireFileTools: true` to require the separate `sandbox_file_tools_v1` con
 
 Add `RequireSearchTools: true` alongside both requirements to require `sandbox_search_tools_v1` for Glob/Grep path checks, ripgrep and result metadata. Older file-only runtimes are rejected before tasks; see [search scope](docs/runtime-contract.md#search-tool-confinement).
 
+Add `RequireMediaFiles: true` with the command and file requirements to require local image confinement for ViewImage and model preprocessing. Older runtimes are rejected before task writes. Remote image networking is separate; see [media scope](docs/runtime-contract.md#local-media-file-confinement).
+
 `SandboxSettings.Resources` additionally requires `sandbox_resources_v1` to select a workspace write scope and a host-prepared private scratch directory. See [resource scope](docs/runtime-contract.md#host-resource-write-scope) for current macOS support and lifecycle limits.
 
 ## Requirements

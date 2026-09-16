@@ -21,6 +21,8 @@ agent loop，也不包含模型 runtime。
 
 再设置 `RequireSearchTools: true` 可要求 `sandbox_search_tools_v1`，确认 Glob/Grep 的路径检查、rg 和结果元数据边界。只具备旧文件能力的运行时不能收到任务，详见 [搜索合同](docs/runtime-contract.zh-CN.md#搜索工具隔离)。
 
+同时要求命令和文件合同后，设置 `RequireMediaFiles: true` 可独立确认 ViewImage 与模型预处理的本地图片读取。旧版本在任务写入前拒绝；远程媒体网络独立验收，详见 [媒体文件合同](docs/runtime-contract.zh-CN.md#本地媒体文件隔离)。
+
 `SandboxSettings.Resources` 另要求 `sandbox_resources_v1`，选择工作区写入范围及宿主已准备的私有 scratch；当前 macOS 支持范围与生命周期责任见 [资源合同](docs/runtime-contract.zh-CN.md#宿主资源写入范围)。
 
 ## 前置条件

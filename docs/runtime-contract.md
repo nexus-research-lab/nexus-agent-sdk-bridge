@@ -186,6 +186,12 @@ The capability covers the built-in Read/Write/Edit file execution boundary, incl
 
 An old host can still request only `required_sandbox_v1`; a host requiring native file confinement must request both. `Session.Supports(CapabilitySandboxFileTools)` reports the current nxs acknowledgement, not a user permission or an activation switch. Claude Code does not implement this nxs extension; its native sandbox remains a separate adapter contract.
 
+## Local media-file confinement
+
+`SandboxSettings.RequireMediaFiles=true` requires both `RequireSandbox` and `RequireFileTools`. Bridge sends `required_sandbox_media_files` only in initialize, then checks the separate nxs `sandbox_media_files_v1` acknowledgement before all task writes. Invalid combinations fail before transport startup; missing acknowledgement disconnects before a prompt. Ordinary settings and Extra cannot inject the requirement, and changing it requires process replacement.
+
+The current macOS contract covers local image reads by ViewImage and main-model preprocessing, including paths, file URLs, symlinks, deferred references and nested tool-result images. File-executor preparation and reads cannot fall back; access is checked before cached analysis. Old command/file/search capabilities cannot imply this coverage. Remote media networking, effective-policy receipts, whole-SDK IO, other platforms and Claude native sandbox adaptation remain separate.
+
 ## Search-tool confinement
 
 `SandboxSettings.RequireSearchTools=true` additionally requires both `RequireSandbox` and `RequireFileTools`. Bridge sends `required_sandbox_search_tools` only in initialize and requires the separate nxs `sandbox_search_tools_v1` acknowledgement before all task writes. Ordinary settings and Extra cannot insert the host requirement. Invalid combinations fail before transport startup; changes require process replacement. An older runtime can support commands and Read/Write/Edit while lacking search confinement, so those capabilities cannot substitute for this acknowledgement.

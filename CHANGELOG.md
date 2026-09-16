@@ -6,6 +6,8 @@ All notable changes to this project are documented in this file.
 
 ### Added
 
+- Add `RequireMediaFiles` and `CapabilitySandboxMediaFiles` for local image reads in nxs ViewImage and model preprocessing. Require the separate media, command and file acknowledgements before task writes, reject contradictory options before transport startup, and replace the process when the requirement changes. This does not claim remote media network confinement or Claude support.
+
 - Add host-only `RequireSearchTools` and `CapabilitySandboxSearchTools` for nxs Glob/Grep confinement. Require separate search, file and command acknowledgements before task writes; reject contradictory settings before transport, and replace the process when this requirement changes. Claude native sandbox adaptation remains independent.
 
 - Add host-only `SandboxSettings.Resources`, independent `sandbox_resources_v1` admission and the typed initialize resource policy. Require command and file acknowledgement as well; reject contradictory scopes before transport and require process replacement for resource changes. Scratch ownership and platform enforcement remain runtime/host responsibilities.

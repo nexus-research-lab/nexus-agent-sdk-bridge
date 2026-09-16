@@ -131,6 +131,8 @@ type SandboxSettings struct {
 	RequireFileTools bool `json:"-"`
 	// RequireSearchTools 单独要求 Glob/Grep 受限执行；依赖 RequireSandbox 和 RequireFileTools。
 	RequireSearchTools bool `json:"-"`
+	// RequireMediaFiles 要求 ViewImage 与图片预处理的本地读取受限；依赖命令和文件合同。
+	RequireMediaFiles bool `json:"-"`
 	// RequireSandbox 要求协商宿主执行保证；不代表当前平台已有可用后端。
 	RequireSandbox               bool                     `json:"requireSandbox,omitempty"`
 	Enabled                      *bool                    `json:"enabled,omitempty"`
@@ -176,7 +178,7 @@ func (s SandboxSettings) MarshalJSON() ([]byte, error) {
 // 静默改写成另一份 JSON。
 func mergeSandboxExtra(value map[string]any, extra map[string]any) {
 	known := map[string]struct{}{
-		"resources": {}, "requireSandbox": {}, "requireFileTools": {}, "requireSearchTools": {}, "enabled": {}, "failIfUnavailable": {}, "autoAllowBashIfSandboxed": {},
+		"resources": {}, "requireSandbox": {}, "requireFileTools": {}, "requireSearchTools": {}, "requireMediaFiles": {}, "enabled": {}, "failIfUnavailable": {}, "autoAllowBashIfSandboxed": {},
 		"allowUnsandboxedCommands": {}, "enabledPlatforms": {}, "network": {},
 		"filesystem": {}, "ignoreViolations": {}, "enableWeakerNestedSandbox": {},
 		"enableWeakerNetworkIsolation": {}, "allowAppleEvents": {},

@@ -122,6 +122,12 @@ nxs 在创建会话前拒绝类型错误。普通 inline/project settings 不扩
 
 旧宿主仍可只要求基本命令合同；需要原生文件隔离的宿主必须同时要求两个合同。`Session.Supports(CapabilitySandboxFileTools)` 只报告当前 nxs 确认，不授予权限，也不是用户启停开关。Claude Code 的原生沙箱另行适配，不使用该扩展。
 
+## 本地媒体文件隔离
+
+`SandboxSettings.RequireMediaFiles=true` 依赖 `RequireSandbox` 和 `RequireFileTools`。Bridge 只在 initialize 发送 `required_sandbox_media_files`，并在所有任务写入前要求 nxs 独立确认 `sandbox_media_files_v1`。矛盾配置在启动 transport 前拒绝；缺少确认时先断开，不发送任务。普通 settings 和 Extra 不能塞入该宿主要求，要求变化必须替换进程。
+
+当前 macOS 合同覆盖 ViewImage 与主模型预处理的本地图片读取，包括路径、file URL、符号链接、延迟引用和嵌套工具图片。准备或读取失败不能回退，辅助分析缓存前仍检查读取。旧命令、文件或搜索能力不能代替该确认；远程媒体网络、生效回执、全 SDK IO、其他平台和 Claude 原生沙箱继续独立验收。
+
 ## 搜索工具隔离
 
 `SandboxSettings.RequireSearchTools=true` 同时依赖 `RequireSandbox` 和 `RequireFileTools`。Bridge 仅在 initialize 发送 `required_sandbox_search_tools`，并在所有任务写入前要求 nxs 独立确认 `sandbox_search_tools_v1`。普通 settings 和 Extra 不能塞入该宿主要求；矛盾配置在启动 transport 前拒绝，要求变化必须替换进程。旧版本具备命令和 Read/Write/Edit 能力不代表搜索受限。
