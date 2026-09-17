@@ -168,6 +168,8 @@ Apache License 2.0 · [LICENSE](./LICENSE)
 
 宿主可在命令/文件要求之外设置 `RequireManagedPolicy: true`，独立确认托管来源固定与执行前完整性。详见 [托管策略合同](docs/runtime-contract.md#managed-policy-integrity)。
 
-普通配置受限读取与完整快照由 `RequireSettingsFiles` 独立要求，依赖命令/文件合同。见 [普通配置合同](docs/runtime-contract.md#ordinary-settings-files-and-snapshots)。凭据隔离与原子权限写入仍独立验收。
+普通配置受限读取与完整快照由 `RequireSettingsFiles` 独立要求，依赖命令/文件合同。见 [普通配置合同](docs/runtime-contract.zh-CN.md#普通配置文件与快照)。该读取合同不包含配置持久化。
+
+在必需沙箱、文件工具和配置读取要求之外设置 `RequireSettingsWrites: true`，可要求 nxs 独立确认 Config 与权限持久化边界。Claude Code 和缺少该能力的旧 nxs 会在任务发送前拒绝。见 [普通配置写入合同](docs/runtime-contract.zh-CN.md#普通配置写入)。
 
 SDK 托管工具把 `params._meta["claudecode/toolUseId"]` 传递为 `tools.Context.ToolUseID`。缺省元数据保持为空，不从业务参数或 JSON-RPC request ID 推断 tool-use 身份。

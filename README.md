@@ -183,4 +183,6 @@ Use `RequireManagedPolicy: true` alongside command and file requirements to requ
 
 Use `RequireSettingsFiles: true` to require confined ordinary settings reads and checked snapshots. See [ordinary settings scope](docs/runtime-contract.md#ordinary-settings-files-and-snapshots).
 
+Use `RequireSettingsWrites: true` together with the required sandbox, file-tool and settings-file options to require nxs-controlled Config and permission persistence. Claude Code and older nxs runtimes are rejected before a task is sent. See [ordinary settings write scope](docs/runtime-contract.md#ordinary-settings-writes).
+
 SDK-hosted tools preserve `params._meta["claudecode/toolUseId"]` as `tools.Context.ToolUseID`. Missing metadata stays empty; business arguments and JSON-RPC request IDs are never treated as tool-use identity.

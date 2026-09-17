@@ -43,6 +43,7 @@ type OptionsFingerprint struct {
 	RestartSensitive string `json:"restart_sensitive"`
 	ProcessEnv       string `json:"process_env"`
 	ToolPolicy       string `json:"tool_policy"`
+	SandboxContract  string `json:"sandbox_contract"`
 	MCPServers       string `json:"mcp_servers"`
 	RuntimeControls  string `json:"runtime_controls"`
 }
@@ -126,6 +127,7 @@ func fingerprintResolvedOptions(o resolvedOptions) OptionsFingerprint {
 		"setting_sources":        o.SettingSources,
 		"additional_directories": o.AdditionalDirectories,
 	})
+	sandboxContract := digestValue(sandboxContractFingerprintPayload(o.Sandbox))
 	mcpServers := digestValue(o.MCPSerialized)
 	runtimeControls := digestValue(map[string]any{
 		"permission_mode":      string(o.PermissionMode),
@@ -136,9 +138,10 @@ func fingerprintResolvedOptions(o resolvedOptions) OptionsFingerprint {
 	})
 	launch := digestValue(runtimeLaunchFingerprintPayload(o))
 	restartSensitive := digestValue(map[string]any{
-		"process_env":  processEnv,
-		"tool_policy":  toolPolicy,
-		"skill_config": skillConfig,
+		"process_env":      processEnv,
+		"tool_policy":      toolPolicy,
+		"skill_config":     skillConfig,
+		"sandbox_contract": sandboxContract,
 	})
 	full := digestValue(map[string]any{
 		"launch":            launch,
@@ -152,8 +155,30 @@ func fingerprintResolvedOptions(o resolvedOptions) OptionsFingerprint {
 		RestartSensitive: restartSensitive,
 		ProcessEnv:       processEnv,
 		ToolPolicy:       toolPolicy,
+		SandboxContract:  sandboxContract,
 		MCPServers:       mcpServers,
 		RuntimeControls:  runtimeControls,
+	}
+}
+
+// sandboxContractFingerprintPayload 显式保留不进入普通 settings 的 initialize 要求。
+// 这些字段虽然不在进程 argv 中，但变化同样必须替换 runtime 连接。
+func sandboxContractFingerprintPayload(settings *SandboxSettings) map[string]any {
+	if settings == nil {
+		return nil
+	}
+	return map[string]any{
+		"resources":               settings.Resources,
+		"require_sandbox":         settings.RequireSandbox,
+		"require_file_tools":      settings.RequireFileTools,
+		"require_search_tools":    settings.RequireSearchTools,
+		"require_media_files":     settings.RequireMediaFiles,
+		"require_skill_files":     settings.RequireSkillFiles,
+		"require_context_files":   settings.RequireContextFiles,
+		"require_project_files":   settings.RequireProjectFiles,
+		"require_managed_policy":  settings.RequireManagedPolicy,
+		"require_settings_files":  settings.RequireSettingsFiles,
+		"require_settings_writes": settings.RequireSettingsWrites,
 	}
 }
 

@@ -38,6 +38,9 @@ func (c *sessionCore) validateSandboxRequirements() error {
 	if settings.RequireSettingsFiles && (!settings.RequireSandbox || !settings.RequireFileTools) {
 		return errors.New("普通配置沙箱要求同时启用必需沙箱和文件工具合同")
 	}
+	if settings.RequireSettingsWrites && (!settings.RequireSandbox || !settings.RequireFileTools || !settings.RequireSettingsFiles) {
+		return errors.New("普通配置写入沙箱要求同时启用必需沙箱、文件工具和普通配置读取合同")
+	}
 	if settings.RequireSandbox && normalizedRuntimeKind(c.options.Runtime.Kind) != RuntimeNXS {
 		return &UnsupportedCapabilityError{Capability: CapabilityRequiredSandbox}
 	}
@@ -76,6 +79,9 @@ func (c *sessionCore) requireSandboxReadyForSend() error {
 	}
 	if c.options.Sandbox != nil && c.options.Sandbox.RequireSettingsFiles && !c.supports(CapabilitySandboxSettingsFiles) {
 		return &UnsupportedCapabilityError{Capability: CapabilitySandboxSettingsFiles}
+	}
+	if c.options.Sandbox != nil && c.options.Sandbox.RequireSettingsWrites && !c.supports(CapabilitySandboxSettingsWrites) {
+		return &UnsupportedCapabilityError{Capability: CapabilitySandboxSettingsWrites}
 	}
 	if c.options.Sandbox != nil && c.options.Sandbox.Resources != nil && !c.supports(CapabilitySandboxResources) {
 		return &UnsupportedCapabilityError{Capability: CapabilitySandboxResources}

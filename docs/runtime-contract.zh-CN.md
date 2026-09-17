@@ -158,4 +158,22 @@ nxs 在创建会话前拒绝类型错误。普通 inline/project settings 不扩
 
 `SandboxSettings.RequireProjectFiles=true` 同时要求命令、文件合同及独立 `sandbox_project_files_v1` 确认。覆盖项目 Agent/命令/Skill 定义和所选 hook 设置的启动/显式刷新读取；失败阻止后续执行，Agent/hook 绑定变更须重建 runtime。每次任务写入前检查，变化须替换进程，普通 settings/Extra 不得注入此宿主要求。全局权限/Provider 设置、持久化、hook 执行及其他后端不在本能力中。
 
+## 普通配置文件与快照
+
+`SandboxSettings.RequireSettingsFiles=true` 依赖命令和文件合同，并要求 nxs 在任务准入前独立确认 `sandbox_settings_files_v1`。Bridge 只在 initialize 发送 `required_sandbox_settings_files`，不把它放入普通 settings；要求变化必须替换进程。Claude 不能声明该 nxs 能力。
+
+runtime 在 settings profile 投影前固定配置根与所选来源。必需模式通过受限文件 worker 完整读取，拒绝不完整或无效快照，并在 query、compact、工具和配置控制前核对来源完整性。禁用来源在 IO 前过滤；子 runtime 保留独立绑定快照。外部内容改变后必须重建 runtime，或恢复原始内容后再继续。动态更新会拒绝静态执行字段，`get_settings` 使用已绑定快照。
+
+当前确认范围是原生 macOS。Provider 凭据隔离、配置持久化、跨进程并发、持久批准/回执、后台 IO 与其他平台仍是独立合同；快照检查不会撤销已发生的副作用，也不构成完整持久化事务。
+
+## 普通配置写入
+
+`SandboxSettings.RequireSettingsWrites=true` 同时依赖 `RequireSandbox`、`RequireFileTools` 和 `RequireSettingsFiles`。Bridge 只在 initialize 发送 `required_sandbox_settings_writes`，不写入普通 `sandbox_policy`，并要求 nxs 确认 `required_sandbox_v1`、`sandbox_file_tools_v1`、`sandbox_settings_files_v1` 和 `sandbox_settings_writes_v1`。矛盾配置在启动 transport 前拒绝；缺少确认时先断开，不向宿主暴露 runtime Session，也不发送普通、原始或内部任务消息。该宿主选项参与进程替换与 restart-sensitive 指纹。Claude 不能声明或要求此 nxs 扩展，旧 nxs 会失败关闭。
+
+当前原生 macOS nxs 将 Config 与显式权限持久化交给同一个启动时绑定的 settings store。Config 使用文件型 `--settings` 指定的文件，否则使用 user settings；inline flag 回退 user settings，没有可写来源时拒绝。Config 读取返回目标文档值，不把它声明为分层合并后的最终值；写入使用 canonical 嵌套键并保留无关及旧字段。显式 SDK Options 和进程环境仍有更高优先级，因此持久化值只是下一 runtime 的设置默认值，不是最终 effective 值证明。写入前先构造完整分层快照；如果 project、local、flag 或 managed policy 的高优先级来源仍覆盖目标值，则在落盘前拒绝。Config 实际变化返回 `runtimeRestartRequired=true` 并阻止当前 runtime 后续执行；no-op 不要求重建。
+
+物理 writer 固定目录身份，拒绝后续符号链接、目录代次和特殊文件替换，并同时保护目标 settings 与随机临时文件名模式的字面路径及解析后物理别名，阻止沙箱内任务跨过配置写入边界。必需模式拒绝已有多硬链接 settings，因为路径沙箱不能枚举所有别名。writer 同步并持续持有临时文件，通过父目录句柄做同目录替换并核对提交身份。单文档替换具备原子可见性；跨多文档的权限更新按确定顺序提交，部分提交会把共享 store 标记为 unknown。runtime clone 的逻辑快照独立，但共享写锁、目录代次、unknown 与 recreate 栅栏。
+
+该能力不保证宿主上另一个未受沙箱的同 UID 进程并发修改、跨进程锁或 CAS、多文档 all-or-nothing、父目录 fsync 或断电持久性，也不提供 exact request/approval/revision 的持久绑定、durable receipt、重启后的 unknown 对账或自动重放。Unix 替换只保留普通 permission bits，不承诺 owner、ACL、xattr 或文件 flags。Provider 凭据、任务环境和其他 SDK IO 仍是独立边界；Windows 当前只有交叉编译证据，Go 可写位检查不代表 DACL 私密性，也不属于原生验收。
+
 SDK 托管 MCP 调用上下文：nxs 和使用同一线格式的 runtime 所发 `params._meta["claudecode/toolUseId"]` 原样进入 `tools.Context.ToolUseID`。每次调用的元数据独立，不从参数或 JSON-RPC id 生成身份，也不推断 SessionID/RoundID；缺省元数据不继承父调用身份。

@@ -1,6 +1,10 @@
 package client
 
-import "slices"
+import (
+	"slices"
+
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/protocol"
+)
 
 // Capability 表示当前会话后端公开的运行时能力。
 type Capability string
@@ -16,6 +20,7 @@ const (
 	CapabilitySandboxProjectFiles    Capability = "sandbox_project_files"
 	CapabilitySandboxManagedPolicy   Capability = "sandbox_managed_policy"
 	CapabilitySandboxSettingsFiles   Capability = "sandbox_settings_files"
+	CapabilitySandboxSettingsWrites  Capability = "sandbox_settings_writes"
 	CapabilitySandboxResources       Capability = "sandbox_resources"
 	CapabilityAutoReview             Capability = "auto_review"
 	CapabilitySendOptions            Capability = "send_options"
@@ -46,6 +51,7 @@ const (
 	sandboxProjectFilesProtocolCapability    = "sandbox_project_files_v1"
 	sandboxManagedPolicyProtocolCapability   = "sandbox_managed_policy_v1"
 	sandboxSettingsFilesProtocolCapability   = "sandbox_settings_files_v1"
+	sandboxSettingsWritesProtocolCapability  = protocol.CapabilitySandboxSettingsWritesV1
 	sandboxResourcesProtocolCapability       = "sandbox_resources_v1"
 	hookResponseAckProtocolCapability        = "hook_response_ack_v1"
 	messageExecutionPolicyProtocolCapability = "message_execution_policy_v1"
@@ -100,6 +106,8 @@ func (c *sessionCore) supports(capability Capability) bool {
 		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS && slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, sandboxManagedPolicyProtocolCapability)
 	case CapabilitySandboxSettingsFiles:
 		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS && slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, sandboxSettingsFilesProtocolCapability)
+	case CapabilitySandboxSettingsWrites:
+		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS && slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, sandboxSettingsWritesProtocolCapability)
 	case CapabilitySandboxResources:
 		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS && slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, sandboxResourcesProtocolCapability)
 	case CapabilityAutoReview:

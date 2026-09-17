@@ -8,6 +8,9 @@ import (
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/permission"
 )
 
+// CapabilitySandboxSettingsWritesV1 是 nxs 普通配置受控写入的 initialize 能力名。
+const CapabilitySandboxSettingsWritesV1 = "sandbox_settings_writes_v1"
+
 // ControlRequestEnvelope 表示控制请求包。
 type ControlRequestEnvelope struct {
 	Type      string         `json:"type"`
@@ -19,13 +22,14 @@ type ControlRequestEnvelope struct {
 //
 // 它保留底层 wire 层 subtype union 形状，领域语义由 client、mcp、permission 等公开包承接。
 type ControlRequest struct {
-	RequiredSandboxSearchTools   bool `json:"required_sandbox_search_tools,omitempty"`
-	RequiredSandboxMediaFiles    bool `json:"required_sandbox_media_files,omitempty"`
-	RequiredSandboxSkillFiles    bool `json:"required_sandbox_skill_files,omitempty"`
-	RequiredSandboxContextFiles  bool `json:"required_sandbox_context_files,omitempty"`
-	RequiredSandboxProjectFiles  bool `json:"required_sandbox_project_files,omitempty"`
-	RequiredSandboxManagedPolicy bool `json:"required_sandbox_managed_policy,omitempty"`
-	RequiredSandboxSettingsFiles bool `json:"required_sandbox_settings_files,omitempty"`
+	RequiredSandboxSearchTools    bool `json:"required_sandbox_search_tools,omitempty"`
+	RequiredSandboxMediaFiles     bool `json:"required_sandbox_media_files,omitempty"`
+	RequiredSandboxSkillFiles     bool `json:"required_sandbox_skill_files,omitempty"`
+	RequiredSandboxContextFiles   bool `json:"required_sandbox_context_files,omitempty"`
+	RequiredSandboxProjectFiles   bool `json:"required_sandbox_project_files,omitempty"`
+	RequiredSandboxManagedPolicy  bool `json:"required_sandbox_managed_policy,omitempty"`
+	RequiredSandboxSettingsFiles  bool `json:"required_sandbox_settings_files,omitempty"`
+	RequiredSandboxSettingsWrites bool `json:"required_sandbox_settings_writes,omitempty"`
 
 	RequiredSandboxResources  *SandboxResourcePolicy `json:"required_sandbox_resources,omitempty"`
 	SandboxPolicy             map[string]any         `json:"sandbox_policy,omitempty"`

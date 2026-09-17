@@ -9,4 +9,5 @@
 // required_sandbox_project_files 只通过 nxs initialize 传递项目定义文件要求。
 // required_sandbox_managed_policy 只通过 nxs initialize 要求托管策略保证。
 // required_sandbox_settings_files 只通过 nxs initialize 要求普通配置读取和快照保证。
+// required_sandbox_settings_writes 只通过 nxs initialize 要求普通配置受控写入。
 package protocol
