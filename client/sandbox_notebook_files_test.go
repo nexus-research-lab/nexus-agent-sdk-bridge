@@ -6,6 +6,9 @@ package client
 import (
 	"context"
 	"errors"
+	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -97,5 +100,29 @@ func TestNotebookFileSandboxRequiresBaseContracts(t *testing.T) {
 			t.Fatalf("invalid requirement reached transport: %v", write)
 		default:
 		}
+	}
+}
+
+func TestNotebookFileSandboxRealProcess(t *testing.T) {
+	binary := os.Getenv("NEXUS_SANDBOX_TEST_BINARY")
+	if binary == "" {
+		t.Skip("set NEXUS_SANDBOX_TEST_BINARY to an explicit nxs binary")
+	}
+	root := t.TempDir()
+	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
+	defer cancel()
+	session, err := NewSession(ctx, Options{CLIPath: binary, CWD: root, Env: map[string]string{"NEXUS_CONFIG_DIR": filepath.Join(root, "config")},
+		Sandbox: notebookFileSandboxSettings(), Runtime: RuntimeOptions{Kind: RuntimeNXS, InitializeTimeout: 10 * time.Second}})
+	if err != nil {
+		if runtime.GOOS == "darwin" {
+			t.Fatal(err)
+		}
+		return
+	}
+	if closeErr := session.Close(context.Background()); closeErr != nil {
+		t.Fatal(closeErr)
+	}
+	if !session.Supports(CapabilitySandboxNotebookFiles) {
+		t.Fatal("nxs did not report notebook file capability")
 	}
 }

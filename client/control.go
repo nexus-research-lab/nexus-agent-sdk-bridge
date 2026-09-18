@@ -243,6 +243,7 @@ func (c *sessionCore) buildInitializeRequest() protocol.ControlRequest {
 			sandboxFileToolsProtocolCapability,
 			sandboxSearchToolsProtocolCapability,
 			sandboxMediaFilesProtocolCapability,
+			sandboxNotebookFilesProtocolCapability,
 			sandboxSkillFilesProtocolCapability,
 			sandboxContextFilesProtocolCapability,
 			sandboxProjectFilesProtocolCapability,
