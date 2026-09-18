@@ -73,6 +73,7 @@ func TestBuildInitializeRequestAdvertisesNXSProtocolCapabilities(t *testing.T) {
 		sandboxFileToolsProtocolCapability,
 		sandboxSearchToolsProtocolCapability,
 		sandboxMediaFilesProtocolCapability,
+		sandboxNotebookFilesProtocolCapability,
 		sandboxSkillFilesProtocolCapability,
 		sandboxContextFilesProtocolCapability,
 		sandboxProjectFilesProtocolCapability,
