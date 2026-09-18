@@ -4,6 +4,7 @@
 // RequireFileTools 额外要求 sandbox_file_tools_v1；不以命令能力推断原生文件工具已隔离。
 // RequireSearchTools 另要求 sandbox_search_tools_v1，Glob/Grep 覆盖不从旧文件合同推断。
 // RequireMediaFiles 独立确认图片入口的本地读取，不能推断远程网络或 Claude 能力。
+// RequireNotebookFiles 独立确认 Notebook 内容与 cell output 的本地读取，不能推断 Notebook 执行或远程网络。
 // RequireSkillFiles 独立确认 Skill 发现/正文、Git 忽略与 remember 设置；不推断全 SDK IO。
 // RequireContextFiles 独立确认指令及 compact 文件读取；依赖命令和文件合同。
 // Resources 通过独立版本合同确认只读/工作区写及宿主 scratch；复制选项、启动准入和进程替换保持此边界。

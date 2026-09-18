@@ -174,6 +174,7 @@ func sandboxContractFingerprintPayload(settings *SandboxSettings) map[string]any
 		"require_file_tools":        settings.RequireFileTools,
 		"require_search_tools":      settings.RequireSearchTools,
 		"require_media_files":       settings.RequireMediaFiles,
+		"require_notebook_files":    settings.RequireNotebookFiles,
 		"require_skill_files":       settings.RequireSkillFiles,
 		"require_context_files":     settings.RequireContextFiles,
 		"require_project_files":     settings.RequireProjectFiles,
