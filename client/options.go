@@ -126,6 +126,10 @@ type SandboxSeccompConfig struct {
 type SandboxSettings struct {
 	// Resources 只走独立 initialize 合同，要求命令与文件能力；变化必须替换进程。
 	Resources *SandboxResourcePolicy `json:"-"`
+	// RequireClaudeRestricted 要求 Claude Code 以原生 --restricted 启动。
+	// 这是 Claude 专属的宿主准入合同，不冒用 nxs 的 required_sandbox_v1，
+	// 也不代表 Claude 的整个 SDK IO 已经完成隔离验收。
+	RequireClaudeRestricted bool `json:"-"`
 	// RequireFileTools 单独要求原生 Read/Write/Edit 隔离；必须同时设置 RequireSandbox。
 	// 只通过 nxs initialize 传递，不能作为普通 settings 或其他 runtime 的保证。
 	RequireFileTools bool `json:"-"`
@@ -190,7 +194,7 @@ func (s SandboxSettings) MarshalJSON() ([]byte, error) {
 // 静默改写成另一份 JSON。
 func mergeSandboxExtra(value map[string]any, extra map[string]any) {
 	known := map[string]struct{}{
-		"resources": {}, "requireSandbox": {}, "requireFileTools": {}, "requireSearchTools": {}, "requireMediaFiles": {}, "requireSkillFiles": {}, "requireContextFiles": {}, "requireProjectFiles": {}, "requireManagedPolicy": {}, "requireSettingsFiles": {}, "requireSettingsWrites": {}, "enabled": {}, "failIfUnavailable": {}, "autoAllowBashIfSandboxed": {},
+		"resources": {}, "requireClaudeRestricted": {}, "requireSandbox": {}, "requireFileTools": {}, "requireSearchTools": {}, "requireMediaFiles": {}, "requireSkillFiles": {}, "requireContextFiles": {}, "requireProjectFiles": {}, "requireManagedPolicy": {}, "requireSettingsFiles": {}, "requireSettingsWrites": {}, "enabled": {}, "failIfUnavailable": {}, "autoAllowBashIfSandboxed": {},
 		"allowUnsandboxedCommands": {}, "enabledPlatforms": {}, "network": {},
 		"filesystem": {}, "ignoreViolations": {}, "enableWeakerNestedSandbox": {},
 		"enableWeakerNetworkIsolation": {}, "allowAppleEvents": {},

@@ -3,10 +3,65 @@
 // POS: 沙箱启动与并发消息发送之间的准入边界
 package client
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+	"strings"
+
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/permission"
+)
+
+// claudeRestrictedRequired 报告宿主是否选择了 Claude Code 原生受限启动合同。
+// 它不会从无类型的额外参数推断该合同。
+func claudeRestrictedRequired(options Options) bool {
+	return options.Sandbox != nil && options.Sandbox.RequireClaudeRestricted
+}
+
+// validateClaudeRestrictedOptions 在启动 transport 前校验 Claude 专属的类型化
+// 启动合同。标记的实际执行仍由 Claude 负责；Bridge 只证明将以该参数启动所选程序。
+func validateClaudeRestrictedOptions(options Options) error {
+	settings := options.Sandbox
+	if settings == nil || !settings.RequireClaudeRestricted {
+		for _, arg := range options.ExtraBoolArgs {
+			if strings.TrimLeft(strings.TrimSpace(arg), "-") == "restricted" {
+				return fmt.Errorf("client: Claude --restricted must be requested with SandboxSettings.RequireClaudeRestricted")
+			}
+		}
+		for key := range options.ExtraArgs {
+			if strings.TrimLeft(strings.TrimSpace(key), "-") == "restricted" {
+				return fmt.Errorf("client: Claude --restricted must be requested with SandboxSettings.RequireClaudeRestricted")
+			}
+		}
+		return nil
+	}
+	if normalizedRuntimeKind(options.Runtime.Kind) != RuntimeClaude {
+		return &UnsupportedCapabilityError{Capability: CapabilityClaudeRestricted}
+	}
+	if options.Runtime.PermissionMode == permission.ModeBypassPermissions || options.Runtime.AllowDangerouslySkipPermissions {
+		return errors.New("client: Claude restricted mode cannot be combined with bypass permissions")
+	}
+	for _, arg := range options.ExtraBoolArgs {
+		normalized := strings.TrimLeft(strings.TrimSpace(arg), "-")
+		if normalized == "restricted" {
+			return errors.New("client: Claude --restricted must be supplied by SandboxSettings.RequireClaudeRestricted exactly once")
+		}
+		if normalized == "dangerously-skip-permissions" {
+			return errors.New("client: Claude restricted mode cannot be combined with bypass permissions")
+		}
+	}
+	for key := range options.ExtraArgs {
+		if strings.TrimLeft(strings.TrimSpace(key), "-") == "restricted" {
+			return errors.New("client: Claude --restricted must be supplied by SandboxSettings.RequireClaudeRestricted exactly once")
+		}
+	}
+	return nil
+}
 
 // validateSandboxRequirements 拒绝互相矛盾的要求，以及未实现该协议的运行时。
 func (c *sessionCore) validateSandboxRequirements() error {
+	if err := validateClaudeRestrictedOptions(c.options); err != nil {
+		return err
+	}
 	settings := c.options.Sandbox
 	if settings == nil {
 		return nil

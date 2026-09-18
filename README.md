@@ -30,6 +30,8 @@ Add `RequireSkillFiles: true` with the command and file requirements for Skill c
 
 `SandboxSettings.Resources` additionally requires `sandbox_resources_v1` to select a workspace write scope and a host-prepared private scratch directory. See [resource scope](docs/runtime-contract.md#host-resource-write-scope) for current macOS support and lifecycle limits.
 
+For Claude Code's own restricted mode, set `SandboxSettings.RequireClaudeRestricted: true`. Bridge adds and checks the typed `--restricted` launch contract only for `RuntimeClaude`; Full Access does not require it. This is not nxs `required_sandbox_v1` and does not prove complete Claude SDK IO isolation; see [Claude native restricted launch](docs/runtime-contract.md#claude-native-restricted-launch).
+
 ## Requirements
 
 - Go 1.24 or later

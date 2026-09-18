@@ -77,6 +77,12 @@ func buildProcessTransportArgs(o resolvedOptions) []string {
 		// Claude Code 的 stream-json stdin 是 headless print 模式的一部分；
 		// 显式携带该标记，避免 CLI 在读取 initialize control 前直接退出。
 		args = append(args, "--print")
+		// --restricted 是 Claude Code 自己的受限模式。只有宿主通过
+		// RequireClaudeRestricted 明确要求时才安装；它不是 nxs 的
+		// required_sandbox_v1，也不能由普通 Extra 参数冒用。
+		if o.Sandbox != nil && o.Sandbox.RequireClaudeRestricted {
+			args = append(args, "--restricted")
+		}
 	}
 	args = append(args,
 		"--output-format", "stream-json",

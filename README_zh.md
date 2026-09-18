@@ -25,6 +25,8 @@ agent loop，也不包含模型 runtime。
 
 `SandboxSettings.Resources` 另要求 `sandbox_resources_v1`，选择工作区写入范围及宿主已准备的私有 scratch；当前 macOS 支持范围与生命周期责任见 [资源合同](docs/runtime-contract.zh-CN.md#宿主资源写入范围)。
 
+Claude Code 需要使用自身受限模式时，设置 `SandboxSettings.RequireClaudeRestricted: true`。Bridge 只在 `RuntimeClaude` 下加入并检查类型化的 `--restricted` 启动合同；Full Access 不要求该合同。这不是 nxs 的 `required_sandbox_v1`，也不证明 Claude SDK 的完整 IO 已隔离，详见 [Claude 原生受限启动](docs/runtime-contract.zh-CN.md#claude-原生受限启动)。
+
 同时要求命令和文件合同后，设置 `RequireContextFiles: true` 可确认启动指令与 compact 文件恢复的边界，详见 [上下文文件合同](docs/runtime-contract.zh-CN.md#上下文文件隔离)。
 
 同时要求命令和文件合同后，设置 `RequireSkillFiles: true` 可独立确认 Skill 目录、正文、动态发现、Git 忽略与 remember 设置读取。启动配置、hook 和后台 IO 继续独立验收，详见 [Skill 文件合同](docs/runtime-contract.zh-CN.md#skill-文件隔离)。

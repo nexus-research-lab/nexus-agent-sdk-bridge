@@ -11,17 +11,21 @@ type Capability string
 
 // 支持的会话后端能力。
 const (
-	CapabilityRequiredSandbox        Capability = "required_sandbox"
-	CapabilitySandboxFileTools       Capability = "sandbox_file_tools"
-	CapabilitySandboxSearchTools     Capability = "sandbox_search_tools"
-	CapabilitySandboxMediaFiles      Capability = "sandbox_media_files"
-	CapabilitySandboxSkillFiles      Capability = "sandbox_skill_files"
-	CapabilitySandboxContextFiles    Capability = "sandbox_context_files"
-	CapabilitySandboxProjectFiles    Capability = "sandbox_project_files"
-	CapabilitySandboxManagedPolicy   Capability = "sandbox_managed_policy"
-	CapabilitySandboxSettingsFiles   Capability = "sandbox_settings_files"
-	CapabilitySandboxSettingsWrites  Capability = "sandbox_settings_writes"
-	CapabilitySandboxResources       Capability = "sandbox_resources"
+	CapabilityRequiredSandbox       Capability = "required_sandbox"
+	CapabilitySandboxFileTools      Capability = "sandbox_file_tools"
+	CapabilitySandboxSearchTools    Capability = "sandbox_search_tools"
+	CapabilitySandboxMediaFiles     Capability = "sandbox_media_files"
+	CapabilitySandboxSkillFiles     Capability = "sandbox_skill_files"
+	CapabilitySandboxContextFiles   Capability = "sandbox_context_files"
+	CapabilitySandboxProjectFiles   Capability = "sandbox_project_files"
+	CapabilitySandboxManagedPolicy  Capability = "sandbox_managed_policy"
+	CapabilitySandboxSettingsFiles  Capability = "sandbox_settings_files"
+	CapabilitySandboxSettingsWrites Capability = "sandbox_settings_writes"
+	CapabilitySandboxResources      Capability = "sandbox_resources"
+	// CapabilityClaudeRestricted 表示 Bridge 已为 Claude Code 安装原生
+	// --restricted 启动合同。它不表示 nxs 的 required_sandbox_v1，也不
+	// 代表 Claude SDK 的全部文件、网络或后台 IO 已隔离。
+	CapabilityClaudeRestricted       Capability = "claude_restricted"
 	CapabilityAutoReview             Capability = "auto_review"
 	CapabilitySendOptions            Capability = "send_options"
 	CapabilityInternalContext        Capability = "internal_context"
@@ -110,6 +114,8 @@ func (c *sessionCore) supports(capability Capability) bool {
 		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS && slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, sandboxSettingsWritesProtocolCapability)
 	case CapabilitySandboxResources:
 		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS && slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, sandboxResourcesProtocolCapability)
+	case CapabilityClaudeRestricted:
+		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeClaude && claudeRestrictedRequired(c.options)
 	case CapabilityAutoReview:
 		// Claude 使用原生控制确认模式；nxs 使用扩展协议协商。此能力不代表账号或模型可用性。
 		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeClaude || slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, autoReviewProtocolCapability)

@@ -178,6 +178,27 @@ For required execution, initialize includes object `sandbox_policy` containing t
 explicit host Sandbox settings. nxs rejects malformed objects before session creation;
 ordinary inline/project settings do not expand required-mode resource grants.
 
+## Claude native restricted launch
+
+`SandboxSettings.RequireClaudeRestricted=true` is the typed Bridge contract for
+Claude Code's native `--restricted` mode. It is valid only with
+`RuntimeClaude`; Bridge adds exactly one `--restricted` argument to the Claude
+process launch and exposes `CapabilityClaudeRestricted` for that session. This
+is a separate adapter and does not send or claim nxs `required_sandbox_v1`.
+
+The option rejects `RuntimeNXS`, bypass permissions, and untyped `ExtraArgs` or
+`ExtraBoolArgs` attempts to inject the flag before transport startup. A change
+to this requirement returns `sandbox_policy_changed` and requires a new
+runtime process. Full Access (for example `ModeBypassPermissions`) does not
+require this contract and does not receive `--restricted`.
+
+The bridge verifies only the typed launch contract and the argument it passes
+to the selected executable. The executable must support `--restricted`; if an
+older or substituted Claude command rejects that flag, startup fails closed.
+This does not prove the CLI version, OS enforcement, provider/network policy,
+or complete Claude SDK file, settings, hook, MCP, transcript, and background IO
+isolation. Hosts must retain those as separate acceptance evidence.
+
 `Session.Reconfigure` returns `ErrRestartRequired` with reason `sandbox_policy_changed`
 when Sandbox settings change in either direction. It applies no other hot controls
 and preserves current options. The host must retire/drain the old process and create

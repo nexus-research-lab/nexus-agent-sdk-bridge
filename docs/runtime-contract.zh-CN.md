@@ -113,6 +113,24 @@ transport 已连接不代表握手完成。提前并发发送会失败，且不�
 必需模式在 initialize 的对象 `sandbox_policy` 中传递显式宿主 Sandbox 配置；
 nxs 在创建会话前拒绝类型错误。普通 inline/project settings 不扩展必需模式的资源授权。
 
+## Claude 原生受限启动
+
+`SandboxSettings.RequireClaudeRestricted=true` 是 Bridge 对 Claude Code 原生
+`--restricted` 模式的类型化合同。它只能与 `RuntimeClaude` 一起使用；Bridge
+会在 Claude 进程启动参数中加入且只加入一次 `--restricted`，并为当前会话提供
+`CapabilityClaudeRestricted`。这是独立的适配合同，不发送也不冒用 nxs 的
+`required_sandbox_v1`。
+
+该选项在 transport 启动前拒绝 `RuntimeNXS`、bypass 权限以及通过普通
+`ExtraArgs`/`ExtraBoolArgs` 注入该标记的方式。要求变化返回
+`sandbox_policy_changed`，必须替换 runtime 进程。Full Access（例如
+`ModeBypassPermissions`）不要求该合同，也不会收到 `--restricted`。
+
+Bridge 只验证类型化启动合同和传给所选可执行程序的参数。可执行程序必须支持
+`--restricted`；旧版本或被替换的 Claude 命令拒绝该参数时，启动会失败关闭。这
+不证明 CLI 版本、OS 执行隔离、Provider/网络策略，也不证明 Claude SDK 的文件、
+设置、hook、MCP、transcript 和后台 IO 已完整隔离；这些仍需独立验收证据。
+
 `Session.Reconfigure` 遇到任一方向的 Sandbox 变化时，在其他热更新前返回
 `ErrRestartRequired`（`sandbox_policy_changed`），保留当前 options。宿主必须退出旧进程
 并创建新会话；仅修改权限模式不代表沙箱策略切换。

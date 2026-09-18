@@ -171,6 +171,9 @@ func (o Options) normalized() (Options, error) {
 	if result.Runtime.PermissionMode == permission.ModeBypassPermissions {
 		result.Runtime.AllowDangerouslySkipPermissions = true
 	}
+	if err := validateClaudeRestrictedOptions(result); err != nil {
+		return Options{}, err
+	}
 
 	if result.Env == nil {
 		result.Env = map[string]string{}
