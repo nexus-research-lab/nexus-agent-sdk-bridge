@@ -80,10 +80,15 @@ members. It ignores only processes that disappeared during enumeration.
 This is a session sweep, not a complete process-tree receipt. Descendants can
 create another Unix session; Linux PID namespaces and `/proc` visibility also
 bound the observation. A host signal callback supplies its own cleanup semantics;
-its success is not independent exit verification by Bridge. Native Windows,
-process identity reuse, crash recovery and private scratch ownership need separate
-host/platform lifecycle guarantees. Hosts must retain a failed cleanup boundary
-instead of treating a closed stream as proof that resources can be reused.
+its success is not independent exit verification by Bridge. On Windows, the
+bridge now creates a per-runtime Job Object with `KILL_ON_JOB_CLOSE`, assigns the
+started process before admitting the session, and waits for the job to become
+empty during cleanup. Failure to create or assign that boundary rejects startup;
+the same job also terminates descendants when the bridge process crashes. Native
+Windows clean-host execution, process identity reuse and private scratch
+ownership still need platform acceptance evidence. Hosts must retain a failed
+cleanup boundary instead of treating a closed stream as proof that resources can
+be reused.
 
 `client.ForkSession` creates an independent target from a source session through
 the exact supplied message ID. Claude Code may not persist the target transcript

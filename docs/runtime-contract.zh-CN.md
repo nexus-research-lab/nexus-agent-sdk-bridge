@@ -65,8 +65,11 @@ Capability 真相源位于 [`client/capability.go`](../client/capability.go)。�
 
 这是 session 内清理步骤，不是完整进程树回执。后代可以另建 Unix session，Linux 的
 PID namespace 和 `/proc` 可见范围也限制观察。宿主信号回调自行定义清理语义，回调
-返回成功不代表 Bridge 又独立验证了退出。原生 Windows、进程身份复用、崩溃恢复及
-私有 scratch 所有权仍需独立平台/宿主保证。宿主必须保留失败边界，不能因流已关闭就复用资源。
+返回成功不代表 Bridge 又独立验证了退出。Windows 现在为每个 runtime 创建带
+`KILL_ON_JOB_CLOSE` 的 Job Object，在受理 session 前绑定主进程，清理时等待 Job
+变为空；无法创建或绑定该边界会拒绝启动，Bridge 崩溃时句柄关闭也会终止后代。原生
+Windows clean-host 运行、进程身份复用及私有 scratch 所有权仍需平台验收证据。宿主
+必须保留失败边界，不能因流已关闭就复用资源。
 
 `client.ForkSession` 会复制源 Session 到传入消息 ID 的精确边界，并创建独立目标。
 Claude Code 可能到首个用户回合才持久化目标 transcript，但 bridge 会在返回 Session

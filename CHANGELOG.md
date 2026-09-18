@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Establish a Windows per-runtime Job Object with `KILL_ON_JOB_CLOSE` before session admission, wait for it to become empty during cleanup, and reject startup if the descendant boundary cannot be created or assigned. Host signal handlers remain an additional boundary; clean-host Windows acceptance and durable scratch recovery are still separate evidence.
+
 - Add host-only `RequireSettingsWrites` and `CapabilitySandboxSettingsWrites`. Require the command, file-tool, settings-read and independent nxs settings-write acknowledgements before task admission; keep the requirement out of ordinary settings, include it in restart fingerprints, and reject Claude or older nxs runtimes without sending a task. The current contract covers the macOS nxs Config and permission persistence boundary, not cross-process CAS, multi-document atomicity, directory fsync, durable receipts or restart reconciliation.
 
 - Add host-only `RequireSettingsFiles` and `CapabilitySandboxSettingsFiles`. Require separate nxs acknowledgement of confined ordinary settings reads and checked snapshots before task admission; replace the process when the requirement changes. This does not claim credential separation or atomic settings persistence.

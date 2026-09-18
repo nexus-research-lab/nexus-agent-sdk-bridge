@@ -34,16 +34,18 @@ func configureProcessSession(command *exec.Cmd) {
 	command.SysProcAttr.Setsid = true
 }
 
-func startedProcessSession(command *exec.Cmd) processSession {
+func startedProcessSession(command *exec.Cmd) (processSession, error) {
 	if command == nil || command.Process == nil {
-		return processSession{}
+		return processSession{}, nil
 	}
-	return processSession{sessionID: command.Process.Pid}
+	return processSession{sessionID: command.Process.Pid}, nil
 }
 
 func (s processSession) id() int {
 	return s.sessionID
 }
+
+func (s processSession) hasDirectCleanup() bool { return false }
 
 func (s processSession) cleanup() (int, error) {
 	return s.cleanupWith(processIDsInSession, func(pid int) error {

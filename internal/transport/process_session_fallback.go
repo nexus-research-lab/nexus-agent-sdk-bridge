@@ -1,4 +1,4 @@
-//go:build !darwin && !linux
+//go:build !darwin && !linux && !windows
 
 package transport
 
@@ -10,13 +10,15 @@ type processSession struct{}
 
 func configureProcessSession(_ *exec.Cmd) {}
 
-func startedProcessSession(_ *exec.Cmd) processSession {
-	return processSession{}
+func startedProcessSession(_ *exec.Cmd) (processSession, error) {
+	return processSession{}, nil
 }
 
 func (processSession) id() int {
 	return 0
 }
+
+func (processSession) hasDirectCleanup() bool { return false }
 
 func (processSession) cleanup() (int, error) {
 	return 0, nil

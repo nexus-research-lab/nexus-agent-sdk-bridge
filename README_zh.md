@@ -128,7 +128,9 @@ Code 则通过原生 `UserPromptSubmit` hook 的 `additionalContext` 生成 atta
 校验 PID 的进程信号边界，统一处理中断、关闭和遗留子进程清理。
 `client.ProcessCleanupError` 在 Wait、主动终止和重复 Close 中保留清理失败。
 内置 Unix 清理只覆盖原 session 的可见成员；另建 session 的后代与跨重启资源恢复
-仍需宿主监督，详见 [生命周期边界](docs/runtime-contract.zh-CN.md#session-生命周期)。
+仍需宿主监督。Windows session 会绑定带关闭即终止的 Job Object，无法建立该边界时
+拒绝启动；原生 clean-host 验收与跨重启资源恢复仍需平台证据，详见
+[生命周期边界](docs/runtime-contract.zh-CN.md#session-生命周期)。
 
 ## 文档
 

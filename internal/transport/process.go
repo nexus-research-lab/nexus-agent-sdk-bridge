@@ -219,7 +219,20 @@ func (m *ProcessManager) Start(ctx context.Context) error {
 		_ = stderrWriter.Close()
 		return fmt.Errorf("process: start command failed: %w", err)
 	}
-	processSession := startedProcessSession(cmd)
+	processSession, sessionErr := startedProcessSession(cmd)
+	if sessionErr != nil {
+		// 未能建立独立的进程清理边界时，不能继续把 runtime 当作已受理；
+		// 先关闭父侧管道并终止主进程，再把边界错误交给调用方核对。
+		_ = stdin.Close()
+		_ = stdoutReader.Close()
+		_ = stdoutWriter.Close()
+		_ = stderrReader.Close()
+		_ = stderrWriter.Close()
+		return errors.Join(
+			fmt.Errorf("process: establish descendant cleanup boundary failed: %w", sessionErr),
+			m.abortStartedProcess(cmd, processSession),
+		)
+	}
 	if err := ctx.Err(); err != nil {
 		_ = stdin.Close()
 		_ = stdoutReader.Close()
@@ -303,7 +316,12 @@ func (m *ProcessManager) cleanupProcessSession(session processSession) error {
 			})
 			return &ProcessCleanupError{SessionID: session.id(), Err: err}
 		}
-		return nil
+		// Unix 的宿主信号回调可能跨越用户身份边界，Bridge 不能再自行枚举
+		// 或杀进程。Windows Job Object 则是本地已建立的独立清理边界，
+		// 即使宿主回调只终止主进程，也必须继续收口其后代。
+		if !session.hasDirectCleanup() {
+			return nil
+		}
 	}
 	terminated, err := session.cleanup()
 	if terminated > 0 && err == nil {
