@@ -308,22 +308,25 @@ func (m *ProcessManager) Start(ctx context.Context) error {
 
 // cleanupProcessSession 将平台或宿主清理失败传到 Wait/Close，不能只写诊断。
 func (m *ProcessManager) cleanupProcessSession(session processSession) error {
+	var callbackErr error
 	if m.config.SignalProcess != nil && session.id() > 1 {
-		if err := m.config.SignalProcess(session.id(), ProcessSignalKill); err != nil {
-			m.emitDiagnostic("process_descendant_cleanup_error", map[string]any{
-				"session_id": session.id(),
-				"error":      err.Error(),
-			})
-			return &ProcessCleanupError{SessionID: session.id(), Err: err}
-		}
+		callbackErr = m.config.SignalProcess(session.id(), ProcessSignalKill)
 		// Unix 的宿主信号回调可能跨越用户身份边界，Bridge 不能再自行枚举
 		// 或杀进程。Windows Job Object 则是本地已建立的独立清理边界，
 		// 即使宿主回调只终止主进程，也必须继续收口其后代。
 		if !session.hasDirectCleanup() {
+			if callbackErr != nil {
+				m.emitDiagnostic("process_descendant_cleanup_error", map[string]any{
+					"session_id": session.id(),
+					"error":      callbackErr.Error(),
+				})
+				return &ProcessCleanupError{SessionID: session.id(), Err: callbackErr}
+			}
 			return nil
 		}
 	}
 	terminated, err := session.cleanup()
+	err = errors.Join(callbackErr, err)
 	if terminated > 0 && err == nil {
 		m.emitDiagnostic("process_descendants_terminated", map[string]any{
 			"session_id":       session.id(),
