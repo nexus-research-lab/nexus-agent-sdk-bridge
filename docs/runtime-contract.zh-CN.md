@@ -127,7 +127,12 @@ nxs 在创建会话前拒绝类型错误。普通 inline/project settings 不扩
 `ModeBypassPermissions`）不要求该合同，也不会收到 `--restricted`。
 
 Bridge 只验证类型化启动合同和传给所选可执行程序的参数。可执行程序必须支持
-`--restricted`；旧版本或被替换的 Claude 命令拒绝该参数时，启动会失败关闭。这
+`--restricted`；旧版本或被替换的 Claude 命令拒绝该参数时，启动会失败关闭。
+在正式 stream-json 进程准入前，Bridge 会对同一个已解析的可执行程序（Windows
+也包括安全的 PowerShell shim）执行有界的 `--restricted --help` 探测。探测必须
+成功退出并在帮助文本中声明该标记；探测输出有大小上限，常见 Provider、代理、
+Cookie 及其他秘密环境变量不会传给探测进程。探测成功只证明参数解析/启动合同，
+不是运行期隔离回执。
 不证明 CLI 版本、OS 执行隔离、Provider/网络策略，也不证明 Claude SDK 的文件、
 设置、hook、MCP、transcript 和后台 IO 已完整隔离；这些仍需独立验收证据。
 

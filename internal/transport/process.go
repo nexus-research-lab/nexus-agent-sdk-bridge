@@ -119,16 +119,21 @@ func (e *StdoutDecodeError) Unwrap() error {
 
 // ProcessConfig 表示子进程传输配置。
 type ProcessConfig struct {
-	CommandPath        string
-	CWD                string
-	User               string
-	MaxBufferSize      int
-	Args               []string
-	Env                map[string]string
-	Stderr             func(string)
-	Diagnostics        func(ProcessDiagnosticEvent)
-	SignalProcess      ProcessSignalHandler
-	ControlWireDialect ControlWireDialect
+	CommandPath   string
+	CWD           string
+	User          string
+	MaxBufferSize int
+	Args          []string
+	Env           map[string]string
+	// RequireClaudeRestricted makes process admission verify that the selected
+	// Claude CLI accepts the native restricted launch contract before the
+	// stream-json process is started. It is deliberately separate from the nxs
+	// control-wire dialect and is only set by the typed Bridge option.
+	RequireClaudeRestricted bool
+	Stderr                  func(string)
+	Diagnostics             func(ProcessDiagnosticEvent)
+	SignalProcess           ProcessSignalHandler
+	ControlWireDialect      ControlWireDialect
 }
 
 // ProcessManager 管理 Claude CLI 子进程。
@@ -182,6 +187,15 @@ func (m *ProcessManager) Start(ctx context.Context) error {
 
 	if err := ctx.Err(); err != nil {
 		return err
+	}
+	if m.config.RequireClaudeRestricted {
+		if err := verifyClaudeRestrictedCommand(ctx, command, m.config); err != nil {
+			return err
+		}
+		m.emitDiagnostic("claude_restricted_probe", map[string]any{
+			"command_path": command.path,
+			"required":     true,
+		})
 	}
 	m.checkCommandVersion(ctx, command)
 

@@ -195,6 +195,12 @@ require this contract and does not receive `--restricted`.
 The bridge verifies only the typed launch contract and the argument it passes
 to the selected executable. The executable must support `--restricted`; if an
 older or substituted Claude command rejects that flag, startup fails closed.
+Before the stream-json process is admitted, a restricted session runs the exact
+resolved executable (including the safe Windows PowerShell shim) with
+`--restricted --help`. The bounded probe must exit successfully and advertise
+the flag; probe output is capped and common Provider, proxy, cookie, and other
+secret variables are removed from its environment. Probe success is only a
+parser/launch check and is not a runtime enforcement receipt.
 This does not prove the CLI version, OS enforcement, provider/network policy,
 or complete Claude SDK file, settings, hook, MCP, transcript, and background IO
 isolation. Hosts must retain those as separate acceptance evidence.

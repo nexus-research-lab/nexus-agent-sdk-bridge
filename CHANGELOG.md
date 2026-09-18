@@ -4,6 +4,12 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Probe the exact resolved Claude CLI with `--restricted --help` before admitting
+  a restricted stream-json session. Require a successful exit and an advertised
+  flag, bound probe output/time, and scrub common Provider/proxy secret variables
+  from the probe environment. This is still a CLI launch-contract check, not
+  evidence of Claude's complete OS, Provider, network, or SDK IO isolation.
+
 - Add the typed `SandboxSettings.RequireClaudeRestricted` and `CapabilityClaudeRestricted` contract. Claude Code receives exactly one `--restricted` launch flag; nxs `required_sandbox_v1` is not reused, Full Access needs no contract, and invalid runtime/bypass/untyped flag combinations fail closed. This proves only Bridge argument admission; Claude CLI version, OS enforcement and complete SDK IO isolation remain separate acceptance work.
 
 - Establish a Windows per-runtime Job Object with `KILL_ON_JOB_CLOSE` before session admission, wait for it to become empty during cleanup, and reject startup if the descendant boundary cannot be created or assigned. Host signal handlers remain an additional boundary; clean-host Windows acceptance and durable scratch recovery are still separate evidence.

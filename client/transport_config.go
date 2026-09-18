@@ -457,12 +457,14 @@ func buildDirectConnectTransportConfig(o resolvedOptions) (transport.DirectConne
 func buildProcessTransportConfig(o resolvedOptions) transport.ProcessConfig {
 	processEnv := buildProcessTransportEnv(o)
 	return transport.ProcessConfig{
-		CommandPath:        processCommandPath(o),
-		CWD:                o.CWD,
-		User:               o.User,
-		MaxBufferSize:      o.MaxBufferSize,
-		Args:               buildProcessTransportArgs(o),
-		Env:                processEnv,
+		CommandPath:   processCommandPath(o),
+		CWD:           o.CWD,
+		User:          o.User,
+		MaxBufferSize: o.MaxBufferSize,
+		Args:          buildProcessTransportArgs(o),
+		Env:           processEnv,
+		RequireClaudeRestricted: normalizedRuntimeKind(o.RuntimeKind) == RuntimeClaude &&
+			(o.Sandbox != nil && o.Sandbox.RequireClaudeRestricted),
 		Stderr:             o.Stderr,
 		Diagnostics:        processDiagnosticHandler(o.Diagnostics),
 		SignalProcess:      o.ProcessSignalHandler,

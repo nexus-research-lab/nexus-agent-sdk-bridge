@@ -43,6 +43,9 @@ func TestClaudeRestrictedLaunchContractAddsFlag(t *testing.T) {
 	if fingerprint.SandboxContract == withoutFingerprint.SandboxContract {
 		t.Fatal("Claude restricted requirement was omitted from restart-sensitive fingerprint")
 	}
+	if config := options.processConfig(); !config.RequireClaudeRestricted {
+		t.Fatal("Claude restricted process admission did not carry the typed probe requirement")
+	}
 }
 
 func TestClaudeRestrictedCapabilityIsTypedAndRuntimeScoped(t *testing.T) {
@@ -64,6 +67,9 @@ func TestClaudeRestrictedCapabilityIsTypedAndRuntimeScoped(t *testing.T) {
 	}
 	if countArg(buildProcessTransportArgs(resolved), "--restricted") != 0 {
 		t.Fatal("Full Access unexpectedly received --restricted")
+	}
+	if config := fullAccess.processConfig(); config.RequireClaudeRestricted {
+		t.Fatal("Full Access unexpectedly enabled the Claude restricted probe")
 	}
 }
 
