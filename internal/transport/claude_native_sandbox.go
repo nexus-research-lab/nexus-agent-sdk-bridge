@@ -4,12 +4,18 @@
 package transport
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"os/exec"
 	"strings"
+	"time"
 )
+
+const claudeNativeSandboxProbeTimeout = 2 * time.Second
 
 // verifyClaudeNativeSandboxSettings checks the exact generated --settings JSON
 // before starting Claude. The CLI owns the actual OS enforcement; this check
@@ -45,6 +51,55 @@ func verifyClaudeNativeSandboxSettings(config ProcessConfig) error {
 	}
 	if value, ok := sandbox["allowUnsandboxedCommands"].(bool); !ok || value {
 		return errors.New("process: Claude native sandbox must reject unsandboxed commands")
+	}
+	return nil
+}
+
+// verifyClaudeNativeSandboxCommand checks the exact CLI's --settings parser
+// before a stream-json process is started. This is deliberately a no-model
+// --help probe: it proves that the selected Claude build accepts the host
+// settings entry point, while the CLI remains the authority for OS sandbox
+// initialization and command enforcement.
+func verifyClaudeNativeSandboxCommand(parent context.Context, command processCommand, config ProcessConfig) error {
+	if !config.RequireClaudeNativeSandbox {
+		return nil
+	}
+	settingsValue, count := processArgumentValue(config.Args, "--settings")
+	if count != 1 || strings.TrimSpace(settingsValue) == "" {
+		return errors.New("process: Claude native sandbox command probe requires one generated --settings object")
+	}
+	if err := parent.Err(); err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(parent, claudeNativeSandboxProbeTimeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, command.executable, command.arguments([]string{"--settings", settingsValue, "--help"})...)
+	cmd.Dir = config.CWD
+	cmd.Env = buildClaudeRestrictedProbeEnvironment(config.Env, config.CWD, config.ControlWireDialect)
+	if err := applyCommandUser(cmd, config.User); err != nil {
+		return fmt.Errorf("process: Claude native sandbox probe user setup failed: %w", err)
+	}
+	configureProcessSession(cmd)
+	var stdout, stderr limitedProbeBuffer
+	stdout.limit = claudeRestrictedProbeLimit
+	stderr.limit = claudeRestrictedProbeLimit
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			return fmt.Errorf("process: Claude native sandbox probe timed out after %s", claudeNativeSandboxProbeTimeout)
+		}
+		if errors.Is(ctx.Err(), context.Canceled) {
+			return ctx.Err()
+		}
+		return fmt.Errorf("process: Claude CLI rejected native sandbox settings probe: %w", err)
+	}
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	output := strings.ToLower(stdout.String() + "\n" + stderr.String())
+	if !bytes.Contains([]byte(output), []byte("--settings")) {
+		return errors.New("process: Claude native sandbox probe did not advertise --settings")
 	}
 	return nil
 }

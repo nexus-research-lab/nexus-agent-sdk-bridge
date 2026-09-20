@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Before a required Claude native sandbox session starts, probe the exact resolved CLI with the generated `--settings` JSON and `--help`, using a scrubbed environment and bounded output/time. Reject CLIs that do not accept the settings entry point; this remains a launch-contract check and does not claim that Claude's OS sandbox has enforced a command.
+
 - Add a typed `RequireClaudeNativeSandbox` contract for Claude Code. The Bridge
   now requires generated `sandbox.enabled=true`, `failIfUnavailable=true`, and
   `allowUnsandboxedCommands=false` settings before starting the stream-json

@@ -188,7 +188,11 @@ default restricted Claude path. Bridge generates a single structured
 `CapabilityClaudeNativeSandbox`. Claude therefore keeps Bash/build tools while
 its own native OS backend restricts command, file, and network access. Bridge
 rejects missing, duplicated, or `ExtraArgs`-overridden settings before starting
-the stream-json process. Nexus supplies the network grant; an empty grant is
+the stream-json process, then runs a bounded no-model
+`--settings <generated-json> --help` probe against the exact resolved CLI. The
+probe only checks that the selected CLI accepts and advertises the settings
+entry point; Claude remains authoritative for native OS initialization and
+command enforcement. Nexus supplies the network grant; an empty grant is
 serialized as deny-all. This capability is separate from nxs
 `required_sandbox_v1`, and settings admission is not an effective-policy
 receipt: real allow/deny, cancellation, descendant cleanup, and platform

@@ -123,6 +123,9 @@ Bridge 生成的 `--settings` JSON 同时包含 `sandbox.enabled=true`、
 重复或被 `ExtraArgs` 覆盖的 settings。网络域名仍由 Nexus 的宿主准入提供，空准入
 序列化为 deny-all。该能力不冒用 nxs `required_sandbox_v1`，也不把 settings 注入
 当成运行期有效策略回执；真实允许/拒绝、取消、后代和平台证据仍需独立验收。
+正式进程前 Bridge 还会在脱敏环境中对同一个已解析的 Claude 可执行程序执行有界的无模型
+`--settings <generated-json> --help` 探测；CLI 不接受或不声明该入口时失败关闭。该探测
+只证明启动参数入口契约，Claude 仍是原生 OS 初始化和命令执行约束的权威。
 
 旧的 `RequireClaudeRestricted=true` 仍表示 Claude 的 `--restricted` 工具裁剪模式。
 它会移除 Bash 等代码执行工具，不能作为桌面默认命令沙箱的替代；两种合同不能同时

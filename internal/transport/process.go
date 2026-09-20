@@ -194,6 +194,15 @@ func (m *ProcessManager) Start(ctx context.Context) error {
 	if err := verifyClaudeNativeSandboxSettings(m.config); err != nil {
 		return err
 	}
+	if m.config.RequireClaudeNativeSandbox {
+		if err := verifyClaudeNativeSandboxCommand(ctx, command, m.config); err != nil {
+			return err
+		}
+		m.emitDiagnostic("claude_native_sandbox_probe", map[string]any{
+			"command_path": command.path,
+			"required":     true,
+		})
+	}
 	if m.config.RequireClaudeRestricted {
 		if err := verifyClaudeRestrictedCommand(ctx, command, m.config); err != nil {
 			return err
