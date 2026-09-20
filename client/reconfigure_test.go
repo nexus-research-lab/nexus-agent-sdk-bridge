@@ -3,12 +3,14 @@ package client
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
 	transportpkg "github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/transport"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/mcp"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/permission"
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/protocol"
 )
 
 func TestRestartReasonForReconfigureDetectsProcessEnvChange(t *testing.T) {
@@ -524,4 +526,83 @@ type fakeSDKMCPServer struct{}
 
 func (fakeSDKMCPServer) HandleMessage(context.Context, map[string]any) (map[string]any, error) {
 	return map[string]any{"ok": true}, nil
+}
+
+// 用带闭包的实例模拟每轮重新绑定身份，线配置不变时不能等待子进程确认。
+type roundHandlerServer struct{ handler func() string }
+
+func (s *roundHandlerServer) HandleMessage(context.Context, map[string]any) (map[string]any, error) {
+	return map[string]any{"round": s.handler()}, nil
+}
+
+func TestReconfigureRefreshesLocalMCPHandlerWithoutRuntimeRequest(t *testing.T) {
+	for _, kind := range []RuntimeKind{RuntimeClaude, RuntimeNXS} {
+		t.Run(string(kind), func(t *testing.T) {
+			transport := newScriptedTransport()
+			first := &roundHandlerServer{handler: func() string { return "first" }}
+			options := NewOptions().WithTransport(transport).WithRuntime(kind).WithSDKMCPServer("nexus", first)
+			core := newSessionCoreWithTransport(options, transport)
+			done := make(chan error, 1)
+			go func() { done <- core.Connect(context.Background()) }()
+			assertInitializeRequest(t, receiveWrite(t, transport))
+			transport.pushRead(successfulInitializeResponse(map[string]any{"session_id": "session-1"}))
+			if err := receiveDone(t, done); err != nil {
+				t.Fatal(err)
+			}
+			defer core.Disconnect(context.Background())
+
+			for _, round := range []string{"second", "third"} {
+				next := &roundHandlerServer{handler: func() string { return round }}
+				options = options.WithSDKMCPServer("nexus", next)
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				err := core.reconfigure(ctx, options)
+				cancel()
+				if err != nil {
+					t.Fatal(err)
+				}
+				select {
+				case request := <-transport.writes:
+					t.Fatalf("unexpected runtime request: %v", request)
+				default:
+				}
+				server, ok := core.sdkMCPServer("nexus")
+				if !ok {
+					t.Fatal("missing local server")
+				}
+				result, err := server.HandleMessage(context.Background(), nil)
+				if err != nil || result["round"] != round {
+					t.Fatalf("stale handler: %v, %v", result, err)
+				}
+			}
+
+			// 实际配置变化仍必须等待确认，失败不能发布新的本地 handler。
+			replacement := &roundHandlerServer{handler: func() string { return "unconfirmed" }}
+			changed := options.WithSDKMCPServer("nexus", replacement).WithMCPServer("remote", mcp.HTTPServerConfig{URL: "https://example.test/mcp"})
+			go func() { done <- core.reconfigure(context.Background(), changed) }()
+			request := receiveWrite(t, transport)
+			assertControlRequest(t, request, "mcp_set_servers")
+			transport.pushRead(map[string]any{"type": "control_response", "response": map[string]any{"subtype": "error", "request_id": request["request_id"], "error": "rejected"}})
+			if err := receiveDone(t, done); err == nil {
+				t.Fatal("expected rejection")
+			}
+			server, _ := core.sdkMCPServer("nexus")
+			result, _ := server.HandleMessage(context.Background(), nil)
+			if result["round"] != "third" {
+				t.Fatalf("unconfirmed handler published: %v", result)
+			}
+		})
+	}
+}
+
+func TestControlTimeoutIdentifiesRequest(t *testing.T) {
+	transport := newScriptedTransport()
+	core := newSessionCoreWithTransport(Options{}, transport)
+	_, err := core.sendControlRequest(context.Background(), protocol.ControlRequest{Subtype: "mcp_set_servers"}, time.Millisecond)
+	if !errors.Is(err, context.DeadlineExceeded) || !strings.Contains(err.Error(), "mcp_set_servers") || !strings.Contains(err.Error(), "req_1") {
+		t.Fatalf("missing control timeout context: %v", err)
+	}
+	assertControlRequest(t, receiveWrite(t, transport), "mcp_set_servers")
+	if cancel := receiveWrite(t, transport); cancel["type"] != "control_cancel_request" {
+		t.Fatalf("missing cancellation: %v", cancel)
+	}
 }

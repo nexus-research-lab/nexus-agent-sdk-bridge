@@ -509,11 +509,12 @@ func (c *sessionCore) sendControlRequest(
 	case result := <-waiter:
 		return result.Response, result.Err
 	case <-waitContext.Done():
+		waitErr := fmt.Errorf("client: control request %s (%s): %w", request.Subtype, requestID, waitContext.Err())
 		if !c.pendingRequests.delete(requestID) {
-			return nil, waitContext.Err()
+			return nil, waitErr
 		}
 		cancelErr := c.writeControlCancelRequest(requestID)
-		return nil, joinErrors(waitContext.Err(), cancelErr)
+		return nil, joinErrors(waitErr, cancelErr)
 	}
 }
 

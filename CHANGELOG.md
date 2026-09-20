@@ -4,6 +4,11 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Refresh round-scoped SDK MCP handlers locally when runtime-visible configuration is unchanged, avoiding redundant control requests in reused Claude and nxs sessions.
+- Include the control subtype and request ID in timeout and cancellation errors while preserving error identity.
+
 ## [0.1.33] - 2026-09-10
 
 ### Added

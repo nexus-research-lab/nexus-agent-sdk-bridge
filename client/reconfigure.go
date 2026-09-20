@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/mcp"
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/mcpwire"
 )
 
 // Reconfigure 对运行中的会话应用可热更新配置；不可热更新时返回 ErrRestartRequired。
@@ -93,12 +93,7 @@ func (c *sessionCore) applyRuntimeReconfigure(
 			return err
 		}
 	}
-	if shouldSyncMCPServersForRuntimeReconfigure(currentOptions, nextOptions) {
-		if _, err := c.setMCPServers(ctx, resolvedMCPServersForRuntimeReconfigure(nextOptions)); err != nil {
-			return err
-		}
-	}
-	return nil
+	return c.reconfigureMCPServers(ctx, currentOptions, nextOptions)
 }
 
 func environmentDelta(current map[string]string, next map[string]string) map[string]string {
@@ -116,15 +111,22 @@ func environmentDelta(current map[string]string, next map[string]string) map[str
 	return delta
 }
 
-func shouldSyncMCPServersForRuntimeReconfigure(currentOptions Options, nextOptions Options) bool {
-	return !reflect.DeepEqual(
-		resolvedMCPServersForRuntimeReconfigure(currentOptions),
-		resolvedMCPServersForRuntimeReconfigure(nextOptions),
-	)
-}
-
-func resolvedMCPServersForRuntimeReconfigure(options Options) map[string]mcp.ServerConfig {
-	return options.resolvedMCPServers()
+// 本轮 handler 的身份变化只更新宿主注册表，不触发运行时重新配置。
+func (c *sessionCore) reconfigureMCPServers(ctx context.Context, current, next Options) error {
+	currentWire, _, err := mcpwire.SerializeServers(current.resolvedMCPServers())
+	if err != nil {
+		return err
+	}
+	nextWire, nextServers, err := mcpwire.SerializeServers(next.resolvedMCPServers())
+	if err != nil {
+		return err
+	}
+	if reflect.DeepEqual(currentWire, nextWire) {
+		c.replaceSDKMCPServers(nextServers)
+		return nil
+	}
+	_, err = c.setMCPServers(ctx, next.resolvedMCPServers())
+	return err
 }
 
 func stringMapsEqual(left map[string]string, right map[string]string) bool {

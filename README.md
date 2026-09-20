@@ -15,6 +15,8 @@ runtime.
 
 Hosts can use `Session.Control().ControlSubagent` after negotiating `CapabilitySubagentControl` with nxs. This control runs within an active parent MCP call; see the [runtime contract](docs/runtime-contract.md#subagent-control). Claude Code does not provide this extension.
 
+Session reconfiguration refreshes SDK MCP handlers locally when the runtime-visible MCP configuration is unchanged; only configuration changes send `mcp_set_servers`. Control timeout errors identify the request subtype and ID.
+
 ## Requirements
 
 - Go 1.24 or later

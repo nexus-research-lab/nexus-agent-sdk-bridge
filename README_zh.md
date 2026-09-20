@@ -14,6 +14,8 @@ agent loop，也不包含模型 runtime。
 
 宿主在 nxs 协商 `CapabilitySubagentControl` 后，可通过 `Session.Control().ControlSubagent` 在当前父会话 MCP 调用内管理子任务。协议与取消边界见 [runtime contract](docs/runtime-contract.md#subagent-control)；Claude Code 不提供此扩展。
 
+会话重配置时，若运行时可见的 MCP 配置未变，仅更新宿主 SDK MCP handler；配置变化才发送 `mcp_set_servers`。控制请求超时错误包含请求类型与 ID。
+
 ## 前置条件
 
 - Go 1.24 及以上版本
