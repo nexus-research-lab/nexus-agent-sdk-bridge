@@ -1127,6 +1127,13 @@ func buildEnvironmentForPlatform(
 		if !ok {
 			continue
 		}
+		// The Bridge is also usable without Nexus. Never let a standalone
+		// caller accidentally lend the child process credentials inherited
+		// from the host shell. Explicit typed overrides are applied below and
+		// remain the only way to project the selected Provider credential.
+		if inheritedProcessEnvironmentSecretKey(key) {
+			continue
+		}
 		if processEnvironmentKey(key, platform) == processEnvironmentKey("CLAUDECODE", platform) {
 			continue
 		}
@@ -1160,6 +1167,42 @@ func buildEnvironmentForPlatform(
 		results = append(results, fmt.Sprintf("%s=%s", entry.key, entry.value))
 	}
 	return results
+}
+
+// inheritedProcessEnvironmentSecretKey identifies environment names that are
+// commonly used for Provider credentials, bearer tokens, private material,
+// cookies, or proxy authentication. The match is intentionally conservative:
+// PATH, HOME, runtime identity, and ordinary configuration variables remain
+// inherited, while an explicit Options.Env override is still applied after
+// this filter and can therefore carry the host-resolved credential.
+func inheritedProcessEnvironmentSecretKey(key string) bool {
+	normalized := strings.ToUpper(strings.TrimSpace(key))
+	if normalized == "" {
+		return true
+	}
+	for _, marker := range []string{
+		"_API_KEY",
+		"_AUTH_TOKEN",
+		"_ACCESS_TOKEN",
+		"_TOKEN",
+		"_SECRET",
+		"_PASSWORD",
+		"_PASS",
+		"_CREDENTIAL",
+		"_PRIVATE_KEY",
+		"AUTHORIZATION",
+		"COOKIE",
+		"SSH_AUTH_SOCK",
+		"HTTP_PROXY",
+		"HTTPS_PROXY",
+		"ALL_PROXY",
+		"NO_PROXY",
+	} {
+		if strings.Contains(normalized, marker) {
+			return true
+		}
+	}
+	return false
 }
 
 func processEnvironmentKey(key string, platform string) string {
