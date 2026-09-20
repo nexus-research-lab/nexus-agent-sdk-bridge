@@ -130,6 +130,10 @@ type SandboxSettings struct {
 	// 这是 Claude 专属的宿主准入合同，不冒用 nxs 的 required_sandbox_v1，
 	// 也不代表 Claude 的整个 SDK IO 已经完成隔离验收。
 	RequireClaudeRestricted bool `json:"-"`
+	// RequireClaudeNativeSandbox 要求 Claude Code 使用其原生 sandbox
+	// settings 保留 Bash/构建命令，同时由 Claude 的 OS 后端限制命令。
+	// 该字段只由宿主 typed contract 设置，不进入普通 settings JSON。
+	RequireClaudeNativeSandbox bool `json:"-"`
 	// RequireFileTools 单独要求原生 Read/Write/Edit 隔离；必须同时设置 RequireSandbox。
 	// 只通过 nxs initialize 传递，不能作为普通 settings 或其他 runtime 的保证。
 	RequireFileTools bool `json:"-"`

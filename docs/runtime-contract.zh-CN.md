@@ -115,6 +115,19 @@ nxs 在创建会话前拒绝类型错误。普通 inline/project settings 不扩
 
 ## Claude 原生受限启动
 
+桌面产品默认使用 `SandboxSettings.RequireClaudeNativeSandbox=true`。该合同要求
+Bridge 生成的 `--settings` JSON 同时包含 `sandbox.enabled=true`、
+`sandbox.failIfUnavailable=true` 和 `sandbox.allowUnsandboxedCommands=false`，并
+提供 `CapabilityClaudeNativeSandbox`。Claude 原生 sandbox 因而保留 Bash/构建命令，
+再由 Claude 自己的 OS 后端限制命令、文件和网络；Bridge 会在正式进程前拒绝缺失、
+重复或被 `ExtraArgs` 覆盖的 settings。网络域名仍由 Nexus 的宿主准入提供，空准入
+序列化为 deny-all。该能力不冒用 nxs `required_sandbox_v1`，也不把 settings 注入
+当成运行期有效策略回执；真实允许/拒绝、取消、后代和平台证据仍需独立验收。
+
+旧的 `RequireClaudeRestricted=true` 仍表示 Claude 的 `--restricted` 工具裁剪模式。
+它会移除 Bash 等代码执行工具，不能作为桌面默认命令沙箱的替代；两种合同不能同时
+启用。Full Access 不安装原生合同，仍受宿主生命周期和领域授权约束。
+
 `SandboxSettings.RequireClaudeRestricted=true` 是 Bridge 对 Claude Code 原生
 `--restricted` 模式的类型化合同。它只能与 `RuntimeClaude` 一起使用；Bridge
 会在 Claude 进程启动参数中加入且只加入一次 `--restricted`，并为当前会话提供

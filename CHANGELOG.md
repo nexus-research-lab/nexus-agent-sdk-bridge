@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Add a typed `RequireClaudeNativeSandbox` contract for Claude Code. The Bridge
+  now requires generated `sandbox.enabled=true`, `failIfUnavailable=true`, and
+  `allowUnsandboxedCommands=false` settings before starting the stream-json
+  process, while preserving Claude's Bash/build tools. This is separate from
+  the older `--restricted` tool-removal mode and from nxs capabilities; actual
+  native OS enforcement still requires runtime evidence on each supported
+  platform.
+
 - Probe the exact resolved Claude CLI with `--restricted --help` before admitting
   a restricted stream-json session. Require a successful exit and an advertised
   flag, bound probe output/time, and scrub common Provider/proxy secret variables

@@ -8,7 +8,8 @@
 // RequireSkillFiles 独立确认 Skill 发现/正文、Git 忽略与 remember 设置；不推断全 SDK IO。
 // RequireContextFiles 独立确认指令及 compact 文件读取；依赖命令和文件合同。
 // Resources 通过独立版本合同确认只读/工作区写及宿主 scratch；复制选项、启动准入和进程替换保持此边界。
-// RequireClaudeRestricted 只为 Claude Code 安装原生 --restricted；它不冒用 nxs 合同，Full Access 不需要该要求，且不证明 Claude SDK 全部 IO 隔离。
+// RequireClaudeRestricted 只为 Claude Code 安装原生 --restricted 工具裁剪；它不冒用 nxs 合同，Full Access 不需要该要求，且不证明 Claude SDK 全部 IO 隔离。
+// RequireClaudeNativeSandbox 要求 Claude Code 通过 sandbox settings 保留命令工具并启用原生 OS 沙箱，缺失或允许 unsandboxed command 时失败关闭。
 // sandbox.go 在消息写入前独立校验当前初始化能力，阻止握手期间的并发提前发送。
 // reconfigure.go 对沙箱策略变化返回明确的重启要求，禁止仅更新本地 options 伪装生效。
 // conn.go 的共享关闭先等待 transport Close 与 Wait，再确认清理完成；调用方超时不释放退出栅栏。

@@ -168,19 +168,20 @@ func sandboxContractFingerprintPayload(settings *SandboxSettings) map[string]any
 		return nil
 	}
 	return map[string]any{
-		"resources":                 settings.Resources,
-		"require_claude_restricted": settings.RequireClaudeRestricted,
-		"require_sandbox":           settings.RequireSandbox,
-		"require_file_tools":        settings.RequireFileTools,
-		"require_search_tools":      settings.RequireSearchTools,
-		"require_media_files":       settings.RequireMediaFiles,
-		"require_notebook_files":    settings.RequireNotebookFiles,
-		"require_skill_files":       settings.RequireSkillFiles,
-		"require_context_files":     settings.RequireContextFiles,
-		"require_project_files":     settings.RequireProjectFiles,
-		"require_managed_policy":    settings.RequireManagedPolicy,
-		"require_settings_files":    settings.RequireSettingsFiles,
-		"require_settings_writes":   settings.RequireSettingsWrites,
+		"resources":                     settings.Resources,
+		"require_claude_restricted":     settings.RequireClaudeRestricted,
+		"require_claude_native_sandbox": settings.RequireClaudeNativeSandbox,
+		"require_sandbox":               settings.RequireSandbox,
+		"require_file_tools":            settings.RequireFileTools,
+		"require_search_tools":          settings.RequireSearchTools,
+		"require_media_files":           settings.RequireMediaFiles,
+		"require_notebook_files":        settings.RequireNotebookFiles,
+		"require_skill_files":           settings.RequireSkillFiles,
+		"require_context_files":         settings.RequireContextFiles,
+		"require_project_files":         settings.RequireProjectFiles,
+		"require_managed_policy":        settings.RequireManagedPolicy,
+		"require_settings_files":        settings.RequireSettingsFiles,
+		"require_settings_writes":       settings.RequireSettingsWrites,
 	}
 }
 

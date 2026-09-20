@@ -17,10 +17,47 @@ func claudeRestrictedRequired(options Options) bool {
 	return options.Sandbox != nil && options.Sandbox.RequireClaudeRestricted
 }
 
+// claudeNativeSandboxRequired 报告宿主是否要求 Claude 的原生命令沙箱。
+func claudeNativeSandboxRequired(options Options) bool {
+	return options.Sandbox != nil && options.Sandbox.RequireClaudeNativeSandbox
+}
+
 // validateClaudeRestrictedOptions 在启动 transport 前校验 Claude 专属的类型化
 // 启动合同。标记的实际执行仍由 Claude 负责；Bridge 只证明将以该参数启动所选程序。
 func validateClaudeRestrictedOptions(options Options) error {
 	settings := options.Sandbox
+	if settings != nil && settings.RequireClaudeNativeSandbox {
+		if normalizedRuntimeKind(options.Runtime.Kind) != RuntimeClaude {
+			return &UnsupportedCapabilityError{Capability: CapabilityClaudeNativeSandbox}
+		}
+		if settings.RequireClaudeRestricted {
+			return errors.New("client: Claude native sandbox cannot be combined with --restricted tool mode")
+		}
+		if options.Runtime.PermissionMode == permission.ModeBypassPermissions {
+			return errors.New("client: Claude native sandbox cannot be combined with bypass permissions")
+		}
+		if settings.Enabled == nil || !*settings.Enabled {
+			return errors.New("client: Claude native sandbox requires sandbox.enabled=true")
+		}
+		if settings.FailIfUnavailable == nil || !*settings.FailIfUnavailable {
+			return errors.New("client: Claude native sandbox requires sandbox.failIfUnavailable=true")
+		}
+		if settings.AllowUnsandboxedCommands == nil || *settings.AllowUnsandboxedCommands {
+			return errors.New("client: Claude native sandbox must reject unsandboxed commands")
+		}
+		for _, arg := range options.ExtraBoolArgs {
+			normalized := strings.TrimLeft(strings.TrimSpace(arg), "-")
+			if normalized == "dangerously-skip-permissions" {
+				return errors.New("client: Claude native sandbox cannot be combined with bypass permissions")
+			}
+		}
+		for key := range options.ExtraArgs {
+			normalized := strings.TrimLeft(strings.TrimSpace(key), "-")
+			if normalized == "settings" {
+				return errors.New("client: Claude native sandbox settings cannot be overridden by ExtraArgs")
+			}
+		}
+	}
 	if settings == nil || !settings.RequireClaudeRestricted {
 		for _, arg := range options.ExtraBoolArgs {
 			if strings.TrimLeft(strings.TrimSpace(arg), "-") == "restricted" {
@@ -102,6 +139,9 @@ func (c *sessionCore) validateSandboxRequirements() error {
 	if settings.RequireSandbox && normalizedRuntimeKind(c.options.Runtime.Kind) != RuntimeNXS {
 		return &UnsupportedCapabilityError{Capability: CapabilityRequiredSandbox}
 	}
+	if settings.RequireClaudeNativeSandbox && normalizedRuntimeKind(c.options.Runtime.Kind) != RuntimeClaude {
+		return &UnsupportedCapabilityError{Capability: CapabilityClaudeNativeSandbox}
+	}
 	return nil
 }
 
@@ -146,6 +186,9 @@ func (c *sessionCore) requireSandboxReadyForSend() error {
 	}
 	if c.options.Sandbox != nil && c.options.Sandbox.Resources != nil && !c.supports(CapabilitySandboxResources) {
 		return &UnsupportedCapabilityError{Capability: CapabilitySandboxResources}
+	}
+	if c.options.Sandbox != nil && c.options.Sandbox.RequireClaudeNativeSandbox && !c.supports(CapabilityClaudeNativeSandbox) {
+		return &UnsupportedCapabilityError{Capability: CapabilityClaudeNativeSandbox}
 	}
 	return nil
 }

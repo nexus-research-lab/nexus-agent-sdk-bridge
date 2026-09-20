@@ -180,6 +180,26 @@ ordinary inline/project settings do not expand required-mode resource grants.
 
 ## Claude native restricted launch
 
+Desktop hosts use `SandboxSettings.RequireClaudeNativeSandbox=true` for the
+default restricted Claude path. Bridge generates a single structured
+`--settings` object with `sandbox.enabled=true`,
+`sandbox.failIfUnavailable=true`, and
+`sandbox.allowUnsandboxedCommands=false`, and exposes
+`CapabilityClaudeNativeSandbox`. Claude therefore keeps Bash/build tools while
+its own native OS backend restricts command, file, and network access. Bridge
+rejects missing, duplicated, or `ExtraArgs`-overridden settings before starting
+the stream-json process. Nexus supplies the network grant; an empty grant is
+serialized as deny-all. This capability is separate from nxs
+`required_sandbox_v1`, and settings admission is not an effective-policy
+receipt: real allow/deny, cancellation, descendant cleanup, and platform
+evidence remain separate acceptance requirements.
+
+The older `RequireClaudeRestricted=true` contract still means Claude's
+`--restricted` tool-removal mode. That mode removes Bash and other code-running
+tools and cannot replace the desktop command sandbox; the two contracts cannot
+be enabled together. Full Access installs neither native contract and remains
+subject to host lifecycle and domain authorization.
+
 `SandboxSettings.RequireClaudeRestricted=true` is the typed Bridge contract for
 Claude Code's native `--restricted` mode. It is valid only with
 `RuntimeClaude`; Bridge adds exactly one `--restricted` argument to the Claude

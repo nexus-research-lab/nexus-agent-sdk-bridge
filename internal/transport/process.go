@@ -130,10 +130,13 @@ type ProcessConfig struct {
 	// stream-json process is started. It is deliberately separate from the nxs
 	// control-wire dialect and is only set by the typed Bridge option.
 	RequireClaudeRestricted bool
-	Stderr                  func(string)
-	Diagnostics             func(ProcessDiagnosticEvent)
-	SignalProcess           ProcessSignalHandler
-	ControlWireDialect      ControlWireDialect
+	// RequireClaudeNativeSandbox makes process admission verify the generated
+	// Claude sandbox settings before the stream-json process is started.
+	RequireClaudeNativeSandbox bool
+	Stderr                     func(string)
+	Diagnostics                func(ProcessDiagnosticEvent)
+	SignalProcess              ProcessSignalHandler
+	ControlWireDialect         ControlWireDialect
 }
 
 // ProcessManager 管理 Claude CLI 子进程。
@@ -186,6 +189,9 @@ func (m *ProcessManager) Start(ctx context.Context) error {
 	}
 
 	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if err := verifyClaudeNativeSandboxSettings(m.config); err != nil {
 		return err
 	}
 	if m.config.RequireClaudeRestricted {

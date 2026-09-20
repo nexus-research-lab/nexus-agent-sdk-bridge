@@ -26,7 +26,10 @@ const (
 	// CapabilityClaudeRestricted 表示 Bridge 已为 Claude Code 安装原生
 	// --restricted 启动合同。它不表示 nxs 的 required_sandbox_v1，也不
 	// 代表 Claude SDK 的全部文件、网络或后台 IO 已隔离。
-	CapabilityClaudeRestricted       Capability = "claude_restricted"
+	CapabilityClaudeRestricted Capability = "claude_restricted"
+	// CapabilityClaudeNativeSandbox 表示 Bridge 已安装 Claude 原生命令
+	// sandbox settings；它独立于 nxs 的 required_sandbox_v1。
+	CapabilityClaudeNativeSandbox    Capability = "claude_native_sandbox"
 	CapabilityAutoReview             Capability = "auto_review"
 	CapabilitySendOptions            Capability = "send_options"
 	CapabilityInternalContext        Capability = "internal_context"
@@ -120,6 +123,8 @@ func (c *sessionCore) supports(capability Capability) bool {
 		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS && slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, sandboxResourcesProtocolCapability)
 	case CapabilityClaudeRestricted:
 		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeClaude && claudeRestrictedRequired(c.options)
+	case CapabilityClaudeNativeSandbox:
+		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeClaude && claudeNativeSandboxRequired(c.options)
 	case CapabilityAutoReview:
 		// Claude 使用原生控制确认模式；nxs 使用扩展协议协商。此能力不代表账号或模型可用性。
 		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeClaude || slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, autoReviewProtocolCapability)
