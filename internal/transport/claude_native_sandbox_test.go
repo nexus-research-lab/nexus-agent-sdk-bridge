@@ -22,6 +22,7 @@ func TestVerifyClaudeNativeSandboxSettings(t *testing.T) {
 		"duplicate":     {"--settings", `{"sandbox":{"enabled":true,"failIfUnavailable":true,"allowUnsandboxedCommands":false}}`, "--settings", `{"sandbox":{"enabled":false}}`},
 		"invalid":       {"--settings", `{"sandbox":`},
 		"not_an_object": {"--settings", `{"sandbox":true}`},
+		"trailing":      {"--settings", `{"sandbox":{"enabled":true,"failIfUnavailable":true,"allowUnsandboxedCommands":false}} trailing`},
 	} {
 		t.Run(name, func(t *testing.T) {
 			config := valid

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 )
 
@@ -29,7 +30,7 @@ func verifyClaudeNativeSandboxSettings(config ProcessConfig) error {
 		return fmt.Errorf("process: Claude native sandbox settings are invalid JSON: %w", err)
 	}
 	var trailing any
-	if err := decoder.Decode(&trailing); err == nil {
+	if err := decoder.Decode(&trailing); err != io.EOF {
 		return errors.New("process: Claude native sandbox settings contain trailing JSON")
 	}
 	sandbox, ok := root["sandbox"].(map[string]any)
