@@ -81,3 +81,5 @@ Runtime 强制隔离与产品授权不属于本库职责。
 
 公开 Go package 按仓库版本演进，`internal/` 不属于可依赖 API。新增 runtime 专属行为
 必须先定义公开 capability 和类型化协议；宿主不应依赖未文档化 payload 字段。
+
+SDK 托管 MCP 调用上下文：nxs 和使用同一线格式的 runtime 所发 `params._meta["claudecode/toolUseId"]` 原样进入 `tools.Context.ToolUseID`。每次调用的元数据独立，不从参数或 JSON-RPC id 生成身份，也不推断 SessionID/RoundID；缺省元数据不继承父调用身份。

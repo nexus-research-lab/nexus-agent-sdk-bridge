@@ -229,7 +229,7 @@ func sdkTool(tool Tool) mcpserver.Tool {
 		AlwaysLoad:  metadata.AlwaysLoad,
 		Annotations: sdkAnnotations(metadata.Annotations),
 		Handler: func(ctx context.Context, input map[string]any) (mcpserver.ToolResult, error) {
-			result, err := tool.Call(ctx, input, &Context{})
+			result, err := tool.Call(ctx, input, toolCallContext(ctx))
 			if err != nil {
 				return mcpserver.ToolResult{}, err
 			}
