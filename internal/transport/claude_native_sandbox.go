@@ -73,7 +73,7 @@ func verifyClaudeNativeSandboxCommand(parent context.Context, command processCom
 	}
 	ctx, cancel := context.WithTimeout(parent, claudeNativeSandboxProbeTimeout)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, command.executable, command.arguments([]string{"--settings", settingsValue, "--help"})...)
+	cmd := exec.Command(command.executable, command.arguments([]string{"--settings", settingsValue, "--help"})...)
 	cmd.Dir = config.CWD
 	cmd.Env = buildClaudeRestrictedProbeEnvironment(config.Env, config.CWD, config.ControlWireDialect)
 	if err := applyCommandUser(cmd, config.User); err != nil {
@@ -85,7 +85,7 @@ func verifyClaudeNativeSandboxCommand(parent context.Context, command processCom
 	stderr.limit = claudeRestrictedProbeLimit
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
+	if err := runProbeProcess(ctx, cmd); err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 			return fmt.Errorf("process: Claude native sandbox probe timed out after %s", claudeNativeSandboxProbeTimeout)
 		}

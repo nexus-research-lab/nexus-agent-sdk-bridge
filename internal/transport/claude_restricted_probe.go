@@ -34,7 +34,7 @@ func verifyClaudeRestrictedCommand(
 	ctx, cancel := context.WithTimeout(parent, claudeRestrictedProbeTimeout)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, command.executable, command.arguments([]string{"--restricted", "--help"})...)
+	cmd := exec.Command(command.executable, command.arguments([]string{"--restricted", "--help"})...)
 	cmd.Dir = config.CWD
 	cmd.Env = buildClaudeRestrictedProbeEnvironment(config.Env, config.CWD, config.ControlWireDialect)
 	if err := applyCommandUser(cmd, config.User); err != nil {
@@ -47,7 +47,7 @@ func verifyClaudeRestrictedCommand(
 	stderr.limit = claudeRestrictedProbeLimit
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
+	if err := runProbeProcess(ctx, cmd); err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 			return fmt.Errorf("process: Claude restricted probe timed out after %s", claudeRestrictedProbeTimeout)
 		}
