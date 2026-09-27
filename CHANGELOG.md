@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Create Windows runtime and CLI probe processes suspended, assign their kill-on-close Job before resuming the initial thread, and reject ambiguous thread ownership or resume failures. Native tests cover immediate descendants, cancellation with inherited pipes and host termination. Bound probe pipe waits and apply the same cleanup and scrubbed environment to version checks. A host crash before Job assignment can still leave a suspended process; atomic creation and host resource recovery remain separate acceptance work.
+
 - Consolidate sandbox development on `codex/desktop-sandbox-approvals` and
   preserve the unfinished receipt-store experiment in
   [a non-executable history archive](docs/history/desktop-sandbox-drafts-2026-09-27/README.md).

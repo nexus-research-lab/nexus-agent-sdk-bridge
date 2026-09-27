@@ -20,14 +20,20 @@ func runProbeProcess(ctx context.Context, command *exec.Cmd) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
+	configureProcessSession(command)
+	// 后代可能继承输出管道；主进程已退出也不能无限等待 io.Copy。
+	if command.WaitDelay == 0 {
+		command.WaitDelay = defaultStderrDrainTimeout
+	}
 	if err := command.Start(); err != nil {
 		return err
 	}
 	session, err := startedProcessSession(command)
 	if err != nil {
 		killErr := command.Process.Kill()
+		cleanupErr := cleanupProbeSession(session)
 		waitErr := command.Wait()
-		return errors.Join(err, ignoreProcessGone(killErr), waitErr)
+		return errors.Join(err, ignoreProcessGone(killErr), waitErr, cleanupErr)
 	}
 	wait := make(chan error, 1)
 	go func() { wait <- command.Wait() }()
@@ -36,8 +42,9 @@ func runProbeProcess(ctx context.Context, command *exec.Cmd) error {
 		return errors.Join(waitErr, cleanupProbeSession(session))
 	case <-ctx.Done():
 		killErr := ignoreProcessGone(command.Process.Kill())
+		cleanupErr := cleanupProbeSession(session)
 		waitErr := <-wait
-		return errors.Join(ctx.Err(), killErr, waitErr, cleanupProbeSession(session))
+		return errors.Join(ctx.Err(), killErr, waitErr, cleanupErr)
 	}
 }
 

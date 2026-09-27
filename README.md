@@ -139,10 +139,12 @@ Hosts that run the child under another OS identity can use
 interrupt, shutdown, and descendant cleanup.
 `client.ProcessCleanupError` preserves cleanup failures through `Wait` and repeated
 `Close`, including forced termination. The built-in Unix sweep covers visible
-members of the original session. Windows sessions use a per-runtime Job Object
-with kill-on-close and reject startup when that cleanup boundary cannot be
-established; clean-host Windows acceptance and durable resource recovery still
-require host/platform evidence. See [lifecycle limits](docs/runtime-contract.md#session-lifecycle).
+members of the original session. Windows runtimes and CLI probes start suspended
+and resume only after joining a per-runtime kill-on-close Job Object. Native tests
+cover immediate descendants, cancellation with inherited pipes and host termination
+after admission. A host crash before Job assignment can still leave a suspended
+process; atomic creation and durable resource recovery still require host/platform
+evidence. See [lifecycle limits](docs/runtime-contract.md#session-lifecycle).
 
 ## Documentation
 

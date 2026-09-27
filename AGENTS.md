@@ -38,6 +38,7 @@ Nexus product
 - AutoDream 只由原生 nxs 提供；宿主负责唤醒，nxs 负责最终执行判断
 - 长时 control 的 context 取消必须携带同一 `request_id` 传播到 runtime
 - 进程清理错误通过 ProcessCleanupError 穿过 Wait 与重复 Close；Unix session 清理不代表全部脱离后代或宿主资源租约已经回收
+- Windows runtime/CLI probe 必须 CREATE_SUSPENDED，在绑定 kill-on-close Job 后校验并恢复初始线程；probe 取消先清后代再等待管道，版本预检同样清理并裁剪环境。Job 绑定前宿主崩溃仍可能留下挂起进程，不能声称创建/绑定原子性。
 
 ## 开发约定
 

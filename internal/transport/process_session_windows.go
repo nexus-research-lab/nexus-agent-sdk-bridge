@@ -1,6 +1,6 @@
 //go:build windows
 
-// INPUT: 已启动的 Windows runtime 进程及其 Job Object。
+// INPUT: 挂起创建的 Windows runtime 进程及其 Job Object。
 // OUTPUT: 可观测且可回收的进程后代边界。
 // POS: Windows runtime 的进程树清理与宿主崩溃回收；不宣称权限或文件沙箱。
 package transport
@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os/exec"
 	"sync"
+	"syscall"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
@@ -29,16 +30,27 @@ type processSession struct {
 	state     *windowsJobSession
 }
 
-// Windows 没有 Unix session；Job Object 在进程启动后绑定，覆盖通过 shell 或
-// runtime 自行派生的后代，并在宿主句柄消失时由 KILL_ON_JOB_CLOSE 收口。
-func configureProcessSession(_ *exec.Cmd) {}
+// configureProcessSession 禁止入口代码先于 Job 绑定执行，否则早期后代不会补入 Job。
+func configureProcessSession(command *exec.Cmd) {
+	if command == nil {
+		return
+	}
+	if command.SysProcAttr == nil {
+		command.SysProcAttr = &syscall.SysProcAttr{}
+	}
+	command.SysProcAttr.CreationFlags |= windows.CREATE_SUSPENDED
+}
 
+// startedProcessSession 先建立后代边界，再恢复初始线程；任何失败由调用方终止挂起进程。
 func startedProcessSession(command *exec.Cmd) (processSession, error) {
 	if command == nil || command.Process == nil {
 		return processSession{}, nil
 	}
 
 	session := processSession{sessionID: command.Process.Pid}
+	if command.SysProcAttr == nil || command.SysProcAttr.CreationFlags&windows.CREATE_SUSPENDED == 0 {
+		return session, errors.New("runtime process was not created suspended")
+	}
 	job, err := windows.CreateJobObject(nil, nil)
 	if err != nil {
 		return session, fmt.Errorf("create runtime job object: %w", err)
@@ -76,7 +88,58 @@ func startedProcessSession(command *exec.Cmd) (processSession, error) {
 		session.state = nil
 		return session, fmt.Errorf("assign runtime process to job object: %w", err)
 	}
+	// os/exec 已关闭创建时的线程句柄；只恢复此仍挂起进程唯一的初始线程。
+	// 绑定后失败保留 Job，由统一 abort/cleanup 终止所有成员。
+	if err := resumeInitialRuntimeThread(uint32(command.Process.Pid)); err != nil {
+		return session, fmt.Errorf("resume runtime after job assignment: %w", err)
+	}
 	return session, nil
+}
+
+// resumeInitialRuntimeThread 不按快照中的线程 ID 盲目恢复；开句柄后再次验证所属进程。
+func resumeInitialRuntimeThread(processID uint32) error {
+	snapshot, err := windows.CreateToolhelp32Snapshot(windows.TH32CS_SNAPTHREAD, 0)
+	if err != nil {
+		return fmt.Errorf("snapshot initial runtime thread: %w", err)
+	}
+	defer windows.CloseHandle(snapshot)
+	entry := windows.ThreadEntry32{Size: uint32(unsafe.Sizeof(windows.ThreadEntry32{}))}
+	var threadID uint32
+	for err = windows.Thread32First(snapshot, &entry); err == nil; err = windows.Thread32Next(snapshot, &entry) {
+		if entry.OwnerProcessID != processID {
+			continue
+		}
+		if threadID != 0 {
+			return errors.New("suspended runtime has more than one initial thread")
+		}
+		threadID = entry.ThreadID
+	}
+	if !errors.Is(err, windows.ERROR_NO_MORE_FILES) {
+		return fmt.Errorf("enumerate initial runtime thread: %w", err)
+	}
+	if threadID == 0 {
+		return errors.New("suspended runtime initial thread is missing")
+	}
+	thread, err := windows.OpenThread(windows.THREAD_SUSPEND_RESUME|windows.THREAD_QUERY_LIMITED_INFORMATION, false, threadID)
+	if err != nil {
+		return fmt.Errorf("open initial runtime thread: %w", err)
+	}
+	defer windows.CloseHandle(thread)
+	owner, _, ownerErr := windows.NewLazySystemDLL("kernel32.dll").NewProc("GetProcessIdOfThread").Call(uintptr(thread))
+	if owner == 0 {
+		return fmt.Errorf("query initial runtime thread owner: %w", ownerErr)
+	}
+	if uint32(owner) != processID {
+		return errors.New("initial runtime thread owner changed")
+	}
+	previous, err := windows.ResumeThread(thread)
+	if err != nil {
+		return fmt.Errorf("resume initial runtime thread: %w", err)
+	}
+	if previous != 1 {
+		return fmt.Errorf("initial runtime thread suspend count is %d, want 1", previous)
+	}
+	return nil
 }
 
 func (s processSession) id() int { return s.sessionID }

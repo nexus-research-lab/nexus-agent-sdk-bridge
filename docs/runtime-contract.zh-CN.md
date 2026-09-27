@@ -65,11 +65,18 @@ Capability 真相源位于 [`client/capability.go`](../client/capability.go)。�
 
 这是 session 内清理步骤，不是完整进程树回执。后代可以另建 Unix session，Linux 的
 PID namespace 和 `/proc` 可见范围也限制观察。宿主信号回调自行定义清理语义，回调
-返回成功不代表 Bridge 又独立验证了退出。Windows 现在为每个 runtime 创建带
-`KILL_ON_JOB_CLOSE` 的 Job Object，在受理 session 前绑定主进程，清理时等待 Job
-变为空；无法创建或绑定该边界会拒绝启动，Bridge 崩溃时句柄关闭也会终止后代。原生
-Windows clean-host 运行、进程身份复用及私有 scratch 所有权仍需平台验收证据。宿主
-必须保留失败边界，不能因流已关闭就复用资源。
+返回成功不代表 Bridge 又独立验证了退出。Windows 以 `CREATE_SUSPENDED` 创建
+runtime，先绑定带 `KILL_ON_JOB_CLOSE` 的 Job，再核对初始线程所属进程并恢复执行。
+入口代码不能在 Job 绑定前执行或派生后代；创建、绑定、线程查询或恢复失败均拒绝准入。
+清理等待 Job 变为空，Bridge 崩溃后句柄关闭也会终止已准入成员。Windows 11 amd64
+原生测试覆盖入口立即派生、继承输出管道时取消及强制终止宿主。
+
+CLI help/settings/restricted/version 预检共用该边界。取消先清后代再等退出，父进程
+退出后的管道等待有界；版本预检也使用裁剪后的环境和有界输出。
+
+进程创建和 Job 绑定仍是两个 OS 操作：绑定前 Bridge 崩溃可能留下尚未执行入口的
+挂起进程。这不代表原子创建回执、进程身份复用安全、私有 scratch 恢复、文件/网络
+隔离或 clean-host 安装验收。宿主必须保留失败边界，不能因流已关闭就复用资源。
 
 `client.ForkSession` 会复制源 Session 到传入消息 ID 的精确边界，并创建独立目标。
 Claude Code 可能到首个用户回合才持久化目标 transcript，但 bridge 会在返回 Session

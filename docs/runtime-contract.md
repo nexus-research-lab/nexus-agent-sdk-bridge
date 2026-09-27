@@ -81,14 +81,26 @@ This is a session sweep, not a complete process-tree receipt. Descendants can
 create another Unix session; Linux PID namespaces and `/proc` visibility also
 bound the observation. A host signal callback supplies its own cleanup semantics;
 its success is not independent exit verification by Bridge. On Windows, the
-bridge now creates a per-runtime Job Object with `KILL_ON_JOB_CLOSE`, assigns the
-started process before admitting the session, and waits for the job to become
-empty during cleanup. Failure to create or assign that boundary rejects startup;
-the same job also terminates descendants when the bridge process crashes. Native
-Windows clean-host execution, process identity reuse and private scratch
-ownership still need platform acceptance evidence. Hosts must retain a failed
-cleanup boundary instead of treating a closed stream as proof that resources can
-be reused.
+bridge creates the runtime with `CREATE_SUSPENDED`, assigns a per-runtime Job
+Object with `KILL_ON_JOB_CLOSE`, then validates the initial thread's owner and
+resumes it. The runtime cannot execute entry code or create early descendants
+before assignment. Creation, assignment, thread lookup or resume failure rejects
+startup. Cleanup waits for the Job to become empty, and closing the owning bridge
+process kills admitted members. The Windows 11 amd64 native suite verifies immediate
+descendants, cancellation with inherited output pipes and forced host termination.
+
+CLI help/settings/restricted/version probes use the same process boundary.
+Cancellation cleans descendants before waiting for exit, and post-exit pipe waits
+are bounded; inherited pipes cannot turn a successful parent exit into an indefinite
+admission wait. Version probes use the same scrubbed environment and bounded output
+as capability probes.
+
+Creation and assignment are still two OS operations: a bridge crash before Job
+assignment can leave a suspended runtime, although its entry code has not executed.
+This is not an atomic creation receipt or proof of private scratch recovery, identity
+reuse safety, file/network confinement or clean-host installation acceptance. Hosts
+must retain a failed cleanup boundary instead of treating a closed stream as proof
+that resources can be reused.
 
 `client.ForkSession` creates an independent target from a source session through
 the exact supplied message ID. Claude Code may not persist the target transcript

@@ -242,6 +242,7 @@ func (m *ProcessManager) Start(ctx context.Context) error {
 	cmd.Stderr = stderrWriter
 
 	if err := cmd.Start(); err != nil {
+		_ = stdin.Close()
 		_ = stdoutReader.Close()
 		_ = stdoutWriter.Close()
 		_ = stderrReader.Close()
@@ -810,15 +811,19 @@ func (m *ProcessManager) checkCommandVersion(parent context.Context, command pro
 	ctx, cancel := context.WithTimeout(parent, versionCheckTimeout)
 	defer cancel()
 
-	output, err := exec.CommandContext(
-		ctx,
-		command.executable,
-		command.arguments([]string{"-v"})...,
-	).Output()
-	if err != nil {
+	probe := exec.Command(command.executable, command.arguments([]string{"-v"})...)
+	probe.Dir = m.config.CWD
+	probe.Env = buildClaudeRestrictedProbeEnvironment(m.config.Env, m.config.CWD, m.config.ControlWireDialect)
+	if err := applyCommandUser(probe, m.config.User); err != nil {
 		return
 	}
-	m.emitUnsupportedCommandVersionDiagnostic(command.path, string(output))
+	var output limitedProbeBuffer
+	output.limit = claudeRestrictedProbeLimit
+	probe.Stdout, probe.Stderr = &output, io.Discard
+	if err := runProbeProcess(ctx, probe); err != nil {
+		return
+	}
+	m.emitUnsupportedCommandVersionDiagnostic(command.path, output.String())
 }
 
 func (m *ProcessManager) shouldCheckCommandVersion() bool {

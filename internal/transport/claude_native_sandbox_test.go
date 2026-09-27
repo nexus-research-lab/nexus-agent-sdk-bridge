@@ -50,18 +50,8 @@ func TestProcessArgumentValueUsesLastValueForDiagnostics(t *testing.T) {
 }
 
 func TestClaudeNativeSandboxProbeUsesSettingsAndScrubsSecrets(t *testing.T) {
-	command := writeProbeScript(t, `#!/bin/sh
-if [ "${NEXUS_PROBE_SECRET_TOKEN:-}" = "probe-secret" ]; then
-  echo leaked-secret >&2
-  exit 91
-fi
-if [ "$1" = "--settings" ] && [ "$3" = "--help" ]; then
-  echo 'Claude Code options: --settings <file-or-json>'
-  exit 0
-fi
-exit 92
-`)
-	err := verifyClaudeNativeSandboxCommand(context.Background(), processCommand{path: command, executable: command}, ProcessConfig{
+	command := newClaudeProbeTestCommand("settings")
+	err := verifyClaudeNativeSandboxCommand(context.Background(), command, ProcessConfig{
 		Args:                       []string{"--settings", `{"sandbox":{"enabled":true,"failIfUnavailable":true,"allowUnsandboxedCommands":false}}`},
 		Env:                        map[string]string{"NEXUS_PROBE_SECRET_TOKEN": "probe-secret"},
 		RequireClaudeNativeSandbox: true,
@@ -73,11 +63,8 @@ exit 92
 }
 
 func TestClaudeNativeSandboxProbeFailsClosedWhenSettingsFlagIsMissing(t *testing.T) {
-	command := writeProbeScript(t, `#!/bin/sh
-echo 'Claude Code options: --print'
-exit 0
-`)
-	err := verifyClaudeNativeSandboxCommand(context.Background(), processCommand{path: command, executable: command}, ProcessConfig{
+	command := newClaudeProbeTestCommand("missing")
+	err := verifyClaudeNativeSandboxCommand(context.Background(), command, ProcessConfig{
 		Args:                       []string{"--settings", `{"sandbox":{"enabled":true,"failIfUnavailable":true,"allowUnsandboxedCommands":false}}`},
 		RequireClaudeNativeSandbox: true,
 		ControlWireDialect:         ControlWireDialectClaude,
