@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Add `RequireMCPNetwork` and `CapabilitySandboxMCPNetwork` for explicit HTTP/SSE endpoint confinement. Validate strict configuration before startup, negotiate the independent capability before prompts, and replace the process when the requirement changes.
+
 - Create Windows runtime and CLI probe processes suspended, assign their kill-on-close Job before resuming the initial thread, and reject ambiguous thread ownership or resume failures. Native tests cover immediate descendants, cancellation with inherited pipes and host termination. Bound probe pipe waits and apply the same cleanup and scrubbed environment to version checks. A host crash before Job assignment can still leave a suspended process; atomic creation and host resource recovery remain separate acceptance work.
 
 - Add `RequireMediaNetwork` and `CapabilitySandboxMediaNetwork` to require nxs remote-image network admission and URL materialization before task writes. Missing command/file/media prerequisites fail before startup, old runtimes are rejected, and requirement changes replace the process. This is independent of Claude, model Provider transport, and external MCP egress.

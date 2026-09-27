@@ -22,4 +22,5 @@
 // RequireManagedPolicy 独立确认托管来源和完整性；依赖命令/文件合同并参与进程替换。
 // RequireSettingsFiles 独立要求普通配置读取和快照完整性；不能推断凭据或持久化保证。
 // RequireSettingsWrites 独立要求普通配置受控写入；依赖读取合同且不表示跨进程事务或持久回执。
+// RequireMCPNetwork 独立要求显式 HTTP/SSE 端点网络和撤销，要求 RequireSandbox 与 MCP.StrictConfig。
 package client

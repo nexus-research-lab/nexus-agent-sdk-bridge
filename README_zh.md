@@ -180,3 +180,7 @@ Apache License 2.0 · [LICENSE](./LICENSE)
 在必需沙箱、文件工具和配置读取要求之外设置 `RequireSettingsWrites: true`，可要求 nxs 独立确认 Config 与权限持久化边界。Claude Code 和缺少该能力的旧 nxs 会在任务发送前拒绝。见 [普通配置写入合同](docs/runtime-contract.zh-CN.md#普通配置写入)。
 
 SDK 托管工具把 `params._meta["claudecode/toolUseId"]` 传递为 `tools.Context.ToolUseID`。缺省元数据保持为空，不从业务参数或 JSON-RPC request ID 推断 tool-use 身份。
+
+### 远端 MCP 网络
+
+`RequireMCPNetwork` / `sandbox_mcp_network_v1` 要求必需沙箱、`MCP.StrictConfig` 显式服务来源和 nxs 能力确认。HTTP 与旧式 SSE 服务仅获得自身协议、主机、端口的端点授权；跳转和 SSE POST 地址不能跨 origin，普通工具联网权限保持独立，显式禁止及托管域名规则仍优先。撤销、更换配置、关闭及权限变化取消对应请求。认证 helper、stdio 进程、OAuth 发现和模型 Provider 网络仍是独立合同。

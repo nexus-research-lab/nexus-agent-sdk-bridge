@@ -194,3 +194,7 @@ Use `RequireSettingsFiles: true` to require confined ordinary settings reads and
 Use `RequireSettingsWrites: true` together with the required sandbox, file-tool and settings-file options to require nxs-controlled Config and permission persistence. Claude Code and older nxs runtimes are rejected before a task is sent. See [ordinary settings write scope](docs/runtime-contract.md#ordinary-settings-writes).
 
 SDK-hosted tools preserve `params._meta["claudecode/toolUseId"]` as `tools.Context.ToolUseID`. Missing metadata stays empty; business arguments and JSON-RPC request IDs are never treated as tool-use identity.
+
+### Remote MCP networking
+
+RequireMCPNetwork / sandbox_mcp_network_v1 requires an explicit MCP configuration (MCP.StrictConfig), mandatory sandboxing, and negotiated nxs support. Configured HTTP and legacy SSE servers receive only their own scheme/host/port grant; redirects and SSE POST endpoints cannot leave that origin. Tool network grants remain independent; explicit denies and managed-only domain policy still apply. Retirement, configuration replacement, shutdown and permission changes cancel the covered requests. Authentication helpers, stdio processes, OAuth discovery and model Provider networking remain separate contracts.

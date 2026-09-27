@@ -112,6 +112,9 @@ func (c *sessionCore) validateSandboxRequirements() error {
 	if settings.RequireSearchTools && (!settings.RequireSandbox || !settings.RequireFileTools) {
 		return errors.New("搜索工具沙箱要求同时启用必需沙箱和文件工具合同")
 	}
+	if settings.RequireMCPNetwork && (!settings.RequireSandbox || !c.options.MCP.StrictConfig) {
+		return errors.New("MCP 网络沙箱要求必需沙箱及显式 MCP 配置")
+	}
 	if settings.RequireMediaNetwork && (!settings.RequireSandbox || !settings.RequireFileTools || !settings.RequireMediaFiles) {
 		return errors.New("媒体网络沙箱要求命令、文件工具和媒体文件合同")
 	}
@@ -165,6 +168,9 @@ func (c *sessionCore) requireSandboxReadyForSend() error {
 	}
 	if c.options.Sandbox != nil && c.options.Sandbox.RequireMediaFiles && !c.supports(CapabilitySandboxMediaFiles) {
 		return &UnsupportedCapabilityError{Capability: CapabilitySandboxMediaFiles}
+	}
+	if c.options.Sandbox != nil && c.options.Sandbox.RequireMCPNetwork && !c.supports(CapabilitySandboxMCPNetwork) {
+		return &UnsupportedCapabilityError{Capability: CapabilitySandboxMCPNetwork}
 	}
 	if c.options.Sandbox != nil && c.options.Sandbox.RequireMediaNetwork && !c.supports(CapabilitySandboxMediaNetwork) {
 		return &UnsupportedCapabilityError{Capability: CapabilitySandboxMediaNetwork}

@@ -232,3 +232,7 @@ runtime 在 settings profile 投影前固定配置根与所选来源。必需模
 该能力不保证宿主上另一个未受沙箱的同 UID 进程并发修改、跨进程锁或 CAS、多文档 all-or-nothing、父目录 fsync 或断电持久性，也不提供 exact request/approval/revision 的持久绑定、durable receipt、重启后的 unknown 对账或自动重放。Unix 替换只保留普通 permission bits，不承诺 owner、ACL、xattr 或文件 flags。Provider 凭据、任务环境和其他 SDK IO 仍是独立边界；Windows 当前只有交叉编译证据，Go 可写位检查不代表 DACL 私密性，也不属于原生验收。
 
 SDK 托管 MCP 调用上下文：nxs 和使用同一线格式的 runtime 所发 `params._meta["claudecode/toolUseId"]` 原样进入 `tools.Context.ToolUseID`。每次调用的元数据独立，不从参数或 JSON-RPC id 生成身份，也不推断 SessionID/RoundID；缺省元数据不继承父调用身份。
+
+### 远端 MCP 网络
+
+`RequireMCPNetwork` / `sandbox_mcp_network_v1` 要求必需沙箱、`MCP.StrictConfig` 显式服务来源和 nxs 能力确认。HTTP 与旧式 SSE 服务仅获得自身协议、主机、端口的端点授权；跳转和 SSE POST 地址不能跨 origin，普通工具联网权限保持独立，显式禁止及托管域名规则仍优先。撤销、更换配置、关闭及权限变化取消对应请求。认证 helper、stdio 进程、OAuth 发现和模型 Provider 网络仍是独立合同。
