@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "date": "2026-09-27",
+  "repository": "Bridge",
+  "originalDirectory": "/Users/berhand/program/Work/Nexus/nexus-agent-sdk-bridge",
+  "baseCommit": "eeaff7df69f324bf5d1e346692e30f39235ce0c5",
+  "integratedCodeCommit": "37434c2d38b129b6bbde67ac81afee673f39816d",
+  "patchSHA256": "def1fd15229a331a05b34125950f21f23a951080b55a9cc45c0763772c0ed9c1",
+  "replayedByteForByte": true,
+  "files": [
+    {
+      "path": "client/settings_receipt_store.go",
+      "state": "untracked",
+      "sha256": "3294d8a739f283344e47585db73ec7a2acc2d260d6f40e57cc02dff3e0ec02df"
+    },
+    {
+      "path": "client/settings_receipt_store_test.go",
+      "state": "untracked",
+      "sha256": "609fcd524671a6bee30d61de9a97fe8ad968c0a23db242924a27d55c5f011d93"
+    }
+  ],
+  "archiveSHA256": "125a7f4e8f495836bd6c4dd3da3e5d408bf3090fd6eb214bfce2ae4ff5e2659d"
+}

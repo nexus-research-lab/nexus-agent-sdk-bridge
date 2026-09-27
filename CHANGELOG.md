@@ -4,6 +4,11 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Consolidate sandbox development on `codex/desktop-sandbox-approvals` and
+  preserve the unfinished receipt-store experiment in
+  [a non-executable history archive](docs/history/desktop-sandbox-drafts-2026-09-27/README.md).
+  The draft is not a public API and is not part of the runtime contract.
+
 - Before a required Claude native sandbox session starts, probe the exact resolved CLI with the generated `--settings` JSON and `--help`, using a scrubbed environment and bounded output/time. Reject CLIs that do not accept the settings entry point; this remains a launch-contract check and does not claim that Claude's OS sandbox has enforced a command.
 
 - Add a typed `RequireClaudeNativeSandbox` contract for Claude Code. The Bridge
