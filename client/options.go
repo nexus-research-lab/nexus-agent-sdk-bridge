@@ -145,6 +145,8 @@ type SandboxSettings struct {
 	RequireMediaNetwork bool `json:"-"`
 	// RequireMCPNetwork 要求显式远端 MCP 的端点专用网络，依赖必需沙箱及 StrictConfig。
 	RequireMCPNetwork bool `json:"-"`
+	// RequireMCPHelpers 要求显式认证命令复用当前沙箱并有界结束。
+	RequireMCPHelpers bool `json:"-"`
 	// RequireNotebookFiles 要求 Notebook 内容与 cell output 的本地读取受限；依赖命令和文件合同。
 	RequireNotebookFiles bool `json:"-"`
 	// RequireSkillFiles 要求 Skill 发现、正文与其设置读取受限；依赖命令和文件合同。
@@ -204,7 +206,7 @@ func (s SandboxSettings) MarshalJSON() ([]byte, error) {
 // 静默改写成另一份 JSON。
 func mergeSandboxExtra(value map[string]any, extra map[string]any) {
 	known := map[string]struct{}{
-		"resources": {}, "requireClaudeRestricted": {}, "requireSandbox": {}, "requireFileTools": {}, "requireSearchTools": {}, "requireMediaFiles": {}, "requireMediaNetwork": {}, "requireMCPNetwork": {}, "requireNotebookFiles": {}, "requireSkillFiles": {}, "requireContextFiles": {}, "requireProjectFiles": {}, "requireManagedPolicy": {}, "requireSettingsFiles": {}, "requireSettingsWrites": {}, "enabled": {}, "failIfUnavailable": {}, "autoAllowBashIfSandboxed": {},
+		"resources": {}, "requireClaudeRestricted": {}, "requireSandbox": {}, "requireFileTools": {}, "requireSearchTools": {}, "requireMediaFiles": {}, "requireMediaNetwork": {}, "requireMCPNetwork": {}, "requireMCPHelpers": {}, "requireNotebookFiles": {}, "requireSkillFiles": {}, "requireContextFiles": {}, "requireProjectFiles": {}, "requireManagedPolicy": {}, "requireSettingsFiles": {}, "requireSettingsWrites": {}, "enabled": {}, "failIfUnavailable": {}, "autoAllowBashIfSandboxed": {},
 		"allowUnsandboxedCommands": {}, "enabledPlatforms": {}, "network": {},
 		"filesystem": {}, "ignoreViolations": {}, "enableWeakerNestedSandbox": {},
 		"enableWeakerNetworkIsolation": {}, "allowAppleEvents": {},

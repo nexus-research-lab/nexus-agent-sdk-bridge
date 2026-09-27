@@ -236,3 +236,5 @@ SDK 托管 MCP 调用上下文：nxs 和使用同一线格式的 runtime 所发 
 ### 远端 MCP 网络
 
 `RequireMCPNetwork` / `sandbox_mcp_network_v1` 要求必需沙箱、`MCP.StrictConfig` 显式服务来源和 nxs 能力确认。HTTP 与旧式 SSE 服务仅获得自身协议、主机、端口的端点授权；跳转和 SSE POST 地址不能跨 origin，普通工具联网权限保持独立，显式禁止及托管域名规则仍优先。撤销、更换配置、关闭及权限变化取消对应请求。认证 helper、stdio 进程、OAuth 发现和模型 Provider 网络仍是独立合同。
+
+`RequireMCPHelpers` / `sandbox_mcp_helpers_v1` 独立要求 macOS 认证 helper 的受限命令执行，依赖必需沙箱与显式 MCP 配置。逐请求刷新认证，复用命令资源策略和任务环境过滤，不借用 MCP 端点授权；限时限量、权限变化取消、关闭等待清理，失败不回退静态或过期凭据。stdio 和脱离 session 后代监督仍是独立合同。

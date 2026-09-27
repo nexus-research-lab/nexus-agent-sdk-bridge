@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Add independent `RequireMCPHelpers` negotiation for confined macOS authentication commands. Require mandatory sandboxing and explicit MCP configuration, confirm support before prompts, and replace the runtime when the requirement changes. Stdio and detached-descendant cleanup remain outside this capability.
+
 - Add `RequireMCPNetwork` and `CapabilitySandboxMCPNetwork` for explicit HTTP/SSE endpoint confinement. Validate strict configuration before startup, negotiate the independent capability before prompts, and replace the process when the requirement changes.
 
 - Create Windows runtime and CLI probe processes suspended, assign their kill-on-close Job before resuming the initial thread, and reject ambiguous thread ownership or resume failures. Native tests cover immediate descendants, cancellation with inherited pipes and host termination. Bound probe pipe waits and apply the same cleanup and scrubbed environment to version checks. A host crash before Job assignment can still leave a suspended process; atomic creation and host resource recovery remain separate acceptance work.

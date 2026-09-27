@@ -12,4 +12,5 @@
 // required_sandbox_settings_files 只通过 nxs initialize 要求普通配置读取和快照保证。
 // required_sandbox_settings_writes 只通过 nxs initialize 要求普通配置受控写入。
 // required_sandbox_mcp_network 仅用于 nxs initialize，要求显式 MCP 来源和端点专用网络。
+// required_sandbox_mcp_helpers 为 nxs 显式认证 helper 的独立初始化要求。
 package protocol

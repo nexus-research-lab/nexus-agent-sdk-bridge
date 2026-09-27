@@ -26,6 +26,7 @@ type ControlRequest struct {
 	RequiredSandboxMediaFiles     bool `json:"required_sandbox_media_files,omitempty"`
 	RequiredSandboxMediaNetwork   bool `json:"required_sandbox_media_network,omitempty"`
 	RequiredSandboxMCPNetwork     bool `json:"required_sandbox_mcp_network,omitempty"`
+	RequiredSandboxMCPHelpers     bool `json:"required_sandbox_mcp_helpers,omitempty"`
 	RequiredSandboxNotebookFiles  bool `json:"required_sandbox_notebook_files,omitempty"`
 	RequiredSandboxSkillFiles     bool `json:"required_sandbox_skill_files,omitempty"`
 	RequiredSandboxContextFiles   bool `json:"required_sandbox_context_files,omitempty"`

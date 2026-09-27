@@ -245,6 +245,7 @@ func (c *sessionCore) buildInitializeRequest() protocol.ControlRequest {
 			sandboxMediaFilesProtocolCapability,
 			sandboxMediaNetworkProtocolCapability,
 			sandboxMCPNetworkProtocolCapability,
+			sandboxMCPHelpersProtocolCapability,
 			sandboxNotebookFilesProtocolCapability,
 			sandboxSkillFilesProtocolCapability,
 			sandboxContextFilesProtocolCapability,
@@ -263,6 +264,7 @@ func (c *sessionCore) buildInitializeRequest() protocol.ControlRequest {
 		request.RequiredSandboxMediaFiles = c.options.Sandbox.RequireMediaFiles
 		request.RequiredSandboxMediaNetwork = c.options.Sandbox.RequireMediaNetwork
 		request.RequiredSandboxMCPNetwork = c.options.Sandbox.RequireMCPNetwork
+		request.RequiredSandboxMCPHelpers = c.options.Sandbox.RequireMCPHelpers
 		request.RequiredSandboxNotebookFiles = c.options.Sandbox.RequireNotebookFiles
 		request.RequiredSandboxSkillFiles = c.options.Sandbox.RequireSkillFiles
 		request.RequiredSandboxContextFiles = c.options.Sandbox.RequireContextFiles
