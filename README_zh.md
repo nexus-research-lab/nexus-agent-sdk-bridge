@@ -186,3 +186,5 @@ SDK 托管工具把 `params._meta["claudecode/toolUseId"]` 传递为 `tools.Cont
 `RequireMCPNetwork` / `sandbox_mcp_network_v1` 要求必需沙箱、`MCP.StrictConfig` 显式服务来源和 nxs 能力确认。HTTP 与旧式 SSE 服务仅获得自身协议、主机、端口的端点授权；跳转和 SSE POST 地址不能跨 origin，普通工具联网权限保持独立，显式禁止及托管域名规则仍优先。撤销、更换配置、关闭及权限变化取消对应请求。认证 helper、stdio 进程、OAuth 发现和模型 Provider 网络仍是独立合同。
 
 `RequireMCPHelpers` / `sandbox_mcp_helpers_v1` 独立要求 macOS 认证 helper 的受限命令执行，依赖必需沙箱与显式 MCP 配置。逐请求刷新认证，复用命令资源策略和任务环境过滤，不借用 MCP 端点授权；限时限量、权限变化取消、关闭等待清理，失败不回退静态或过期凭据。stdio 和脱离 session 后代监督仍是独立合同。
+
+`RequireMCPStdio` / `sandbox_mcp_stdio_v1` 独立确认 macOS 显式 stdio MCP 的受限命令执行，依赖必需沙箱与 strict MCP 配置。取消会撤销整个服务及其在途请求，同名替换等待旧进程清理，会话关闭等待全部自有进程；不重放请求。先过滤继承的模型 Provider 凭据，再添加显式服务凭据；服务环境不能改写保留的 runtime、home 和临时根输入。网络沿用命令策略，不借用端点或工具批准。JSONL 消息限制为 10 MiB，在途请求最多 64 个，stderr 持续丢弃而不暴露凭据。当前覆盖普通进程组，独立脱离的后代及宿主崩溃恢复仍须单独验收。

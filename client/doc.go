@@ -24,4 +24,5 @@
 // RequireSettingsWrites 独立要求普通配置受控写入；依赖读取合同且不表示跨进程事务或持久回执。
 // RequireMCPNetwork 独立要求显式 HTTP/SSE 端点网络和撤销，要求 RequireSandbox 与 MCP.StrictConfig。
 // RequireMCPHelpers 确认显式认证 helper 的受限执行，独立于 MCP 端点授权与 stdio。
+// sandbox_mcp_stdio_v1 独立协商显式 stdio 服务受限执行与清理；不进入任务 settings。
 package client

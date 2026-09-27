@@ -25,6 +25,7 @@ Nexus product
 - 新能力必须先定义 capability；产品不能按 runtime 名称猜测 control 是否存在
 - 原生 Read/Write/Edit 通过 sandbox_file_tools_v1 单独确认；RequireFileTools 依赖 RequireSandbox，只走 initialize，不进入普通 settings
 - Glob/Grep 通过 sandbox_search_tools_v1 独立确认；RequireSearchTools 依赖命令和文件合同，要求变化必须替换进程，不借用 Claude 的原生沙箱声明
+- stdio MCP 通过 sandbox_mcp_stdio_v1 与 RequireMCPStdio 独立确认受限进程，依赖必需沙箱与 strict 配置；取消撤销服务，同名替换和会话关闭等待普通进程组清理，脱离后代仍独立验收。
 - MCP 认证 helper 通过 sandbox_mcp_helpers_v1 与 RequireMCPHelpers 独立确认受限执行和有界收口，要求 RequireSandbox 与 MCP.StrictConfig；不声明 stdio 或脱离 session 后代监督。
 - 远端 MCP 通过 sandbox_mcp_network_v1 与 RequireMCPNetwork 独立确认 HTTP/SSE 端点网络和撤销，依赖 RequireSandbox 与 MCP.StrictConfig；不代表认证 helper、stdio 或 Provider 网络隔离。
 - 远程图片通过 sandbox_media_network_v1 与 RequireMediaNetwork 独立确认，依赖命令、文件和媒体文件合同；逐请求网络准入与 URL 物化不代表 Provider transport 或外部 MCP 网络隔离。

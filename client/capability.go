@@ -18,6 +18,7 @@ const (
 	CapabilitySandboxMediaNetwork   Capability = "sandbox_media_network"
 	CapabilitySandboxMCPNetwork     Capability = "sandbox_mcp_network"
 	CapabilitySandboxMCPHelpers     Capability = "sandbox_mcp_helpers"
+	CapabilitySandboxMCPStdio       Capability = "sandbox_mcp_stdio"
 	CapabilitySandboxNotebookFiles  Capability = "sandbox_notebook_files"
 	CapabilitySandboxSkillFiles     Capability = "sandbox_skill_files"
 	CapabilitySandboxContextFiles   Capability = "sandbox_context_files"
@@ -60,6 +61,7 @@ const (
 	sandboxMediaNetworkProtocolCapability    = "sandbox_media_network_v1"
 	sandboxMCPNetworkProtocolCapability      = "sandbox_mcp_network_v1"
 	sandboxMCPHelpersProtocolCapability      = "sandbox_mcp_helpers_v1"
+	sandboxMCPStdioProtocolCapability        = "sandbox_mcp_stdio_v1"
 	sandboxNotebookFilesProtocolCapability   = "sandbox_notebook_files_v1"
 	sandboxSkillFilesProtocolCapability      = "sandbox_skill_files_v1"
 	sandboxContextFilesProtocolCapability    = "sandbox_context_files_v1"
@@ -113,6 +115,8 @@ func (c *sessionCore) supports(capability Capability) bool {
 		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS && slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, sandboxMCPNetworkProtocolCapability)
 	case CapabilitySandboxMCPHelpers:
 		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS && slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, sandboxMCPHelpersProtocolCapability)
+	case CapabilitySandboxMCPStdio:
+		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS && slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, sandboxMCPStdioProtocolCapability)
 	case CapabilitySandboxMediaNetwork:
 		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS && slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, sandboxMediaNetworkProtocolCapability)
 	case CapabilitySandboxMediaFiles:

@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Add `RequireMCPStdio` and `CapabilitySandboxMCPStdio` for confined macOS stdio services. Require explicit configuration, confirm the capability before prompts, and include changes in runtime replacement.
+
 - Add independent `RequireMCPHelpers` negotiation for confined macOS authentication commands. Require mandatory sandboxing and explicit MCP configuration, confirm support before prompts, and replace the runtime when the requirement changes. Stdio and detached-descendant cleanup remain outside this capability.
 
 - Add `RequireMCPNetwork` and `CapabilitySandboxMCPNetwork` for explicit HTTP/SSE endpoint confinement. Validate strict configuration before startup, negotiate the independent capability before prompts, and replace the process when the requirement changes.
