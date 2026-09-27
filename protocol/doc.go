@@ -2,6 +2,7 @@
 // typed task 与原生 Agent progress/completion 归一到统一 Tool/Subagent lifecycle 的投影。
 // required_sandbox_file_tools 与 required_sandbox 只用于 nxs 的分项初始化要求。
 // required_sandbox_search_tools 独立要求搜索执行边界，依赖前两项，不进入普通 settings。
+// required_sandbox_media_network 独立要求远程图片网络；仅用于 nxs initialize，依赖命令、文件和本地媒体要求。
 // required_sandbox_media_files 独立要求本地图片读取，同样依赖命令及文件合同。
 // required_sandbox_skill_files 独立要求 Skill 文件读取，也仅通过 initialize 消费。
 // required_sandbox_context_files 独立要求指令与 compact 文件读取，仅用于 nxs initialize。

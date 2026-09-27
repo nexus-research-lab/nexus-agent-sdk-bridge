@@ -183,6 +183,12 @@ Cookie 及其他秘密环境变量不会传给探测进程。探测成功只证�
 
 当前 macOS 合同覆盖 ViewImage 与主模型预处理的本地图片读取，包括路径、file URL、符号链接、延迟引用和嵌套工具图片。准备或读取失败不能回退，辅助分析缓存前仍检查读取。旧命令、文件或搜索能力不能代替该确认；远程媒体网络、生效回执、全 SDK IO、其他平台和 Claude 原生沙箱继续独立验收。
 
+## 远程图片网络
+
+`SandboxSettings.RequireMediaNetwork=true` 依赖命令、文件与本地媒体要求。Bridge 只在 initialize 发送 `required_sandbox_media_network`，每次任务写入前要求 nxs 确认独立的 `sandbox_media_network_v1`。依赖缺失在 transport 启动前拒绝；旧版本不发送 prompt；要求变化必须换进程，普通 settings 不能注入。
+
+当前 macOS nxs 先按本次网络策略下载图片，再将内容交给主/辅助 Provider，覆盖惰性引用及嵌套工具图片。每次请求和重定向检查目标，deny 优先，managed-only 不可经批准扩大，不继承环境代理或 Provider 凭据。ViewImage 批准绑定原始输入、tool-use、cwd、目标及权限代次；无工具身份的消息预处理仅使用既有授权或宿主明确回调。权限改变和清理取消在途批准及响应体读取。Provider transport、其他辅助网络、外部 MCP 和 Claude 保持独立边界。
+
 ## 搜索工具隔离
 
 `SandboxSettings.RequireSearchTools=true` 同时依赖 `RequireSandbox` 和 `RequireFileTools`。Bridge 仅在 initialize 发送 `required_sandbox_search_tools`，并在所有任务写入前要求 nxs 独立确认 `sandbox_search_tools_v1`。普通 settings 和 Extra 不能塞入该宿主要求；矛盾配置在启动 transport 前拒绝，要求变化必须替换进程。旧版本具备命令和 Read/Write/Edit 能力不代表搜索受限。

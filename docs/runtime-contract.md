@@ -266,6 +266,12 @@ Current macOS nxs routes Skill catalogs, bodies, dynamic discovery, Git ignore c
 
 The current macOS contract covers local image reads by ViewImage and main-model preprocessing, including paths, file URLs, symlinks, deferred references and nested tool-result images. File-executor preparation and reads cannot fall back; access is checked before cached analysis. Old command/file/search capabilities cannot imply this coverage. Remote media networking, effective-policy receipts, whole-SDK IO, other platforms and Claude native sandbox adaptation remain separate.
 
+## Remote image networking
+
+`SandboxSettings.RequireMediaNetwork=true` requires command, file and local media requirements. Bridge sends `required_sandbox_media_network` only in initialize and checks the independent nxs `sandbox_media_network_v1` acknowledgement before any prompt. Missing prerequisites fail before transport startup; changing the requirement replaces the runtime. Ordinary settings cannot supply it.
+
+Current macOS nxs downloads remote images through the captured network policy before passing bytes to either Provider, including deferred references and nested tool results. Every request and redirect is checked; deny wins, managed-only policy cannot be expanded by approval, and environment proxies/Provider credentials are not inherited. ViewImage approval binds the exact input, tool-use, cwd, destination and permission epoch. Preprocessing without a tool identity uses existing grants or an explicit host callback. Permission changes and cleanup cancel pending approval and body reads. This contract does not cover Provider transport, other auxiliary networking, external MCP or Claude.
+
 ## Search-tool confinement
 
 `SandboxSettings.RequireSearchTools=true` additionally requires both `RequireSandbox` and `RequireFileTools`. Bridge sends `required_sandbox_search_tools` only in initialize and requires the separate nxs `sandbox_search_tools_v1` acknowledgement before all task writes. Ordinary settings and Extra cannot insert the host requirement. Invalid combinations fail before transport startup; changes require process replacement. An older runtime can support commands and Read/Write/Edit while lacking search confinement, so those capabilities cannot substitute for this acknowledgement.

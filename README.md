@@ -22,6 +22,8 @@ Add `RequireFileTools: true` to require the separate `sandbox_file_tools_v1` con
 
 Add `RequireSearchTools: true` alongside both requirements to require `sandbox_search_tools_v1` for Glob/Grep path checks, ripgrep and result metadata. Older file-only runtimes are rejected before tasks; see [search scope](docs/runtime-contract.md#search-tool-confinement).
 
+Add `RequireMediaNetwork: true` with command, file and local media requirements to require per-request remote-image network checks, controlled redirects and URL materialization. See [remote image networking](docs/runtime-contract.md#remote-image-networking).
+
 Add `RequireMediaFiles: true` with the command and file requirements to require local image confinement for ViewImage and model preprocessing. Older runtimes are rejected before task writes. Remote image networking is separate; see [media scope](docs/runtime-contract.md#local-media-file-confinement).
 
 Add `RequireContextFiles: true` with the command and file requirements for startup instructions and compact file restoration. See [context scope](docs/runtime-contract.md#context-file-confinement).
