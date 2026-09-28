@@ -102,6 +102,18 @@ reuse safety, file/network confinement or clean-host installation acceptance. Ho
 must retain a failed cleanup boundary instead of treating a closed stream as proof
 that resources can be reused.
 
+The internal `processscope` package is an unconnected macOS supervision component,
+not a public capability or a stronger default `Close` guarantee. It registers a
+distinct same-user resource coalition before execution, binds it to the boot UUID,
+and signals members using audited PID versions. Restore requires an authenticated
+original registration; arbitrary caller-provided coalition IDs are not authority.
+Cleanup succeeds only after kernel coalition retirement or a changed boot UUID.
+Empty enumeration, matching counters and successful launchd bootout are insufficient.
+The caller must revoke launch rights before reaping. Native API absence fails
+unavailable; initial macOS 14.0 lacks the required signal API. Trusted bootstrap,
+durable host binding, default transport integration and scratch recovery remain
+unimplemented by this component.
+
 `client.ForkSession` creates an independent target from a source session through
 the exact supplied message ID. Claude Code may not persist the target transcript
 until its first user turn, but the bridge assigns the target session ID before

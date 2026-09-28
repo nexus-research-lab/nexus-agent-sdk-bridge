@@ -148,6 +148,11 @@ after admission. A host crash before Job assignment can still leave a suspended
 process; atomic creation and durable resource recovery still require host/platform
 evidence. See [lifecycle limits](docs/runtime-contract.md#session-lifecycle).
 
+An internal macOS process-scope component now tests exact termination of detached
+descendants and kernel coalition retirement. It is not connected to default runtime
+launch or cleanup, and does not change the lifecycle guarantees above. Its native
+API requirements and macOS 14.0 support remain separate integration work.
+
 ## Documentation
 
 - [Documentation index](./docs/README.md)

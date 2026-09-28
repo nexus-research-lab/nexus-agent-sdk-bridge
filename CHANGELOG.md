@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Add an internal macOS process-scope component with boot/coalition registration, audit-token termination and kernel retirement evidence. Native tests cover detached descendants, restoration and an unaffected control process. This component is not wired into transport or scratch recovery; missing native APIs fail unavailable, including the unresolved macOS 14.0 compatibility path.
+
 - Add `RequireMCPStdio` and `CapabilitySandboxMCPStdio` for confined macOS stdio services. Require explicit configuration, confirm the capability before prompts, and include changes in runtime replacement.
 
 - Add independent `RequireMCPHelpers` negotiation for confined macOS authentication commands. Require mandatory sandboxing and explicit MCP configuration, confirm support before prompts, and replace the runtime when the requirement changes. Stdio and detached-descendant cleanup remain outside this capability.
