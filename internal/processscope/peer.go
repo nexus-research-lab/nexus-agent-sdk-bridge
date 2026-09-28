@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"net"
+	"strings"
 )
 
 // ObserverIdentity 返回当前进程完整 audit token 的固定编码，仅用于启动身份绑定。
@@ -82,4 +83,39 @@ func verifyObserver(k kernel, fd int, expected [8]uint32) error {
 		return errors.New("control connection does not match trusted observer")
 	}
 	return nil
+}
+
+// Observer 保存同一次启动使用的宿主内核身份，不是执行授权。
+type Observer struct {
+	Identity string
+	BootID   string
+	UID      uint32
+}
+
+func ObserveSelf() (Observer, error) {
+	identity, err := ObserverIdentity()
+	if err != nil {
+		return Observer{}, err
+	}
+	token, err := decodeIdentity(identity)
+	if err != nil {
+		return Observer{}, err
+	}
+	boot, err := CurrentBootID()
+	if err != nil {
+		return Observer{}, err
+	}
+	return Observer{Identity: identity, BootID: boot, UID: token[1]}, nil
+}
+
+// CurrentBootID 只接受内核启动 UUID，不能用时间或 PID 推断重启。
+func CurrentBootID() (string, error) {
+	boot, err := newKernel().bootID()
+	if err != nil {
+		return "", err
+	}
+	if !validBootID(boot) {
+		return "", errors.New("invalid current boot identity")
+	}
+	return strings.ToLower(boot), nil
 }

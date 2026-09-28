@@ -59,3 +59,18 @@ func decodeLaunch(data []byte) (Launch, error) {
 	}
 	return l, l.validate()
 }
+
+// Validate 检查发送前的完整输入，失败不得创建启动意图。
+func (l Launch) Validate() error {
+	if err := l.validate(); err != nil {
+		return err
+	}
+	data, err := json.Marshal(l)
+	if err != nil {
+		return err
+	}
+	if len(data) > maxLaunchBytes {
+		return errors.New("bootstrap launch is too large")
+	}
+	return nil
+}

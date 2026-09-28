@@ -163,6 +163,14 @@ the host launcher, durable admission and transport integration remain unfinished
 An internal kqueue observer now captures the authenticated root’s exit status across
 exec; root exit remains independent of complete coalition retirement.
 
+The explicit `supervision` package connects these components for trusted hosts.
+Its `Host` callbacks must persist intent and registration before a non-replayable
+release, publish the job in a task-inaccessible directory, and persist exact
+retirement evidence. `Process.Close` is shared and caller cancellation only stops
+the wait; root exit also triggers coalition cleanup to release inherited pipes.
+This opt-in launcher does not replace the default client transport or provide
+restart recovery, sandbox policy or product packaging by itself.
+
 ## Documentation
 
 - [Documentation index](./docs/README.md)
@@ -176,6 +184,7 @@ exec; root exit remains independent of complete coalition retirement.
 | --- | --- |
 | `client` | Queries, sessions, options, transport selection, capabilities, and runtime control |
 | `protocol` | Streamed messages, content blocks, lifecycle events, and control wire types |
+| `supervision` | Explicit macOS supervised launches with durable host callbacks; separate from default transport |
 | `agent` | Sole public source of subagent configuration types |
 | `hook` | Runtime hook events, matchers, and callbacks |
 | `permission` | Permission modes, requests, and decisions |

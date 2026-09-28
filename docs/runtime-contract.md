@@ -372,3 +372,37 @@ RequireMCPNetwork / sandbox_mcp_network_v1 requires an explicit MCP configuratio
 `RequireMCPHelpers` / `sandbox_mcp_helpers_v1` independently requires confined macOS authentication helpers, mandatory sandboxing and explicit MCP configuration. Each request refreshes credentials under the command resource policy and filtered task environment; it cannot borrow the MCP endpoint grant. Execution/output are bounded, policy changes cancel helpers, shutdown waits for cleanup, and failures do not fall back to stale/static credentials. Stdio and detached-descendant supervision remain separate contracts.
 
 `RequireMCPStdio` / `sandbox_mcp_stdio_v1` separately confirms explicit macOS stdio MCP execution under the current command sandbox. It requires mandatory sandboxing and strict MCP configuration. Cancellation retires the whole service and all its pending calls; replacement waits for the old named process, and session shutdown awaits owned process cleanup. Requests are not replayed. Inherited model Provider credentials are filtered before explicit service credentials are applied; service environment cannot override reserved runtime, home or temporary-root inputs. Network access uses the command policy, without an endpoint or tool-approval grant. JSONL messages are capped at 10 MiB, pending calls at 64, and stderr is drained without exposing credentials. Ordinary process groups are covered; independently detached descendants and host-crash recovery require separate evidence.
+
+## Explicit macOS host supervision
+
+`supervision.Start` is an opt-in host lifecycle entry, separate from default client
+transport and runtime capability negotiation. It requires a trusted bootstrap
+executable with an expected SHA-256 and a `Host` implementation. Helper location,
+job file and socket must be owned by the host and inaccessible to task writes;
+matching the digest is not proof against arbitrary unrestricted same-UID software
+or a substitute for signed distribution. The current Unix socket path limit is
+103 bytes; longer paths reject admission rather than using an unprotected fallback.
+
+The order is Reserve (durable intent), Publish (protected job), launchd startup,
+kernel peer/expected-job identity, root event attachment, Register (durable scope),
+ClaimRelease (once only), then one send of command and three standard pipes.
+Claim or write uncertainty never causes retransmission. Hooks must bind the launch
+ID to the host's exact owner/session/generation and respect context cancellation.
+A failed Reserve response is treated as possibly committed and passed to Finish
+for exact reconciliation; no task executes on that path.
+
+Root exit triggers shared cleanup independently of consumer pipe reads. Cleanup
+revokes launch rights, reaps the exact coalition, then calls Finish with evidence.
+A failed revoke, observation or durable finish remains an error on repeated Close;
+canceling a Close caller only stops that caller's wait. Finish without evidence is
+only for an unregistered intent and must not retire an admitted scope. Consumers
+own stdout/stderr read handles after a successful Start; failed Start closes its
+allocated pipes. Start may return a non-nil Process with an error so callers can
+retain the cleanup result. Root exit status and cleanup errors remain independent.
+
+Native fixtures cover in-place execution, inherited detached output, canceled
+close waiters, failures at every host stage and a release committed before its
+response is lost. The fixture Host is not Nexus's database adapter. Default
+transport, host restart recovery, round interruption boundaries, protected product
+path allocation and signed App packaging remain unconnected; macOS 14.0 native
+API compatibility and long state-root paths remain unresolved.

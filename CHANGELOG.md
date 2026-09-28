@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Add an explicit macOS `supervision` launcher with durable host callbacks for intent reservation, protected job publication, exact registration, once-only release and final retirement. It observes root exit and independently reaps the coalition, including detached output holders. Native race tests cover stage failures, a lost release response, canceled close waiters and sticky finalization failure. Default client transport, Nexus database adaptation, restart recovery and App packaging remain separate integration work.
+
 - Observe the authenticated macOS bootstrap root with kqueue before admission and preserve its exit status through in-place exec. Caller cancellation does not discard the shared observation; stopping the observer is not process-exit evidence. Native fixtures independently verify root exit and surviving detached descendants. The observer remains internal and is not yet wired into default transport.
 
 - Add a macOS bootstrap helper that authenticates the fixed host audit identity, receives a bounded launch request and three directional standard pipes, then replaces itself with the runtime using an explicit environment. Native tests verify admission failure, exec identity, streams, control socket closure and exit status. Reject excess descriptors without retaining pipe writers. Host launchd orchestration, durable registration, transport integration and product packaging remain pending.

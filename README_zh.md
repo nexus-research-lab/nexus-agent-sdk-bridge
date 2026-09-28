@@ -194,3 +194,5 @@ SDK 托管工具把 `params._meta["claudecode/toolUseId"]` 传递为 `tools.Cont
 `cmd/nexus-runtime-bootstrap` 提供可从源码构建的 macOS 独立引导入口：固定宿主身份认证后接收限长启动输入和三个标准管道，使用显式环境原地 exec。任务参数与凭据不写入 launchd plist。该 helper 尚未打入产品或默认启用；宿主 launcher、持久放行及 transport 接入仍未完成。
 
 内部 `WatchRoot` 在放行前核对连接身份并注册 kqueue 退出事件，能跨原地 exec 保留主进程退出码/信号；取消等待不丢失共享观察，主动停止观察不算退出。主进程退出与集合回收继续独立，仍未接入默认 transport。
+
+显式 `supervision` 启动器已串联上述组件：宿主 `Host` 回调负责持久意图、受保护 job 发布、原集合登记、一次性放行和回收事实。根退出会主动清理后代释放继承管道；Close 共享结果，取消等待不撤销清理，失败不会在重复调用时消失。此入口尚未替代默认 client transport，Nexus 数据库适配、重启恢复和 App 打包仍待接入。
