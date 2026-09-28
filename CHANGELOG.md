@@ -6,6 +6,10 @@ All notable changes to this project are documented in this file.
 
 ### Added
 
+- Add explicit recovery from a trusted persisted launch registration. Validate observer and original identity before revoking the job, require exact collection-retirement evidence, and leave failed recovery unresolved. A changed boot never authorizes revoking a new same-name job. Native tests recover a running launch after its original host exits without cleanup; host lifecycle exclusion and product recovery wiring remain the caller’s responsibility.
+
+### Added
+
 - Opt-in `Options.ProcessSupervision` connects local stdio transport and all version/Claude admission probes to the macOS supervisor. Each launch requests a separate durable Host; failed admission never falls back to ordinary exec. Root exit, descendant retirement and repeated Close preserve cleanup errors. Interrupt uses the existing runtime control protocol rather than a bare PID signal. Custom/remote transports and user/signal overrides cannot combine with this option.
 
 

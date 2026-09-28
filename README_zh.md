@@ -202,3 +202,5 @@ SDK 托管工具把 `params._meta["claudecode/toolUseId"]` 传递为 `tools.Cont
 `client.Options.ProcessSupervision` 接受 `supervision.Factory`，宿主为正式会话、版本探测与 Claude 两种准入探测分别提供新的 `Config` 和持久 `Host`。失败不回退普通执行，清理错误保留到 Wait 与重复 Close。该选项只接受本机同用户进程，不能与自定义 transport、DirectConnect、User 或 ProcessSignalHandler 组合；中断复用 runtime control 请求，强制关闭回收原集合。
 
 宿主仍须提供可信 helper、任务不可写的 job/socket 路径、持久事务和崩溃恢复。此选项不授予文件/网络权限，不构成全部 macOS 版本或 Nexus App 发布验收；未显式配置时沿用原有传输。
+
+`supervision.Recover` 只使用可信持久原登记，不启动 helper、不重放任务。调用方须先取得宿主排他生命周期所有权并确认原宿主已退出；已登记任务必须回收原集合后才提交 `Finish`，prepared 意图只能撤销，不能据此推断副作用结果或清除其他策略/租约。

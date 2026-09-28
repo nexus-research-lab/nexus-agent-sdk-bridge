@@ -21,7 +21,7 @@ Nexus product
 - `internal/transport/`：子进程和传输实现，不向产品泄漏；显式 `Options.ProcessSupervision` 为正式会话与每个 CLI probe 申请独立 Host，清理失败保留类型化错误；该模式禁止跨用户/裸 PID 信号覆盖，中断走已有 control 协议，失败不回退普通 exec
 - `internal/processbootstrap/` 与 `cmd/nexus-runtime-bootstrap/`：macOS 独立引导入口及限长启动协议；核验固定宿主连接身份后只接收三个标准管道和显式启动输入，原地 exec。宿主须先核验 helper/job 并持久登记再放行；失败入口进程必须退出，不复用未知控制消息状态。已支持显式监督 transport；Nexus 默认装配与发布包仍未接入。
 - `internal/processscope/`：显式监督传输使用的 macOS coalition 观察与 audit-token 精确清理组件；登记必须来自执行前可信持久身份，CapturePeer 另核对连接的内核 audit identity 与可信 launcher 指定的 PID，不能替代 job/可执行文件认证；仅内核回收或 boot 变化可证明退出，不以空枚举、计数或 launchd 卸载成功确认。缺少原生接口时返回 unavailable，不声明完整监督或 scratch 回收。WatchRoot 在执行前绑定根进程 kqueue 退出事件；取消等待或停止观察不能构造退出事实，根退出状态不能代替集合回收。
-- `supervision/`：显式 macOS 宿主启动器，串联持久意图、受保护 job 发布、内核身份、原集合登记、一次性放行、根退出与集合回收；调用方负责可信路径及 owner/session/generation 事务，由显式监督 transport 调用；普通调用方默认不启用，也不授予沙箱或工具能力。
+- `supervision/`：显式 macOS 宿主启动器，串联持久意图、受保护 job 发布、内核身份、原集合登记、一次性放行、根退出与集合回收；调用方负责可信路径及 owner/session/generation 事务，由显式监督 transport 调用；普通调用方默认不启用，也不授予沙箱或工具能力。`Recover` 仅消费可信持久原登记，先校验再撤销/回收，不重放任务；宿主必须取得排他生命周期所有权，boot 改变时不碰新 boot 的同名 job。
 - `runtimes/`：runtime kind 的公开能力差异
 - `docs/`：面向开源使用者的文档索引与 runtime 契约，不收录宿主产品内部设计
 - Subagent control 只在 `subagent_control_v1` 协商后按活跃父 MCP identity 调用；不实现执行循环。
