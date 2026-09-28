@@ -2,6 +2,7 @@
 //
 // L2 | 父级: AGENTS.md
 // launch.go 定义可在登记前校验的限长、闭合启动输入；wire_darwin.go 仅接收三条标准管道；
+// socket_darwin.go 在专用原生线程中通过原父目录句柄绑定/连接，支持长绝对路径且不改进程 cwd；
 // helper_darwin.go 核验启动宿主后等待启动输入，最终原地 exec，不创建未登记子进程。
 // helper_unavailable.go 拒绝不支持的构建。Run 只供独立 helper 入口调用，返回后
 // 该进程必须退出，不能复用可能收到截断控制消息的进程。

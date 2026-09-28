@@ -7,7 +7,6 @@ package processbootstrap
 
 import (
 	"errors"
-	"net"
 	"path/filepath"
 	"syscall"
 	"time"
@@ -20,15 +19,11 @@ func Run(socketPath, observerIdentity string) error {
 	if !filepath.IsAbs(socketPath) {
 		return errors.New("bootstrap requires an absolute control socket")
 	}
-	connection, err := net.DialTimeout("unix", socketPath, 10*time.Second)
+	conn, err := dialControlSocket(socketPath)
 	if err != nil {
 		return err
 	}
-	defer connection.Close()
-	conn, ok := connection.(*net.UnixConn)
-	if !ok {
-		return errors.New("invalid bootstrap control transport")
-	}
+	defer conn.Close()
 	if err := conn.SetDeadline(time.Now().Add(15 * time.Second)); err != nil {
 		return err
 	}

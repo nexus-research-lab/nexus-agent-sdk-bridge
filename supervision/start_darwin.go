@@ -13,7 +13,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -64,10 +63,10 @@ func Start(ctx context.Context, config Config, command Command) (process *Proces
 	if err != nil {
 		return p, err
 	}
-	if !filepath.IsAbs(p.paths.JobFile) || !filepath.IsAbs(p.paths.Socket) || len(p.paths.Socket) > 103 || p.paths.JobFile == p.paths.Socket || strings.ContainsRune(p.paths.JobFile+p.paths.Socket, 0) {
+	if !filepath.IsAbs(p.paths.JobFile) || !filepath.IsAbs(p.paths.Socket) || p.paths.JobFile == p.paths.Socket || strings.ContainsRune(p.paths.JobFile+p.paths.Socket, 0) {
 		return p, errors.New("invalid private bootstrap paths")
 	}
-	listener, err := net.ListenUnix("unix", &net.UnixAddr{Name: p.paths.Socket, Net: "unix"})
+	listener, err := processbootstrap.ListenControlSocket(p.paths.Socket)
 	if err != nil {
 		return p, err
 	}

@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Bind/connect macOS bootstrap sockets relative to their original parent directory handle on a dedicated native thread. Long state-root paths no longer require a short alias or shared temporary socket. Keep the process working directory unchanged, retain host-owned unlink semantics, and fail when thread-local cwd support is unavailable. Native long-path launch and cleanup tests pass on the current arm64 host; supported-version acceptance remains separate.
+
 ### Added
 
 - Add explicit recovery from a trusted persisted launch registration. Validate observer and original identity before revoking the job, require exact collection-retirement evidence, and leave failed recovery unresolved. A changed boot never authorizes revoking a new same-name job. Native tests recover a running launch after its original host exits without cleanup; host lifecycle exclusion and product recovery wiring remain the caller’s responsibility.

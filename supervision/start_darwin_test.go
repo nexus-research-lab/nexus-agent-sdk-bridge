@@ -176,6 +176,38 @@ func TestMacOSSupervisedStart(t *testing.T) {
 	}
 	hash := sha256.Sum256(data)
 	digest := hex.EncodeToString(hash[:])
+	t.Run("long_state_root", func(t *testing.T) {
+		longRoot := filepath.Join(t.TempDir(), strings.Repeat("state-directory-", 10))
+		if err := os.Mkdir(longRoot, 0700); err != nil {
+			t.Fatal(err)
+		}
+		host := &fixtureHost{root: longRoot}
+		ctx, cancel := context.WithTimeout(t.Context(), 15*time.Second)
+		defer cancel()
+		process, err := Start(ctx, Config{HelperPath: binary, HelperSHA256: digest, Host: host}, Command{Version: 1, Command: "/bin/sh", Directory: longRoot, Args: []string{"-c", "printf long-path-ok"}, Env: []string{"PATH=/usr/bin:/bin"}})
+		if process != nil {
+			defer process.Close(context.Background())
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(host.paths.Socket) <= 103 {
+			t.Fatal("fixture path is not long")
+		}
+		streams := process.Streams()
+		defer streams.Stdout.Close()
+		defer streams.Stderr.Close()
+		streams.Stdin.Close()
+		streams.Stdout.SetReadDeadline(time.Now().Add(5 * time.Second))
+		output, err := io.ReadAll(streams.Stdout)
+		if err != nil || string(output) != "long-path-ok" {
+			t.Fatalf("output=%q err=%v", output, err)
+		}
+		status, err := process.Wait(ctx)
+		if err != nil || status.Code != 0 || host.phase != "reaped" || host.proof == nil {
+			t.Fatalf("status=%+v phase=%s err=%v", status, host.phase, err)
+		}
+	})
 	t.Run("detached_output", func(t *testing.T) {
 		host := &fixtureHost{root: root}
 		executable, err := os.Executable()
