@@ -155,6 +155,12 @@ launcher/job authentication remains the caller’s responsibility. It is not con
 launch or cleanup, and does not change the lifecycle guarantees above. Its native
 API requirements and macOS 14.0 support remain separate integration work.
 
+The source-buildable `cmd/nexus-runtime-bootstrap` helper now authenticates its
+host and replaces itself with the runtime after receiving a bounded launch request
+and three standard pipes over the control connection. Task environment and arguments
+are not stored in the launchd plist. It is not bundled or enabled by default;
+the host launcher, durable admission and transport integration remain unfinished.
+
 ## Documentation
 
 - [Documentation index](./docs/README.md)

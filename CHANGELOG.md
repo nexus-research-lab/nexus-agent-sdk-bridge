@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Add a macOS bootstrap helper that authenticates the fixed host audit identity, receives a bounded launch request and three directional standard pipes, then replaces itself with the runtime using an explicit environment. Native tests verify admission failure, exec identity, streams, control socket closure and exit status. Reject excess descriptors without retaining pipe writers. Host launchd orchestration, durable registration, transport integration and product packaging remain pending.
+
 - Bind internal macOS process-scope registration to the Unix control connection kernel audit identity. Reject mismatched PID versions and closed connections before admission; the native fixture now waits for registration before release over the connection. Launcher/job authentication and product integration remain pending.
 
 - Add an internal macOS process-scope component with boot/coalition registration, audit-token termination and kernel retirement evidence. Native tests cover detached descendants, restoration and an unaffected control process. This component is not wired into transport or scratch recovery; missing native APIs fail unavailable, including the unresolved macOS 14.0 compatibility path.

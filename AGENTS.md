@@ -19,6 +19,7 @@ Nexus product
   所属协议（例如 Agent 的 `subagent_type`、Bash 的 `run_in_background`、Read 的
   `file_path` 仍为 CC 原生 snake_case），不能按字段外观批量改名。
 - `internal/transport/`：子进程和传输实现，不向产品泄漏
+- `internal/processbootstrap/` 与 `cmd/nexus-runtime-bootstrap/`：macOS 独立引导入口及限长启动协议；核验固定宿主连接身份后只接收三个标准管道和显式启动输入，原地 exec。宿主须先核验 helper/job 并持久登记再放行；失败入口进程必须退出，不复用未知控制消息状态。尚未接入默认 transport 或 Nexus 发布包。
 - `internal/processscope/`：未接入默认传输的 macOS coalition 观察与 audit-token 精确清理组件；登记必须来自执行前可信持久身份，CapturePeer 另核对连接的内核 audit identity 与可信 launcher 指定的 PID，不能替代 job/可执行文件认证；仅内核回收或 boot 变化可证明退出，不以空枚举、计数或 launchd 卸载成功确认。缺少原生接口时返回 unavailable，不声明完整监督或 scratch 回收。
 - `runtimes/`：runtime kind 的公开能力差异
 - `docs/`：面向开源使用者的文档索引与 runtime 契约，不收录宿主产品内部设计

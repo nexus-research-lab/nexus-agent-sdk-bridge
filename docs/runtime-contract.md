@@ -119,6 +119,20 @@ unavailable; initial macOS 14.0 lacks the required signal API. Trusted bootstrap
 durable host binding, default transport integration and scratch recovery remain
 unimplemented by this component.
 
+`cmd/nexus-runtime-bootstrap` and internal `processbootstrap` supply the receiving
+half of the launch protocol. The helper authenticates the fixed host audit token,
+waits with a deadline for one bounded request and exactly three directional pipes,
+and uses in-place exec with explicit argv/environment/cwd. Neither the task nor
+Provider credentials belong in the launchd plist. The control socket and received
+source descriptors are close-on-exec; only standard descriptors are duplicated for
+the runtime. Missing native support or admission failure must terminate the helper
+process, never retry or fall back to ordinary execution. Ancillary storage covers
+XNU's maximum descriptor count; an unexpected control truncation is fatal to the
+helper, which cannot be reused. The host must still verify its job/helper identity,
+persist the original scope before sending, bound writes by the startup context,
+observe exit, revoke launch rights, and reap before resource recovery. This helper
+is not shipped or used by the default transport yet.
+
 `client.ForkSession` creates an independent target from a source session through
 the exact supplied message ID. Claude Code may not persist the target transcript
 until its first user turn, but the bridge assigns the target session ID before
