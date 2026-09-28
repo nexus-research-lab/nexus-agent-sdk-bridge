@@ -6,6 +6,7 @@ package processscope
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 	"syscall"
 	"testing"
@@ -21,6 +22,7 @@ type fixtureKernel struct {
 	existsFn     func(uint64) error
 	membersFn    func(uint64) ([]process, error)
 	signalFn     func(process, int) error
+	peerFn       func(int) ([8]uint32, error)
 }
 
 func fixture() *fixtureKernel {
@@ -252,5 +254,45 @@ func TestReapCanceledWaiterDoesNotInterruptOwner(t *testing.T) {
 	close(release)
 	if err := <-done; err == nil {
 		t.Fatal("owner failure lost")
+	}
+}
+
+func (k *fixtureKernel) peer(fd int) ([8]uint32, error) {
+	if k.peerFn != nil {
+		return k.peerFn(fd)
+	}
+	return k.root.audit, nil
+}
+
+func TestCapturePeerRequiresExactKernelIdentity(t *testing.T) {
+	for _, field := range []int{-1, 0, 1, 2, 3, 4, 5, 6, 7} {
+		t.Run(fmt.Sprint(field), func(t *testing.T) {
+			k := fixture()
+			peer := k.root.audit
+			if field >= 0 {
+				peer[field]++
+			}
+			k.peerFn = func(int) ([8]uint32, error) { return peer, nil }
+			scope, err := capturePeer(k, 10, 202)
+			if field < 0 {
+				if err != nil || scope == nil {
+					t.Fatalf("valid peer: %v", err)
+				}
+			} else if err == nil || scope != nil {
+				t.Fatal("different audit identity accepted")
+			}
+		})
+	}
+}
+
+func TestCapturePeerRejectsUnobservableOrClosedConnection(t *testing.T) {
+	k := fixture()
+	denied := errors.New("peer observation denied")
+	k.peerFn = func(int) ([8]uint32, error) { return [8]uint32{}, denied }
+	if _, err := capturePeer(k, 10, 202); !errors.Is(err, denied) {
+		t.Fatalf("peer error: %v", err)
+	}
+	if _, err := CapturePeer(nil, 202); err == nil {
+		t.Fatal("nil connection accepted")
 	}
 }

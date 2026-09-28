@@ -1,4 +1,4 @@
-// INPUT: 已认证引导进程，或由可信存储恢复的执行登记。
+// INPUT: 可信引导进程、连接的内核身份，或由可信存储恢复的执行登记。
 // OUTPUT: 同 boot/coalition 的观察、精确终止及内核回收证明。
 // POS: 进程生命周期组件；尚未接入默认 transport 或宿主资源回收。
 package processscope
@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"net"
 	"strings"
 	"syscall"
 	"time"
@@ -42,6 +43,7 @@ type kernel interface {
 	bootID() (string, error)
 	self() (process, error)
 	inspect(int) (process, error)
+	peer(int) ([8]uint32, error)
 	exists(uint64) error
 	members(uint64) ([]process, error)
 	signal(process, int) error
@@ -57,9 +59,46 @@ type Scope struct {
 // Capture 在可信 helper 仍存活、且尚未执行任务时核验原生身份。
 func Capture(pid int) (*Scope, error) { return capture(newKernel(), pid) }
 
+// CapturePeer 将控制连接的内核 audit identity 绑定到引导进程登记。
+// expectedPID 必须由可信 launcher 确定；此函数不验证可执行文件或 job 来源。
+// 调用者必须在确认登记持久化之前保持引导进程等待，不得放行任务。
+func CapturePeer(conn *net.UnixConn, expectedPID int) (*Scope, error) {
+	if conn == nil {
+		return nil, errors.New("bootstrap control connection is required")
+	}
+	raw, err := conn.SyscallConn()
+	if err != nil {
+		return nil, err
+	}
+	var scope *Scope
+	var observed error
+	if err := raw.Control(func(fd uintptr) { scope, observed = capturePeer(newKernel(), int(fd), expectedPID) }); err != nil {
+		return nil, err
+	}
+	return scope, observed
+}
+
+func capturePeer(k kernel, fd, expectedPID int) (*Scope, error) {
+	if err := k.available(); err != nil {
+		return nil, err
+	}
+	identity, err := k.peer(fd)
+	if err != nil {
+		return nil, fmt.Errorf("observe bootstrap peer: %w", err)
+	}
+	return captureIdentity(k, expectedPID, &identity)
+}
+
 func capture(k kernel, pid int) (*Scope, error) {
+	return captureIdentity(k, pid, nil)
+}
+
+func captureIdentity(k kernel, pid int, expected *[8]uint32) (*Scope, error) {
 	if pid <= 1 || pid > 1<<31-1 {
 		return nil, errors.New("invalid bootstrap process identity")
+	}
+	if expected != nil && (expected[5] != uint32(pid) || expected[7] == 0) {
+		return nil, errors.New("control peer does not match expected bootstrap process")
 	}
 	if err := k.available(); err != nil {
 		return nil, err
@@ -75,6 +114,9 @@ func capture(k kernel, pid int) (*Scope, error) {
 	root, err := k.inspect(pid)
 	if err != nil {
 		return nil, err
+	}
+	if expected != nil && root.audit != *expected {
+		return nil, errors.New("bootstrap process no longer matches control peer identity")
 	}
 	if root.audit[5] != uint32(pid) || root.audit[7] == 0 || root.audit[1] != self.audit[1] || root.coalition == 0 || root.coalition == self.coalition {
 		return nil, errors.New("bootstrap does not own a distinct same-user process scope")

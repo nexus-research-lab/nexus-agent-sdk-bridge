@@ -1,7 +1,7 @@
 //go:build darwin && cgo
 
-// INPUT: 显式启用的本机 launchd 测试 job 与独立状态目录。
-// OUTPUT: 登记后脱离、恢复身份、拒绝错误 token、内核回收与对照存活证据。
+// INPUT: 显式启用的本机 launchd 测试 job、Unix 控制连接与独立状态目录。
+// OUTPUT: 连接身份登记后放行、脱离及恢复、拒绝错误 token、内核回收与对照存活证据。
 // POS: 原生组件验收；不启动产品、模型或用户已有会话。
 package processscope
 
@@ -12,6 +12,8 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"io"
+	"net"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -46,15 +48,20 @@ func TestMacOSScopeWorker(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "root"), []byte(strconv.Itoa(os.Getpid())), 0600); err != nil {
 		t.Fatal(err)
 	}
-	deadline := time.Now().Add(15 * time.Second)
-	for {
-		if _, err := os.Stat(filepath.Join(root, "start")); err == nil {
-			break
-		}
-		if time.Now().After(deadline) {
-			return
-		}
-		time.Sleep(10 * time.Millisecond)
+	conn, err := net.DialUnix("unix", nil, &net.UnixAddr{Name: os.Getenv("NEXUS_SCOPE_SOCKET"), Net: "unix"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	if err := conn.SetDeadline(time.Now().Add(15 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	var start [1]byte
+	if _, err := io.ReadFull(conn, start[:]); err != nil {
+		return
+	}
+	if start[0] != 1 {
+		t.Fatal("invalid admission")
 	}
 	exe, err := os.Executable()
 	if err != nil {
@@ -76,6 +83,18 @@ func TestMacOSScopeReapsDetached(t *testing.T) {
 		t.Skip("explicit native process scope acceptance")
 	}
 	root := t.TempDir()
+	// 使用短路径，避免 sockaddr_un 的 104 字节上限；目录仍为独立 0700。
+	socketRoot, err := os.MkdirTemp("/tmp", "nxs-scope-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(socketRoot) })
+	socketPath := filepath.Join(socketRoot, "control.sock")
+	listener, err := net.ListenUnix("unix", &net.UnixAddr{Name: socketPath, Net: "unix"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = listener.Close() })
 	exe, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
@@ -92,8 +111,8 @@ func TestMacOSScopeReapsDetached(t *testing.T) {
 	plist := fmt.Sprintf(`<?xml version="1.0"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict>
 <key>Label</key><string>%s</string><key>ProgramArguments</key><array><string>%s</string><string>-test.run=^TestMacOSScopeWorker$</string></array>
 <key>RunAtLoad</key><true/><key>KeepAlive</key><false/><key>AbandonProcessGroup</key><false/>
-<key>EnvironmentVariables</key><dict><key>NEXUS_SCOPE_HELPER</key><string>root</string><key>NEXUS_SCOPE_FIXTURE</key><string>%s</string></dict>
-<key>StandardOutPath</key><string>%s</string><key>StandardErrorPath</key><string>%s</string></dict></plist>`, quote(label), quote(exe), quote(root), quote(filepath.Join(root, "stdout")), quote(filepath.Join(root, "stderr")))
+<key>EnvironmentVariables</key><dict><key>NEXUS_SCOPE_HELPER</key><string>root</string><key>NEXUS_SCOPE_FIXTURE</key><string>%s</string><key>NEXUS_SCOPE_SOCKET</key><string>%s</string></dict>
+<key>StandardOutPath</key><string>%s</string><key>StandardErrorPath</key><string>%s</string></dict></plist>`, quote(label), quote(exe), quote(root), quote(socketPath), quote(filepath.Join(root, "stdout")), quote(filepath.Join(root, "stderr")))
 	path := filepath.Join(root, "job.plist")
 	if err := os.WriteFile(path, []byte(plist), 0600); err != nil {
 		t.Fatal(err)
@@ -136,7 +155,21 @@ func TestMacOSScopeReapsDetached(t *testing.T) {
 		return 0
 	}
 	rootPID := waitPID("root")
-	scope, err = Capture(rootPID)
+	if err := listener.SetDeadline(time.Now().Add(5 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	conn, err := listener.AcceptUnix()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = conn.Close() })
+	if _, err := CapturePeer(conn, rootPID+1); err == nil {
+		t.Fatal("wrong expected launcher PID accepted")
+	}
+	if _, err := os.Stat(filepath.Join(root, "child")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("child executed before registration")
+	}
+	scope, err = CapturePeer(conn, rootPID)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,7 +180,7 @@ func TestMacOSScopeReapsDetached(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "registration.json"), encoded, 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, "start"), nil, 0600); err != nil {
+	if _, err := conn.Write([]byte{1}); err != nil {
 		t.Fatal(err)
 	}
 	childPID := waitPID("child")
@@ -207,6 +240,12 @@ func TestMacOSScopeReapsDetached(t *testing.T) {
 	after, err := newKernel().inspect(control.Process.Pid)
 	if err != nil || after != controlIdentity {
 		t.Fatalf("control affected: %#v %v", after, err)
+	}
+	if err := conn.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := CapturePeer(conn, rootPID); err == nil {
+		t.Fatal("closed control connection accepted")
 	}
 	if err := launch("print", service); err == nil {
 		t.Fatal("test job still registered")

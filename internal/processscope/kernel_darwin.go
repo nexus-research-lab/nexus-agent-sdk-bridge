@@ -73,3 +73,15 @@ func nativeError(code C.int) error {
 		return fmt.Errorf("native process observation: %w", syscall.Errno(code))
 	}
 }
+
+func (darwinKernel) peer(fd int) ([8]uint32, error) {
+	var raw [8]C.uint32_t
+	var result [8]uint32
+	if err := nativeError(C.nx_scope_peer(C.int(fd), &raw[0])); err != nil {
+		return result, err
+	}
+	for i, value := range raw {
+		result[i] = uint32(value)
+	}
+	return result, nil
+}

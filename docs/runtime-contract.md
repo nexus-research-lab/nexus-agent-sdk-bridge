@@ -105,7 +105,12 @@ that resources can be reused.
 The internal `processscope` package is an unconnected macOS supervision component,
 not a public capability or a stronger default `Close` guarantee. It registers a
 distinct same-user resource coalition before execution, binds it to the boot UUID,
-and signals members using audited PID versions. Restore requires an authenticated
+and signals members using audited PID versions. `CapturePeer` binds registration
+to the Unix control connection kernel audit token and a trusted launcher-supplied
+PID; an exact token mismatch (including PID reuse) rejects admission. The connection
+remains owned by the caller. This does not authenticate the launcher job or executable.
+The bootstrap must wait for durable registration before receiving permission to run.
+Restore requires an authenticated
 original registration; arbitrary caller-provided coalition IDs are not authority.
 Cleanup succeeds only after kernel coalition retirement or a changed boot UUID.
 Empty enumeration, matching counters and successful launchd bootout are insufficient.

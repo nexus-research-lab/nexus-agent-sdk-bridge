@@ -15,3 +15,5 @@ func (unavailableKernel) inspect(int) (process, error)      { return process{}, 
 func (unavailableKernel) exists(uint64) error               { return ErrUnavailable }
 func (unavailableKernel) members(uint64) ([]process, error) { return nil, ErrUnavailable }
 func (unavailableKernel) signal(process, int) error         { return ErrUnavailable }
+
+func (unavailableKernel) peer(int) ([8]uint32, error) { return [8]uint32{}, ErrUnavailable }

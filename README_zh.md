@@ -189,4 +189,4 @@ SDK 托管工具把 `params._meta["claudecode/toolUseId"]` 传递为 `tools.Cont
 
 `RequireMCPStdio` / `sandbox_mcp_stdio_v1` 独立确认 macOS 显式 stdio MCP 的受限命令执行，依赖必需沙箱与 strict MCP 配置。取消会撤销整个服务及其在途请求，同名替换等待旧进程清理，会话关闭等待全部自有进程；不重放请求。先过滤继承的模型 Provider 凭据，再添加显式服务凭据；服务环境不能改写保留的 runtime、home 和临时根输入。网络沿用命令策略，不借用端点或工具批准。JSONL 消息限制为 10 MiB，在途请求最多 64 个，stderr 持续丢弃而不暴露凭据。当前覆盖普通进程组，独立脱离的后代及宿主崩溃恢复仍须单独验收。
 
-内部 `internal/processscope` 组件已提供 macOS coalition 登记、audit-token 精确终止及内核回收观察。原生测试覆盖脱离后代、恢复登记和独立进程不受影响；组件尚未接入默认启动、关闭或 scratch 回收，不改变既有生命周期保证。缺少原生接口时返回 unavailable，macOS 14.0 兼容路线仍待收口。
+内部 `internal/processscope` 组件已提供 macOS coalition 登记、audit-token 精确终止及内核回收观察。控制连接登记核对内核 peer audit identity 和可信 launcher 指定的进程；job 与可执行文件认证仍由调用方负责。原生测试覆盖登记后放行、脱离后代、恢复登记和独立进程不受影响；组件尚未接入默认启动、关闭或 scratch 回收，不改变既有生命周期保证。缺少原生接口时返回 unavailable，macOS 14.0 兼容路线仍待收口。

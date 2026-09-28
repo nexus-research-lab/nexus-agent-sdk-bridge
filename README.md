@@ -149,7 +149,9 @@ process; atomic creation and durable resource recovery still require host/platfo
 evidence. See [lifecycle limits](docs/runtime-contract.md#session-lifecycle).
 
 An internal macOS process-scope component now tests exact termination of detached
-descendants and kernel coalition retirement. It is not connected to default runtime
+descendants and kernel coalition retirement. Its control-connection registration
+compares the kernel peer audit identity against the expected launcher process;
+launcher/job authentication remains the caller’s responsibility. It is not connected to default runtime
 launch or cleanup, and does not change the lifecycle guarantees above. Its native
 API requirements and macOS 14.0 support remain separate integration work.
 

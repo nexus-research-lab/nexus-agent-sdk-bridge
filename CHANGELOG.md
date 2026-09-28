@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+- Bind internal macOS process-scope registration to the Unix control connection kernel audit identity. Reject mismatched PID versions and closed connections before admission; the native fixture now waits for registration before release over the connection. Launcher/job authentication and product integration remain pending.
+
 - Add an internal macOS process-scope component with boot/coalition registration, audit-token termination and kernel retirement evidence. Native tests cover detached descendants, restoration and an unaffected control process. This component is not wired into transport or scratch recovery; missing native APIs fail unavailable, including the unresolved macOS 14.0 compatibility path.
 
 - Add `RequireMCPStdio` and `CapabilitySandboxMCPStdio` for confined macOS stdio services. Require explicit configuration, confirm the capability before prompts, and include changes in runtime replacement.

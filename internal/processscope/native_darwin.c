@@ -11,6 +11,8 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 
 // XNU proc_info_private.h；结构不符必须失败，不读取未验证的偏移。
 struct nx_coalition_ids { uint64_t ids[2]; uint64_t reserved[3]; };
@@ -99,4 +101,16 @@ int nx_scope_signal(struct nx_scope_process *target, int signal) {
     errno=0;int result=send(&token,signal);
     // libproc 的此接口返回正 errno，不能只检查 errno 或 -1。
     return result>=0 ? result : (errno ? errno : EIO);
+}
+
+// LOCAL_PEERTOKEN 来源于连接的内核凭据；不接受应用正文中的 PID/token。
+int nx_scope_peer(int fd, uint32_t audit[8]) {
+    audit_token_t token={0};
+    socklen_t size=sizeof(token);
+    if (getsockopt(fd,SOL_LOCAL,LOCAL_PEERTOKEN,&token,&size)!=0)
+        return errno ? errno : EIO;
+    if (size!=sizeof(token) || token.val[5]<=1 || token.val[5]>INT32_MAX || token.val[7]==0)
+        return EPROTO;
+    memcpy(audit,token.val,sizeof(token.val));
+    return 0;
 }
