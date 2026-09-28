@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/supervision"
 	"io"
 	"os/exec"
 	"strings"
@@ -47,12 +48,12 @@ func verifyClaudeRestrictedCommand(
 	stderr.limit = claudeRestrictedProbeLimit
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
-	if err := runProbeProcess(ctx, cmd); err != nil {
+	if err := runConfiguredProbe(ctx, cmd, config, supervision.ClaudeRestrictedProbe); err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			return fmt.Errorf("process: Claude restricted probe timed out after %s", claudeRestrictedProbeTimeout)
+			return errors.Join(fmt.Errorf("process: Claude restricted probe timed out after %s", claudeRestrictedProbeTimeout), err)
 		}
 		if errors.Is(ctx.Err(), context.Canceled) {
-			return ctx.Err()
+			return errors.Join(ctx.Err(), err)
 		}
 		return fmt.Errorf("process: Claude CLI does not accept --restricted: %w", err)
 	}

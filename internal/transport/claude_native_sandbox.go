@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/supervision"
 	"io"
 	"os/exec"
 	"strings"
@@ -85,12 +86,12 @@ func verifyClaudeNativeSandboxCommand(parent context.Context, command processCom
 	stderr.limit = claudeRestrictedProbeLimit
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
-	if err := runProbeProcess(ctx, cmd); err != nil {
+	if err := runConfiguredProbe(ctx, cmd, config, supervision.ClaudeSandboxProbe); err != nil {
 		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
-			return fmt.Errorf("process: Claude native sandbox probe timed out after %s", claudeNativeSandboxProbeTimeout)
+			return errors.Join(fmt.Errorf("process: Claude native sandbox probe timed out after %s", claudeNativeSandboxProbeTimeout), err)
 		}
 		if errors.Is(ctx.Err(), context.Canceled) {
-			return ctx.Err()
+			return errors.Join(ctx.Err(), err)
 		}
 		return fmt.Errorf("process: Claude CLI rejected native sandbox settings probe: %w", err)
 	}

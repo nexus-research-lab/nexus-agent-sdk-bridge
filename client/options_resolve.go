@@ -19,6 +19,7 @@ import (
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/internal/transport"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/mcp"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/permission"
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/supervision"
 )
 
 const (
@@ -266,6 +267,9 @@ func (o Options) normalized() (Options, error) {
 			return Options{}, fmt.Errorf("client: unsupported thinking display %q", result.Runtime.Thinking.Display)
 		}
 	}
+	if result.ProcessSupervision != nil && (result.Transport != nil || result.DirectConnect != nil || strings.TrimSpace(result.User) != "" || result.Callbacks.ProcessSignalHandler != nil) {
+		return Options{}, fmt.Errorf("client: process supervision requires local same-user transport without process signal overrides")
+	}
 	if result.Transport != nil && result.DirectConnect != nil {
 		return Options{}, errTransportDirectConnectConflict
 	}
@@ -445,6 +449,7 @@ type resolvedTaskBudget struct {
 }
 
 type resolvedOptions struct {
+	ProcessSupervision              supervision.Factory
 	RuntimeKind                     RuntimeKind
 	CommandPath                     string
 	Executable                      string
@@ -704,6 +709,7 @@ func (o Options) buildResolvedOptions(strictMCP bool) (resolvedOptions, error) {
 		Stderr:                          o.Callbacks.Stderr,
 		Diagnostics:                     o.Callbacks.Diagnostics,
 		ProcessSignalHandler:            o.Callbacks.ProcessSignalHandler,
+		ProcessSupervision:              o.ProcessSupervision,
 		InitializeTimeout:               o.Runtime.InitializeTimeout,
 		Debug:                           o.Runtime.Debug,
 		DebugFile:                       o.Runtime.DebugFile,

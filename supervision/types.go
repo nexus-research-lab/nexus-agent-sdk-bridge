@@ -62,3 +62,17 @@ type Streams struct {
 	Stdout *os.File
 	Stderr *os.File
 }
+
+// Purpose 区分正式会话与启动前无模型探测；每次调用都必须得到独立 Host 登记。
+type Purpose string
+
+const (
+	Runtime               Purpose = "runtime"
+	VersionProbe          Purpose = "version_probe"
+	ClaudeRestrictedProbe Purpose = "claude_restricted_probe"
+	ClaudeSandboxProbe    Purpose = "claude_sandbox_probe"
+)
+
+// Factory 在启动前由可信宿主创建新的配置。不得重用已经 Reserve 的 Host，
+// 也不得在工厂中先执行任务；持久阶段由 Start 调用。失败时传输不降级到普通 exec。
+type Factory func(context.Context, Purpose) (Config, error)

@@ -4,6 +4,11 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Opt-in `Options.ProcessSupervision` connects local stdio transport and all version/Claude admission probes to the macOS supervisor. Each launch requests a separate durable Host; failed admission never falls back to ordinary exec. Root exit, descendant retirement and repeated Close preserve cleanup errors. Interrupt uses the existing runtime control protocol rather than a bare PID signal. Custom/remote transports and user/signal overrides cannot combine with this option.
+
+
 - Add an explicit macOS `supervision` launcher with durable host callbacks for intent reservation, protected job publication, exact registration, once-only release and final retirement. It observes root exit and independently reaps the coalition, including detached output holders. Native race tests cover stage failures, a lost release response, canceled close waiters and sticky finalization failure. Default client transport, Nexus database adaptation, restart recovery and App packaging remain separate integration work.
 
 - Observe the authenticated macOS bootstrap root with kqueue before admission and preserve its exit status through in-place exec. Caller cancellation does not discard the shared observation; stopping the observer is not process-exit evidence. Native fixtures independently verify root exit and surviving detached descendants. The observer remains internal and is not yet wired into default transport.

@@ -1,4 +1,4 @@
-// INPUT: 宿主提供的 transport、进程信号和 direct-connect 配置。
+// INPUT: 宿主提供的 transport、进程信号、显式监督工厂和 direct-connect 配置。
 // OUTPUT: 公开 transport 选项与可匹配的进程清理错误。
 // POS: 产品到 Bridge 传输生命周期的公开配置边界。
 package client
@@ -457,6 +457,7 @@ func buildDirectConnectTransportConfig(o resolvedOptions) (transport.DirectConne
 func buildProcessTransportConfig(o resolvedOptions) transport.ProcessConfig {
 	processEnv := buildProcessTransportEnv(o)
 	return transport.ProcessConfig{
+		Supervision:   o.ProcessSupervision,
 		CommandPath:   processCommandPath(o),
 		CWD:           o.CWD,
 		User:          o.User,

@@ -1,6 +1,6 @@
-// INPUT: 可信 runtime 路径、进程身份、stdio 和宿主信号回调。
+// INPUT: 可信 runtime 路径、进程身份、stdio、宿主信号回调或独立监督 Host 工厂。
 // OUTPUT: 进程传输、主进程退出与独立后代清理错误。
-// POS: Bridge 的进程生命周期；Unix session 清理不代表完整进程树回收。
+// POS: Bridge 的进程生命周期；普通 Unix session 清理不代表完整进程树回收，显式监督分支按内核集合回收。
 package transport
 
 import (
@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/supervision"
 	"io"
 	"os"
 	"os/exec"
@@ -119,6 +120,7 @@ func (e *StdoutDecodeError) Unwrap() error {
 
 // ProcessConfig 表示子进程传输配置。
 type ProcessConfig struct {
+	Supervision   supervision.Factory
 	CommandPath   string
 	CWD           string
 	User          string
@@ -141,23 +143,26 @@ type ProcessConfig struct {
 
 // ProcessManager 管理 Claude CLI 子进程。
 type ProcessManager struct {
-	config        ProcessConfig
-	cmd           *exec.Cmd
-	stdin         io.WriteCloser
-	stdout        io.ReadCloser
-	stdoutWriter  *os.File
-	stderr        io.ReadCloser
-	stderrWriter  *os.File
-	reader        *bufio.Reader
-	writeMu       sync.Mutex
-	closeOnce     sync.Once
-	closeErr      error // closeOnce 发布的共享结果；重复关闭保留同一失败。
-	done          chan struct{}
-	waitErr       error
-	waitMu        sync.Mutex
-	stderrWG      sync.WaitGroup
-	maxBufferSize int
-	stderrTail    diagnosticTail
+	supervised          *supervision.Process
+	supervisedAttempted bool
+	supervisedStartErr  error
+	config              ProcessConfig
+	cmd                 *exec.Cmd
+	stdin               io.WriteCloser
+	stdout              io.ReadCloser
+	stdoutWriter        *os.File
+	stderr              io.ReadCloser
+	stderrWriter        *os.File
+	reader              *bufio.Reader
+	writeMu             sync.Mutex
+	closeOnce           sync.Once
+	closeErr            error // closeOnce 发布的共享结果；重复关闭保留同一失败。
+	done                chan struct{}
+	waitErr             error
+	waitMu              sync.Mutex
+	stderrWG            sync.WaitGroup
+	maxBufferSize       int
+	stderrTail          diagnosticTail
 }
 
 // NewProcessManager 创建进程管理器。
@@ -178,7 +183,17 @@ func (m *ProcessManager) StderrTail() string {
 }
 
 // Start 启动子进程。
-func (m *ProcessManager) Start(ctx context.Context) error {
+func (m *ProcessManager) Start(ctx context.Context) (startErr error) {
+	if m.supervisedAttempted {
+		return m.supervisedStartErr
+	}
+	if m.config.Supervision != nil {
+		m.supervisedAttempted = true
+		defer func() { m.supervisedStartErr = startErr }()
+		if strings.TrimSpace(m.config.User) != "" || m.config.SignalProcess != nil {
+			return errors.New("process: supervision cannot combine with user or signal overrides")
+		}
+	}
 	if m.cmd != nil {
 		return nil
 	}
@@ -212,7 +227,12 @@ func (m *ProcessManager) Start(ctx context.Context) error {
 			"required":     true,
 		})
 	}
-	m.checkCommandVersion(ctx, command)
+	if err := m.checkCommandVersion(ctx, command); err != nil {
+		return err
+	}
+	if m.config.Supervision != nil {
+		return m.startSupervised(ctx, command)
+	}
 
 	cmd := exec.Command(command.executable, command.arguments(m.config.Args)...)
 	cmd.Dir = m.config.CWD
@@ -450,6 +470,10 @@ func (m *ProcessManager) EndInput() error {
 
 // Interrupt 发送中断信号。
 func (m *ProcessManager) Interrupt() error {
+	// 监督路径不按裸 PID 发信号；client 复用已有的 round control 中断协议。
+	if m.config.Supervision != nil {
+		return ErrInterruptUnsupported
+	}
 	if m.cmd == nil || m.cmd.Process == nil {
 		return nil
 	}
@@ -804,9 +828,9 @@ func compactCommandPaths(paths []string) []string {
 	return result
 }
 
-func (m *ProcessManager) checkCommandVersion(parent context.Context, command processCommand) {
+func (m *ProcessManager) checkCommandVersion(parent context.Context, command processCommand) error {
 	if !m.shouldCheckCommandVersion() {
-		return
+		return nil
 	}
 	ctx, cancel := context.WithTimeout(parent, versionCheckTimeout)
 	defer cancel()
@@ -815,15 +839,20 @@ func (m *ProcessManager) checkCommandVersion(parent context.Context, command pro
 	probe.Dir = m.config.CWD
 	probe.Env = buildClaudeRestrictedProbeEnvironment(m.config.Env, m.config.CWD, m.config.ControlWireDialect)
 	if err := applyCommandUser(probe, m.config.User); err != nil {
-		return
+		return nil
 	}
 	var output limitedProbeBuffer
 	output.limit = claudeRestrictedProbeLimit
 	probe.Stdout, probe.Stderr = &output, io.Discard
-	if err := runProbeProcess(ctx, probe); err != nil {
-		return
+	if err := runConfiguredProbe(ctx, probe, m.config, supervision.VersionProbe); err != nil {
+		// 传统版本检查仅为提示；监督路径不能吞掉 Host/回收失败再执行主任务。
+		if m.config.Supervision != nil {
+			return err
+		}
+		return nil
 	}
 	m.emitUnsupportedCommandVersionDiagnostic(command.path, output.String())
+	return nil
 }
 
 func (m *ProcessManager) shouldCheckCommandVersion() bool {
@@ -899,8 +928,11 @@ func semanticVersionParts(version string) [3]int {
 
 // Wait 等待进程结束。
 func (m *ProcessManager) Wait() error {
-	if m.cmd == nil {
-		return nil
+	if m.cmd == nil && m.supervised == nil {
+		return m.supervisedStartErr
+	}
+	if m.supervisedStartErr != nil {
+		return m.supervisedStartErr
 	}
 
 	<-m.done
@@ -915,6 +947,14 @@ func (m *ProcessManager) Close() error {
 	m.closeOnce.Do(func() {
 		defer func() { m.closeErr = closeErr }()
 		_ = m.EndInput()
+		if m.supervised != nil {
+			closeErr = m.closeSupervised()
+			return
+		}
+		if m.supervisedStartErr != nil {
+			closeErr = m.supervisedStartErr
+			return
+		}
 
 		if m.cmd == nil || m.cmd.Process == nil {
 			return

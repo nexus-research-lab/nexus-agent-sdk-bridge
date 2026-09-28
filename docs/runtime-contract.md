@@ -406,3 +406,11 @@ response is lost. The fixture Host is not Nexus's database adapter. Default
 transport, host restart recovery, round interruption boundaries, protected product
 path allocation and signed App packaging remain unconnected; macOS 14.0 native
 API compatibility and long state-root paths remain unresolved.
+
+### Explicit supervised stdio transport
+
+`Options.ProcessSupervision` carries a host `supervision.Factory` through option resolution into the ordinary process transport. The factory is called once per actual launch with a typed purpose; it must return a fresh Host with its own durable scope. Version, native-settings and restricted CLI probes must finish their own cleanup before main runtime admission. A supervised version-probe error is fatal, unlike the legacy advisory version check, because it can represent an unresolved launch or retirement.
+
+Supervised Start is not replayed on the same manager after failure. JSON parsing, output limits, filtered environments and stderr handling retain their existing contracts. Wait preserves native exit status and collection cleanup errors. Close first closes stdin and waits for the existing grace period, then revokes the original collection if necessary; it never signals a historical PID. The interruption adapter returns `ErrInterruptUnsupported`, causing the client to send the established interrupt control request. Collection shutdown and round interruption remain distinct.
+
+The option cannot be combined with custom/remote transports, another user or a process signal callback. Unsupported supervision fails closed. Nexus default wiring, protected host paths, long-path handling, recovery and signed packaging remain host responsibilities, not guarantees provided by this opt-in API.

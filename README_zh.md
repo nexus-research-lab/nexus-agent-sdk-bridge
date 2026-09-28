@@ -196,3 +196,9 @@ SDK 托管工具把 `params._meta["claudecode/toolUseId"]` 传递为 `tools.Cont
 内部 `WatchRoot` 在放行前核对连接身份并注册 kqueue 退出事件，能跨原地 exec 保留主进程退出码/信号；取消等待不丢失共享观察，主动停止观察不算退出。主进程退出与集合回收继续独立，仍未接入默认 transport。
 
 显式 `supervision` 启动器已串联上述组件：宿主 `Host` 回调负责持久意图、受保护 job 发布、原集合登记、一次性放行和回收事实。根退出会主动清理后代释放继承管道；Close 共享结果，取消等待不撤销清理，失败不会在重复调用时消失。此入口尚未替代默认 client transport，Nexus 数据库适配、重启恢复和 App 打包仍待接入。
+
+### 显式 macOS 进程监督
+
+`client.Options.ProcessSupervision` 接受 `supervision.Factory`，宿主为正式会话、版本探测与 Claude 两种准入探测分别提供新的 `Config` 和持久 `Host`。失败不回退普通执行，清理错误保留到 Wait 与重复 Close。该选项只接受本机同用户进程，不能与自定义 transport、DirectConnect、User 或 ProcessSignalHandler 组合；中断复用 runtime control 请求，强制关闭回收原集合。
+
+宿主仍须提供可信 helper、任务不可写的 job/socket 路径、持久事务和崩溃恢复。此选项不授予文件/网络权限，不构成全部 macOS 版本或 Nexus App 发布验收；未显式配置时沿用原有传输。

@@ -14,6 +14,7 @@ import (
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/mcp"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/permission"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/protocol"
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/supervision"
 )
 
 var errTransportDirectConnectConflict = errors.New("client: transport and direct connect cannot both be configured")
@@ -449,6 +450,9 @@ type CallbackOptions struct {
 
 // Options 表示 Nexus Agent SDK Go 客户端选项。
 type Options struct {
+	// ProcessSupervision 显式启用本机 macOS 精确生命周期。宿主为每个探测和正式
+	// 进程提供独立持久 Host；不兼容自定义 transport、远端连接或跨用户信号回调。
+	ProcessSupervision     supervision.Factory
 	CLIPath                string
 	Transport              Transport
 	DirectConnect          *DirectConnectOptions
