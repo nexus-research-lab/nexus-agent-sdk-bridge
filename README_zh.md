@@ -192,3 +192,5 @@ SDK 托管工具把 `params._meta["claudecode/toolUseId"]` 传递为 `tools.Cont
 内部 `internal/processscope` 组件已提供 macOS coalition 登记、audit-token 精确终止及内核回收观察。控制连接登记核对内核 peer audit identity 和可信 launcher 指定的进程；job 与可执行文件认证仍由调用方负责。原生测试覆盖登记后放行、脱离后代、恢复登记和独立进程不受影响；组件尚未接入默认启动、关闭或 scratch 回收，不改变既有生命周期保证。缺少原生接口时返回 unavailable，macOS 14.0 兼容路线仍待收口。
 
 `cmd/nexus-runtime-bootstrap` 提供可从源码构建的 macOS 独立引导入口：固定宿主身份认证后接收限长启动输入和三个标准管道，使用显式环境原地 exec。任务参数与凭据不写入 launchd plist。该 helper 尚未打入产品或默认启用；宿主 launcher、持久放行及 transport 接入仍未完成。
+
+内部 `WatchRoot` 在放行前核对连接身份并注册 kqueue 退出事件，能跨原地 exec 保留主进程退出码/信号；取消等待不丢失共享观察，主动停止观察不算退出。主进程退出与集合回收继续独立，仍未接入默认 transport。

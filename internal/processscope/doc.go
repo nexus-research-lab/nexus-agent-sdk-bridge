@@ -4,6 +4,8 @@
 // scope.go 持有登记身份、控制连接的内核 peer 核验、恢复校验和有界清理；
 // CapturePeer 要求可信 launcher 提供 expectedPID，仍不验证 job 或可执行文件。
 // peer.go 提供固定宿主身份编码与控制连接反向认证。
+// exit.go/exit_darwin.go 在放行前绑定根进程 kqueue 退出事件；等待取消不撤销共享观察，
+// 停止观察不算退出，主进程状态与 coalition 回收证明相互独立。
 // kernel_darwin.go 与 native_darwin.c
 // 只实现内核观察及 audit-token 信号；不支持的平台或构建明确返回 ErrUnavailable。
 // 调用者必须在运行不可信代码前，将 Capture 的登记持久绑定到其已认证执行身份。

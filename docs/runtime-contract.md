@@ -133,6 +133,17 @@ persist the original scope before sending, bound writes by the startup context,
 observe exit, revoke launch rights, and reap before resource recovery. This helper
 is not shipped or used by the default transport yet.
 
+Internal `Scope.WatchRoot` binds kqueue `NOTE_EXIT | NOTE_EXITSTATUS` before
+admission, verifying the same control-peer identity and registered scope before
+and after attachment. It preserves normal exit codes and termination signals
+across in-place exec. Waiting is shared; canceling a caller only ends that wait.
+Closing the observer releases its descriptor and returns an explicit stopped
+observation to waiters, without terminating the process or creating exit evidence.
+The descriptor is close-on-exec with Go fork coordination. Root exit never substitutes
+for coalition reaping: a native fixture observes normal root exit while its detached
+child remains alive. Restart recovery still needs durable scope registration and
+independent reaping; an exit observer cannot reconstruct a lost historical exit code.
+
 `client.ForkSession` creates an independent target from a source session through
 the exact supplied message ID. Claude Code may not persist the target transcript
 until its first user turn, but the bridge assigns the target session ID before

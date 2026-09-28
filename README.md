@@ -160,6 +160,8 @@ host and replaces itself with the runtime after receiving a bounded launch reque
 and three standard pipes over the control connection. Task environment and arguments
 are not stored in the launchd plist. It is not bundled or enabled by default;
 the host launcher, durable admission and transport integration remain unfinished.
+An internal kqueue observer now captures the authenticated root’s exit status across
+exec; root exit remains independent of complete coalition retirement.
 
 ## Documentation
 

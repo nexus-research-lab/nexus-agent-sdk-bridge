@@ -173,6 +173,11 @@ func TestMacOSScopeReapsDetached(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	monitor, err := scope.WatchRoot(conn, rootPID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer monitor.Close()
 	encoded, err := json.Marshal(scope.Registration())
 	if err != nil {
 		t.Fatal(err)
@@ -184,6 +189,13 @@ func TestMacOSScopeReapsDetached(t *testing.T) {
 		t.Fatal(err)
 	}
 	childPID := waitPID("child")
+	waitCtx, waitCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer waitCancel()
+	rootExit, err := monitor.Wait(waitCtx)
+	if err != nil || rootExit.PID != rootPID || rootExit.Code != 0 || rootExit.Signal != 0 {
+		t.Fatalf("root exit evidence: %#v %v", rootExit, err)
+	}
+	// 根退出事实不能代表后代退出；下面必须仍能观察到脱离后代并独立回收。
 	child, err := newKernel().inspect(childPID)
 	if err != nil {
 		t.Fatal(err)

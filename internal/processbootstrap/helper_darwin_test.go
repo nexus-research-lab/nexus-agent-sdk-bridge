@@ -179,6 +179,29 @@ func TestMacOSBootstrapExec(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	monitor, err := scope.WatchRoot(conn, pid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer monitor.Close()
+	canceled, cancelWait := context.WithCancel(context.Background())
+	cancelWait()
+	if _, err := monitor.Wait(canceled); !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled observer wait: %v", err)
+	}
+	stopped, err := scope.WatchRoot(conn, pid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := stopped.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := stopped.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := stopped.Wait(context.Background()); !errors.Is(err, processscope.ErrObservationStopped) {
+		t.Fatalf("stopped observation became exit evidence: %v", err)
+	}
 	marker := filepath.Join(root, "result")
 	if _, err := os.Stat(marker); !errors.Is(err, os.ErrNotExist) {
 		t.Fatal("task ran before admission")
@@ -253,21 +276,11 @@ func TestMacOSBootstrapExec(t *testing.T) {
 	if err != nil || string(result) != fmt.Sprintf("fixture-value:%d", pid) {
 		t.Fatalf("exec identity/env=%q %v", result, err)
 	}
-	deadline := time.Now().Add(5 * time.Second)
-	exited := false
-	for time.Now().Before(deadline) {
-		out, err := launch("print", service)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if strings.Contains(out, "\tlast exit code = 7\n") {
-			exited = true
-			break
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
-	if !exited {
-		t.Fatal("launchd did not retain runtime exit status")
+	waitCtx, waitCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer waitCancel()
+	status, err := monitor.Wait(waitCtx)
+	if err != nil || status.PID != pid || status.Code != 7 || status.Signal != 0 {
+		t.Fatalf("kernel root exit: %#v %v", status, err)
 	}
 	if strings.Contains(plist, "fixture-value") || strings.Contains(plist, "bootstrap-task") {
 		t.Fatal("task leaked into job definition")
