@@ -7,4 +7,6 @@
 // 宿主负责 owner/session/generation、可信目录、job 文件发布、数据库事务和恢复调度。
 // Reserve/Register/ClaimRelease 必须持久提交后返回；ClaimRelease 不可重放。
 // client 的 ProcessSupervision 显式调用本包；未配置时沿用普通 transport，不授予 sandbox、文件、网络或工具权限。
+// Nexus desktop Manager 在 factory 前固定配置该监督器，并为 runtime、版本探测和 Claude probe
+// 创建独立 Host；supervision 本身不决定宿主何时启用。
 package supervision
