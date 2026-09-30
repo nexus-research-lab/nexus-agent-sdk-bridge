@@ -624,6 +624,66 @@ func TestBuildEnvironmentPreservesResponsesOverrides(t *testing.T) {
 	}
 }
 
+func TestBuildEnvironmentScrubsInheritedProviderAndProxySecrets(t *testing.T) {
+	environment := buildEnvironmentForPlatform(
+		[]string{
+			"OPENAI_API_KEY=inherited-openai",
+			"Anthropic_Auth_Token=inherited-anthropic",
+			"AWS_SECRET_ACCESS_KEY=inherited-aws",
+			"GITHUB_TOKEN=inherited-github",
+			"HTTPS_PROXY=http://user:password@proxy.example",
+			"NEXUS_RUNTIME_USER_ID=owner-a",
+			"PATH=/usr/bin",
+		},
+		map[string]string{
+			"OPENAI_API_KEY": "resolved-openai",
+			"PATH":           "/runtime/bin",
+		},
+		"",
+		ControlWireDialectNXS,
+		"darwin",
+	)
+
+	for _, key := range []string{
+		"Anthropic_Auth_Token",
+		"AWS_SECRET_ACCESS_KEY",
+		"GITHUB_TOKEN",
+		"HTTPS_PROXY",
+	} {
+		if got := envValue(environment, key); got != "" {
+			t.Fatalf("inherited secret %s leaked as %q: %#v", key, got, environment)
+		}
+	}
+	if got := envValue(environment, "OPENAI_API_KEY"); got != "resolved-openai" {
+		t.Fatalf("explicit Provider override = %q, want resolved-openai", got)
+	}
+	if got := envValue(environment, "PATH"); got != "/runtime/bin" {
+		t.Fatalf("explicit PATH override = %q, want /runtime/bin", got)
+	}
+	if got := envValue(environment, "NEXUS_RUNTIME_USER_ID"); got != "owner-a" {
+		t.Fatalf("ordinary runtime identity = %q, want owner-a", got)
+	}
+}
+
+func TestBuildEnvironmentScrubsSecretNamesCaseInsensitivelyOnWindows(t *testing.T) {
+	environment := buildEnvironmentForPlatform(
+		[]string{
+			"OpenAI_Api_Key=inherited-openai",
+			"Path=C:\\Windows\\System32",
+		},
+		map[string]string{"OPENAI_API_KEY": "resolved-openai"},
+		"",
+		ControlWireDialectClaude,
+		"windows",
+	)
+	if got, count := foldedEnvValue(environment, "OPENAI_API_KEY"); count != 1 || got != "resolved-openai" {
+		t.Fatalf("Windows Provider environment = %d/%q, want one explicit override: %#v", count, got, environment)
+	}
+	if got, count := foldedEnvValue(environment, "PATH"); count != 1 || got != "C:\\Windows\\System32" {
+		t.Fatalf("Windows PATH environment = %d/%q, want inherited path: %#v", count, got, environment)
+	}
+}
+
 func envValue(environment []string, key string) string {
 	prefix := key + "="
 	for _, entry := range environment {

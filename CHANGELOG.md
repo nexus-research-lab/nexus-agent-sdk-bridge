@@ -4,12 +4,106 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
-## [0.1.34] - 2026-09-21
+### Changed
+
+- Bind/connect macOS bootstrap sockets relative to their original parent directory handle on a dedicated native thread. Long state-root paths no longer require a short alias or shared temporary socket. Keep the process working directory unchanged, retain host-owned unlink semantics, and fail when thread-local cwd support is unavailable. Native long-path launch and cleanup tests pass on the current arm64 host; supported-version acceptance remains separate.
+
+### Added
+
+- Add explicit recovery from a trusted persisted launch registration. Validate observer and original identity before revoking the job, require exact collection-retirement evidence, and leave failed recovery unresolved. A changed boot never authorizes revoking a new same-name job. Native tests recover a running launch after its original host exits without cleanup; host lifecycle exclusion and product recovery wiring remain the caller’s responsibility.
+
+### Added
+
+- Opt-in `Options.ProcessSupervision` connects local stdio transport and all version/Claude admission probes to the macOS supervisor. Each launch requests a separate durable Host; failed admission never falls back to ordinary exec. Root exit, descendant retirement and repeated Close preserve cleanup errors. Interrupt uses the existing runtime control protocol rather than a bare PID signal. Custom/remote transports and user/signal overrides cannot combine with this option.
+
+
+- Add an explicit macOS `supervision` launcher with durable host callbacks for intent reservation, protected job publication, exact registration, once-only release and final retirement. It observes root exit and independently reaps the coalition, including detached output holders. Native race tests cover stage failures, a lost release response, canceled close waiters and sticky finalization failure. Default client transport, Nexus database adaptation, restart recovery and App packaging remain separate integration work.
+
+- Observe the authenticated macOS bootstrap root with kqueue before admission and preserve its exit status through in-place exec. Caller cancellation does not discard the shared observation; stopping the observer is not process-exit evidence. Native fixtures independently verify root exit and surviving detached descendants. The observer remains internal and is not yet wired into default transport.
+
+- Add a macOS bootstrap helper that authenticates the fixed host audit identity, receives a bounded launch request and three directional standard pipes, then replaces itself with the runtime using an explicit environment. Native tests verify admission failure, exec identity, streams, control socket closure and exit status. Reject excess descriptors without retaining pipe writers. Host launchd orchestration, durable registration, transport integration and product packaging remain pending.
+
+- Bind internal macOS process-scope registration to the Unix control connection kernel audit identity. Reject mismatched PID versions and closed connections before admission; the native fixture now waits for registration before release over the connection. Launcher/job authentication and product integration remain pending.
+
+- Add an internal macOS process-scope component with boot/coalition registration, audit-token termination and kernel retirement evidence. Native tests cover detached descendants, restoration and an unaffected control process. This component is not wired into transport or scratch recovery; missing native APIs fail unavailable, including the unresolved macOS 14.0 compatibility path.
+
+- Add `RequireMCPStdio` and `CapabilitySandboxMCPStdio` for confined macOS stdio services. Require explicit configuration, confirm the capability before prompts, and include changes in runtime replacement.
+
+- Add independent `RequireMCPHelpers` negotiation for confined macOS authentication commands. Require mandatory sandboxing and explicit MCP configuration, confirm support before prompts, and replace the runtime when the requirement changes. Stdio and detached-descendant cleanup remain outside this capability.
+
+- Add `RequireMCPNetwork` and `CapabilitySandboxMCPNetwork` for explicit HTTP/SSE endpoint confinement. Validate strict configuration before startup, negotiate the independent capability before prompts, and replace the process when the requirement changes.
+
+- Create Windows runtime and CLI probe processes suspended, assign their kill-on-close Job before resuming the initial thread, and reject ambiguous thread ownership or resume failures. Native tests cover immediate descendants, cancellation with inherited pipes and host termination. Bound probe pipe waits and apply the same cleanup and scrubbed environment to version checks. A host crash before Job assignment can still leave a suspended process; atomic creation and host resource recovery remain separate acceptance work.
+
+- Add `RequireMediaNetwork` and `CapabilitySandboxMediaNetwork` to require nxs remote-image network admission and URL materialization before task writes. Missing command/file/media prerequisites fail before startup, old runtimes are rejected, and requirement changes replace the process. This is independent of Claude, model Provider transport, and external MCP egress.
+
+- Consolidate sandbox development on `codex/desktop-sandbox-approvals` and
+  preserve the unfinished receipt-store experiment in
+  [a non-executable history archive](docs/history/desktop-sandbox-drafts-2026-09-27/README.md).
+  The draft is not a public API and is not part of the runtime contract.
+
+- Before a required Claude native sandbox session starts, probe the exact resolved CLI with the generated `--settings` JSON and `--help`, using a scrubbed environment and bounded output/time. Reject CLIs that do not accept the settings entry point; this remains a launch-contract check and does not claim that Claude's OS sandbox has enforced a command.
+
+- Add a typed `RequireClaudeNativeSandbox` contract for Claude Code. The Bridge
+  now requires generated `sandbox.enabled=true`, `failIfUnavailable=true`, and
+  `allowUnsandboxedCommands=false` settings before starting the stream-json
+  process, while preserving Claude's Bash/build tools. This is separate from
+  the older `--restricted` tool-removal mode and from nxs capabilities; actual
+  native OS enforcement still requires runtime evidence on each supported
+  platform.
+
+- Probe the exact resolved Claude CLI with `--restricted --help` before admitting
+  a restricted stream-json session. Require a successful exit and an advertised
+  flag, bound probe output/time, and scrub common Provider/proxy secret variables
+  from the probe environment. This is still a CLI launch-contract check, not
+  evidence of Claude's complete OS, Provider, network, or SDK IO isolation.
+
+- Add the typed `SandboxSettings.RequireClaudeRestricted` and `CapabilityClaudeRestricted` contract. Claude Code receives exactly one `--restricted` launch flag; nxs `required_sandbox_v1` is not reused, Full Access needs no contract, and invalid runtime/bypass/untyped flag combinations fail closed. This proves only Bridge argument admission; Claude CLI version, OS enforcement and complete SDK IO isolation remain separate acceptance work.
+
+- Establish a Windows per-runtime Job Object with `KILL_ON_JOB_CLOSE` before session admission, wait for it to become empty during cleanup, and reject startup if the descendant boundary cannot be created or assigned. Host signal handlers remain an additional boundary; clean-host Windows acceptance and durable scratch recovery are still separate evidence.
+
+- Add host-only `RequireSettingsWrites` and `CapabilitySandboxSettingsWrites`. Require the command, file-tool, settings-read and independent nxs settings-write acknowledgements before task admission; keep the requirement out of ordinary settings, include it in restart fingerprints, and reject Claude or older nxs runtimes without sending a task. The current contract covers the macOS nxs Config and permission persistence boundary, not cross-process CAS, multi-document atomicity, directory fsync, durable receipts or restart reconciliation.
+
+- Add host-only `RequireSettingsFiles` and `CapabilitySandboxSettingsFiles`. Require separate nxs acknowledgement of confined ordinary settings reads and checked snapshots before task admission; replace the process when the requirement changes. This does not claim credential separation or atomic settings persistence.
+
+- Add host-only `RequireManagedPolicy` and `CapabilitySandboxManagedPolicy`. Require separate nxs acknowledgement of fixed managed-policy sources and integrity checks before task writes; replace the process when the requirement changes. Ordinary configuration, credentials and persistence remain separate contracts.
+
+- Require a separate nxs `sandbox_project_files_v1` acknowledgement for project definitions and hook-setting reads. Keep the requirement host-only, reject old runtimes before task writes, and replace the process when it changes.
+
+
+### Added
+
+- Add host-only `RequireContextFiles` and `CapabilitySandboxContextFiles` for startup/dynamic instructions and compact file reads. Require independent nxs acknowledgement before every task write; preserve process replacement and reject older runtimes. Global configuration, background IO and Claude adaptation remain separate.
+
+- Add host-only `RequireSkillFiles` and `CapabilitySandboxSkillFiles` for nxs Skill discovery, bodies, Git ignore queries and memory-availability settings. Require separate Skill, command and file acknowledgements before tasks; changed requirements replace the process. Startup settings, hooks, background IO and Claude native adaptation remain separate contracts.
+
+- Add `RequireMediaFiles` and `CapabilitySandboxMediaFiles` for local image reads in nxs ViewImage and model preprocessing. Require the separate media, command and file acknowledgements before task writes, reject contradictory options before transport startup, and replace the process when the requirement changes. This does not claim remote media network confinement or Claude support.
+
+- Add host-only `RequireSearchTools` and `CapabilitySandboxSearchTools` for nxs Glob/Grep confinement. Require separate search, file and command acknowledgements before task writes; reject contradictory settings before transport, and replace the process when this requirement changes. Claude native sandbox adaptation remains independent.
+
+- Add host-only `SandboxSettings.Resources`, independent `sandbox_resources_v1` admission and the typed initialize resource policy. Require command and file acknowledgement as well; reject contradictory scopes before transport and require process replacement for resource changes. Scratch ownership and platform enforcement remain runtime/host responsibilities.
+
+- Add `SandboxSettings.RequireFileTools` and `CapabilitySandboxFileTools` for native nxs Read/Write/Edit confinement. Missing file capability rejects initialization and all task writes independently of command sandbox support; ordinary settings do not carry this requirement.
+
+- Add bounded `RuntimeInspector.SandboxStatus` queries against the explicitly configured nxs, preserving unknown results and independent runtime-path availability.
+
+- Preserve one-connection sandbox network approval boundaries through the permission transport.
+
+### Changed
+
+- Return typed process cleanup failures through Wait, forced shutdown and repeated Close. Reject failed process observations or residual Unix session members; the session sweep does not cover detached sessions or prove scratch reclamation.
+
+- Finish cleanup for sessions rejected before transport startup without waiting for a read loop that was never started; retain transport exit and active-read-loop fences.
+
+- Preserve typed sandbox-escape approval boundaries and reject unknown classifications before invoking host approval callbacks.
+
+- Wait for transport/process exit after Close, including failed termination attempts, before releasing the session cleanup fence. Preserve both termination and exit diagnostics.
+- Return sandbox_policy_changed before applying any hot controls when Sandbox configuration changes; require process replacement instead of silently saving an unapplied policy.
+- Block concurrent raw, user and internal continuation messages until the required sandbox capability has been acknowledged for the current connection.
+- Negotiate opt-in required sandbox execution before sending tasks; reject unsupported runtimes and missing nxs acknowledgement instead of silently ignoring the requirement.
 
 ### Fixed
 
-- Refresh round-scoped SDK MCP handlers locally when runtime-visible configuration is unchanged, avoiding redundant control requests in reused Claude and nxs sessions.
-- Include the control subtype and request ID in timeout and cancellation errors while preserving error identity.
 - Preserve runtime MCP tool-use metadata in SDK-hosted tool callbacks instead of discarding it.
 
 ## [0.1.33] - 2026-09-10
@@ -22,6 +116,7 @@ All notable changes to this project are documented in this file.
 ### Changed
 
 - Integrated Claude Code native automatic permission mode with explicit runtime confirmation on connection and mode changes, preserving errors and rejecting silent downgrades.
+
 
 ## [0.1.32] - 2026-09-04
 

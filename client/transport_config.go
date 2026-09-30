@@ -1,3 +1,6 @@
+// INPUT: 宿主提供的 transport、进程信号、显式监督工厂和 direct-connect 配置。
+// OUTPUT: 公开 transport 选项与可匹配的进程清理错误。
+// POS: 产品到 Bridge 传输生命周期的公开配置边界。
 package client
 
 import (
@@ -28,6 +31,9 @@ const (
 
 // ProcessSignalHandler 允许宿主跨 OS 身份边界发送进程信号。
 type ProcessSignalHandler = transport.ProcessSignalHandler
+
+// ProcessCleanupError 表示后代清理失败，不能因主进程退出而忽略。
+type ProcessCleanupError = transport.ProcessCleanupError
 
 // DirectConnectOptions 表示 direct-connect transport 配置。
 type DirectConnectOptions struct {
@@ -71,6 +77,12 @@ func buildProcessTransportArgs(o resolvedOptions) []string {
 		// Claude Code 的 stream-json stdin 是 headless print 模式的一部分；
 		// 显式携带该标记，避免 CLI 在读取 initialize control 前直接退出。
 		args = append(args, "--print")
+		// --restricted 是 Claude Code 的工具裁剪模式。只有宿主通过
+		// RequireClaudeRestricted 明确要求时才安装；它不是原生命令沙箱，
+		// 后者通过 typed RequireClaudeNativeSandbox + settings 配置。
+		if o.Sandbox != nil && o.Sandbox.RequireClaudeRestricted {
+			args = append(args, "--restricted")
+		}
 	}
 	args = append(args,
 		"--output-format", "stream-json",
@@ -445,12 +457,17 @@ func buildDirectConnectTransportConfig(o resolvedOptions) (transport.DirectConne
 func buildProcessTransportConfig(o resolvedOptions) transport.ProcessConfig {
 	processEnv := buildProcessTransportEnv(o)
 	return transport.ProcessConfig{
-		CommandPath:        processCommandPath(o),
-		CWD:                o.CWD,
-		User:               o.User,
-		MaxBufferSize:      o.MaxBufferSize,
-		Args:               buildProcessTransportArgs(o),
-		Env:                processEnv,
+		Supervision:   o.ProcessSupervision,
+		CommandPath:   processCommandPath(o),
+		CWD:           o.CWD,
+		User:          o.User,
+		MaxBufferSize: o.MaxBufferSize,
+		Args:          buildProcessTransportArgs(o),
+		Env:           processEnv,
+		RequireClaudeRestricted: normalizedRuntimeKind(o.RuntimeKind) == RuntimeClaude &&
+			(o.Sandbox != nil && o.Sandbox.RequireClaudeRestricted),
+		RequireClaudeNativeSandbox: normalizedRuntimeKind(o.RuntimeKind) == RuntimeClaude &&
+			(o.Sandbox != nil && o.Sandbox.RequireClaudeNativeSandbox),
 		Stderr:             o.Stderr,
 		Diagnostics:        processDiagnosticHandler(o.Diagnostics),
 		SignalProcess:      o.ProcessSignalHandler,

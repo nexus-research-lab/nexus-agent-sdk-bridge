@@ -1,3 +1,6 @@
+// INPUT: 可信 runtime 路径、进程身份、stdio、宿主信号回调或独立监督 Host 工厂。
+// OUTPUT: 进程传输、主进程退出与独立后代清理错误。
+// POS: Bridge 的进程生命周期；普通 Unix session 清理不代表完整进程树回收，显式监督分支按内核集合回收。
 package transport
 
 import (
@@ -7,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/supervision"
 	"io"
 	"os"
 	"os/exec"
@@ -116,36 +120,49 @@ func (e *StdoutDecodeError) Unwrap() error {
 
 // ProcessConfig 表示子进程传输配置。
 type ProcessConfig struct {
-	CommandPath        string
-	CWD                string
-	User               string
-	MaxBufferSize      int
-	Args               []string
-	Env                map[string]string
-	Stderr             func(string)
-	Diagnostics        func(ProcessDiagnosticEvent)
-	SignalProcess      ProcessSignalHandler
-	ControlWireDialect ControlWireDialect
+	Supervision   supervision.Factory
+	CommandPath   string
+	CWD           string
+	User          string
+	MaxBufferSize int
+	Args          []string
+	Env           map[string]string
+	// RequireClaudeRestricted makes process admission verify that the selected
+	// Claude CLI accepts the native restricted launch contract before the
+	// stream-json process is started. It is deliberately separate from the nxs
+	// control-wire dialect and is only set by the typed Bridge option.
+	RequireClaudeRestricted bool
+	// RequireClaudeNativeSandbox makes process admission verify the generated
+	// Claude sandbox settings before the stream-json process is started.
+	RequireClaudeNativeSandbox bool
+	Stderr                     func(string)
+	Diagnostics                func(ProcessDiagnosticEvent)
+	SignalProcess              ProcessSignalHandler
+	ControlWireDialect         ControlWireDialect
 }
 
 // ProcessManager 管理 Claude CLI 子进程。
 type ProcessManager struct {
-	config        ProcessConfig
-	cmd           *exec.Cmd
-	stdin         io.WriteCloser
-	stdout        io.ReadCloser
-	stdoutWriter  *os.File
-	stderr        io.ReadCloser
-	stderrWriter  *os.File
-	reader        *bufio.Reader
-	writeMu       sync.Mutex
-	closeOnce     sync.Once
-	done          chan struct{}
-	waitErr       error
-	waitMu        sync.Mutex
-	stderrWG      sync.WaitGroup
-	maxBufferSize int
-	stderrTail    diagnosticTail
+	supervised          *supervision.Process
+	supervisedAttempted bool
+	supervisedStartErr  error
+	config              ProcessConfig
+	cmd                 *exec.Cmd
+	stdin               io.WriteCloser
+	stdout              io.ReadCloser
+	stdoutWriter        *os.File
+	stderr              io.ReadCloser
+	stderrWriter        *os.File
+	reader              *bufio.Reader
+	writeMu             sync.Mutex
+	closeOnce           sync.Once
+	closeErr            error // closeOnce 发布的共享结果；重复关闭保留同一失败。
+	done                chan struct{}
+	waitErr             error
+	waitMu              sync.Mutex
+	stderrWG            sync.WaitGroup
+	maxBufferSize       int
+	stderrTail          diagnosticTail
 }
 
 // NewProcessManager 创建进程管理器。
@@ -166,7 +183,17 @@ func (m *ProcessManager) StderrTail() string {
 }
 
 // Start 启动子进程。
-func (m *ProcessManager) Start(ctx context.Context) error {
+func (m *ProcessManager) Start(ctx context.Context) (startErr error) {
+	if m.supervisedAttempted {
+		return m.supervisedStartErr
+	}
+	if m.config.Supervision != nil {
+		m.supervisedAttempted = true
+		defer func() { m.supervisedStartErr = startErr }()
+		if strings.TrimSpace(m.config.User) != "" || m.config.SignalProcess != nil {
+			return errors.New("process: supervision cannot combine with user or signal overrides")
+		}
+	}
 	if m.cmd != nil {
 		return nil
 	}
@@ -179,7 +206,33 @@ func (m *ProcessManager) Start(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	m.checkCommandVersion(ctx, command)
+	if err := verifyClaudeNativeSandboxSettings(m.config); err != nil {
+		return err
+	}
+	if m.config.RequireClaudeNativeSandbox {
+		if err := verifyClaudeNativeSandboxCommand(ctx, command, m.config); err != nil {
+			return err
+		}
+		m.emitDiagnostic("claude_native_sandbox_probe", map[string]any{
+			"command_path": command.path,
+			"required":     true,
+		})
+	}
+	if m.config.RequireClaudeRestricted {
+		if err := verifyClaudeRestrictedCommand(ctx, command, m.config); err != nil {
+			return err
+		}
+		m.emitDiagnostic("claude_restricted_probe", map[string]any{
+			"command_path": command.path,
+			"required":     true,
+		})
+	}
+	if err := m.checkCommandVersion(ctx, command); err != nil {
+		return err
+	}
+	if m.config.Supervision != nil {
+		return m.startSupervised(ctx, command)
+	}
 
 	cmd := exec.Command(command.executable, command.arguments(m.config.Args)...)
 	cmd.Dir = m.config.CWD
@@ -209,13 +262,27 @@ func (m *ProcessManager) Start(ctx context.Context) error {
 	cmd.Stderr = stderrWriter
 
 	if err := cmd.Start(); err != nil {
+		_ = stdin.Close()
 		_ = stdoutReader.Close()
 		_ = stdoutWriter.Close()
 		_ = stderrReader.Close()
 		_ = stderrWriter.Close()
 		return fmt.Errorf("process: start command failed: %w", err)
 	}
-	processSession := startedProcessSession(cmd)
+	processSession, sessionErr := startedProcessSession(cmd)
+	if sessionErr != nil {
+		// 未能建立独立的进程清理边界时，不能继续把 runtime 当作已受理；
+		// 先关闭父侧管道并终止主进程，再把边界错误交给调用方核对。
+		_ = stdin.Close()
+		_ = stdoutReader.Close()
+		_ = stdoutWriter.Close()
+		_ = stderrReader.Close()
+		_ = stderrWriter.Close()
+		return errors.Join(
+			fmt.Errorf("process: establish descendant cleanup boundary failed: %w", sessionErr),
+			m.abortStartedProcess(cmd, processSession),
+		)
+	}
 	if err := ctx.Err(); err != nil {
 		_ = stdin.Close()
 		_ = stdoutReader.Close()
@@ -272,9 +339,8 @@ func (m *ProcessManager) Start(ctx context.Context) error {
 
 	go func() {
 		defer close(m.done)
-		err := cmd.Wait()
+		err := errors.Join(cmd.Wait(), m.cleanupProcessSession(processSession))
 		m.setWaitError(err)
-		m.cleanupProcessSession(processSession)
 		m.waitForStderrReader()
 		stderrTail := strings.TrimSpace(m.stderrTail.String())
 		attributes := map[string]any{"pid": cmd.Process.Pid}
@@ -290,18 +356,28 @@ func (m *ProcessManager) Start(ctx context.Context) error {
 	return nil
 }
 
-func (m *ProcessManager) cleanupProcessSession(session processSession) {
+// cleanupProcessSession 将平台或宿主清理失败传到 Wait/Close，不能只写诊断。
+func (m *ProcessManager) cleanupProcessSession(session processSession) error {
+	var callbackErr error
 	if m.config.SignalProcess != nil && session.id() > 1 {
-		if err := m.config.SignalProcess(session.id(), ProcessSignalKill); err != nil {
-			m.emitDiagnostic("process_descendant_cleanup_error", map[string]any{
-				"session_id": session.id(),
-				"error":      err.Error(),
-			})
+		callbackErr = m.config.SignalProcess(session.id(), ProcessSignalKill)
+		// Unix 的宿主信号回调可能跨越用户身份边界，Bridge 不能再自行枚举
+		// 或杀进程。Windows Job Object 则是本地已建立的独立清理边界，
+		// 即使宿主回调只终止主进程，也必须继续收口其后代。
+		if !session.hasDirectCleanup() {
+			if callbackErr != nil {
+				m.emitDiagnostic("process_descendant_cleanup_error", map[string]any{
+					"session_id": session.id(),
+					"error":      callbackErr.Error(),
+				})
+				return &ProcessCleanupError{SessionID: session.id(), Err: callbackErr}
+			}
+			return nil
 		}
-		return
 	}
 	terminated, err := session.cleanup()
-	if terminated > 0 {
+	err = errors.Join(callbackErr, err)
+	if terminated > 0 && err == nil {
 		m.emitDiagnostic("process_descendants_terminated", map[string]any{
 			"session_id":       session.id(),
 			"terminated_count": terminated,
@@ -312,7 +388,9 @@ func (m *ProcessManager) cleanupProcessSession(session processSession) {
 			"session_id": session.id(),
 			"error":      err.Error(),
 		})
+		return &ProcessCleanupError{SessionID: session.id(), Err: err}
 	}
+	return nil
 }
 
 // ReadJSON 读取下一条 JSON 消息。
@@ -392,6 +470,10 @@ func (m *ProcessManager) EndInput() error {
 
 // Interrupt 发送中断信号。
 func (m *ProcessManager) Interrupt() error {
+	// 监督路径不按裸 PID 发信号；client 复用已有的 round control 中断协议。
+	if m.config.Supervision != nil {
+		return ErrInterruptUnsupported
+	}
 	if m.cmd == nil || m.cmd.Process == nil {
 		return nil
 	}
@@ -454,8 +536,7 @@ func (m *ProcessManager) abortStartedProcess(cmd *exec.Cmd, session processSessi
 		return fmt.Errorf("process: kill started command failed: %w", err)
 	}
 	_ = cmd.Wait()
-	m.cleanupProcessSession(session)
-	return nil
+	return m.cleanupProcessSession(session)
 }
 
 func (m *ProcessManager) killStartedProcess(process *os.Process) error {
@@ -747,22 +828,31 @@ func compactCommandPaths(paths []string) []string {
 	return result
 }
 
-func (m *ProcessManager) checkCommandVersion(parent context.Context, command processCommand) {
+func (m *ProcessManager) checkCommandVersion(parent context.Context, command processCommand) error {
 	if !m.shouldCheckCommandVersion() {
-		return
+		return nil
 	}
 	ctx, cancel := context.WithTimeout(parent, versionCheckTimeout)
 	defer cancel()
 
-	output, err := exec.CommandContext(
-		ctx,
-		command.executable,
-		command.arguments([]string{"-v"})...,
-	).Output()
-	if err != nil {
-		return
+	probe := exec.Command(command.executable, command.arguments([]string{"-v"})...)
+	probe.Dir = m.config.CWD
+	probe.Env = buildClaudeRestrictedProbeEnvironment(m.config.Env, m.config.CWD, m.config.ControlWireDialect)
+	if err := applyCommandUser(probe, m.config.User); err != nil {
+		return nil
 	}
-	m.emitUnsupportedCommandVersionDiagnostic(command.path, string(output))
+	var output limitedProbeBuffer
+	output.limit = claudeRestrictedProbeLimit
+	probe.Stdout, probe.Stderr = &output, io.Discard
+	if err := runConfiguredProbe(ctx, probe, m.config, supervision.VersionProbe); err != nil {
+		// 传统版本检查仅为提示；监督路径不能吞掉 Host/回收失败再执行主任务。
+		if m.config.Supervision != nil {
+			return err
+		}
+		return nil
+	}
+	m.emitUnsupportedCommandVersionDiagnostic(command.path, output.String())
+	return nil
 }
 
 func (m *ProcessManager) shouldCheckCommandVersion() bool {
@@ -838,8 +928,11 @@ func semanticVersionParts(version string) [3]int {
 
 // Wait 等待进程结束。
 func (m *ProcessManager) Wait() error {
-	if m.cmd == nil {
-		return nil
+	if m.cmd == nil && m.supervised == nil {
+		return m.supervisedStartErr
+	}
+	if m.supervisedStartErr != nil {
+		return m.supervisedStartErr
 	}
 
 	<-m.done
@@ -852,7 +945,16 @@ func (m *ProcessManager) Wait() error {
 func (m *ProcessManager) Close() error {
 	var closeErr error
 	m.closeOnce.Do(func() {
+		defer func() { m.closeErr = closeErr }()
 		_ = m.EndInput()
+		if m.supervised != nil {
+			closeErr = m.closeSupervised()
+			return
+		}
+		if m.supervisedStartErr != nil {
+			closeErr = m.supervisedStartErr
+			return
+		}
 
 		if m.cmd == nil || m.cmd.Process == nil {
 			return
@@ -892,9 +994,14 @@ func (m *ProcessManager) Close() error {
 		m.waitForStderrReader()
 		if !forcedExit {
 			closeErr = normalizeExitErrorWithStderr(m.waitError(), m.stderrTail.String())
+		} else {
+			var cleanupErr *ProcessCleanupError
+			if errors.As(m.waitError(), &cleanupErr) {
+				closeErr = errors.Join(closeErr, cleanupErr)
+			}
 		}
 	})
-	return closeErr
+	return m.closeErr
 }
 
 func (m *ProcessManager) closeOutputPipes() {
@@ -1074,6 +1181,13 @@ func buildEnvironmentForPlatform(
 		if !ok {
 			continue
 		}
+		// The Bridge is also usable without Nexus. Never let a standalone
+		// caller accidentally lend the child process credentials inherited
+		// from the host shell. Explicit typed overrides are applied below and
+		// remain the only way to project the selected Provider credential.
+		if inheritedProcessEnvironmentSecretKey(key) {
+			continue
+		}
 		if processEnvironmentKey(key, platform) == processEnvironmentKey("CLAUDECODE", platform) {
 			continue
 		}
@@ -1107,6 +1221,42 @@ func buildEnvironmentForPlatform(
 		results = append(results, fmt.Sprintf("%s=%s", entry.key, entry.value))
 	}
 	return results
+}
+
+// inheritedProcessEnvironmentSecretKey identifies environment names that are
+// commonly used for Provider credentials, bearer tokens, private material,
+// cookies, or proxy authentication. The match is intentionally conservative:
+// PATH, HOME, runtime identity, and ordinary configuration variables remain
+// inherited, while an explicit Options.Env override is still applied after
+// this filter and can therefore carry the host-resolved credential.
+func inheritedProcessEnvironmentSecretKey(key string) bool {
+	normalized := strings.ToUpper(strings.TrimSpace(key))
+	if normalized == "" {
+		return true
+	}
+	for _, marker := range []string{
+		"_API_KEY",
+		"_AUTH_TOKEN",
+		"_ACCESS_TOKEN",
+		"_TOKEN",
+		"_SECRET",
+		"_PASSWORD",
+		"_PASS",
+		"_CREDENTIAL",
+		"_PRIVATE_KEY",
+		"AUTHORIZATION",
+		"COOKIE",
+		"SSH_AUTH_SOCK",
+		"HTTP_PROXY",
+		"HTTPS_PROXY",
+		"ALL_PROXY",
+		"NO_PROXY",
+	} {
+		if strings.Contains(normalized, marker) {
+			return true
+		}
+	}
+	return false
 }
 
 func processEnvironmentKey(key string, platform string) string {

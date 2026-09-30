@@ -59,7 +59,16 @@ func (c *sessionCore) resolvePermissionRequest(ctx context.Context, request map[
 		}
 	}
 
+	boundary := permission.Boundary("")
+	if raw, exists := request["permission_boundary"]; exists {
+		value, ok := raw.(string)
+		if !ok || (value != "" && value != string(permission.BoundaryTool) && value != string(permission.BoundarySandboxEscape) && value != string(permission.BoundarySandboxNetwork)) {
+			return map[string]any{"behavior": "deny", "message": "unsupported permission boundary"}
+		}
+		boundary = permission.Boundary(value)
+	}
 	permissionRequest := permission.Request{
+		Boundary:              boundary,
 		ToolName:              jsonvalue.StringValue(request["tool_name"]),
 		Input:                 jsonvalue.MapValue(request["input"]),
 		PermissionSuggestions: decodePermissionUpdates(request["permission_suggestions"]),
@@ -230,7 +239,43 @@ func (c *sessionCore) buildInitializeRequest() protocol.ControlRequest {
 			subagentControlProtocolCapability,
 			messageExecutionPolicyProtocolCapability,
 			autoReviewProtocolCapability,
+			requiredSandboxProtocolCapability,
+			sandboxFileToolsProtocolCapability,
+			sandboxSearchToolsProtocolCapability,
+			sandboxMediaFilesProtocolCapability,
+			sandboxMediaNetworkProtocolCapability,
+			sandboxMCPNetworkProtocolCapability,
+			sandboxMCPHelpersProtocolCapability,
+			sandboxMCPStdioProtocolCapability,
+			sandboxNotebookFilesProtocolCapability,
+			sandboxSkillFilesProtocolCapability,
+			sandboxContextFilesProtocolCapability,
+			sandboxProjectFilesProtocolCapability,
+			sandboxManagedPolicyProtocolCapability,
+			sandboxSettingsFilesProtocolCapability,
+			sandboxSettingsWritesProtocolCapability,
+			sandboxResourcesProtocolCapability,
 		}
+	}
+
+	if c.options.Sandbox != nil && c.options.Sandbox.RequireSandbox {
+		request.RequiredSandbox = true
+		request.RequiredSandboxFileTools = c.options.Sandbox.RequireFileTools
+		request.RequiredSandboxSearchTools = c.options.Sandbox.RequireSearchTools
+		request.RequiredSandboxMediaFiles = c.options.Sandbox.RequireMediaFiles
+		request.RequiredSandboxMediaNetwork = c.options.Sandbox.RequireMediaNetwork
+		request.RequiredSandboxMCPNetwork = c.options.Sandbox.RequireMCPNetwork
+		request.RequiredSandboxMCPHelpers = c.options.Sandbox.RequireMCPHelpers
+		request.RequiredSandboxMCPStdio = c.options.Sandbox.RequireMCPStdio
+		request.RequiredSandboxNotebookFiles = c.options.Sandbox.RequireNotebookFiles
+		request.RequiredSandboxSkillFiles = c.options.Sandbox.RequireSkillFiles
+		request.RequiredSandboxContextFiles = c.options.Sandbox.RequireContextFiles
+		request.RequiredSandboxProjectFiles = c.options.Sandbox.RequireProjectFiles
+		request.RequiredSandboxManagedPolicy = c.options.Sandbox.RequireManagedPolicy
+		request.RequiredSandboxSettingsFiles = c.options.Sandbox.RequireSettingsFiles
+		request.RequiredSandboxSettingsWrites = c.options.Sandbox.RequireSettingsWrites
+		request.RequiredSandboxResources = c.options.Sandbox.Resources
+		request.SandboxPolicy = sandboxSettingsMap(c.options.Sandbox)
 	}
 
 	if hooks := c.buildHookInitialization(); len(hooks) > 0 {

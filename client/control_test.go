@@ -69,6 +69,21 @@ func TestBuildInitializeRequestAdvertisesNXSProtocolCapabilities(t *testing.T) {
 		subagentControlProtocolCapability,
 		messageExecutionPolicyProtocolCapability,
 		autoReviewProtocolCapability,
+		requiredSandboxProtocolCapability,
+		sandboxFileToolsProtocolCapability,
+		sandboxSearchToolsProtocolCapability,
+		sandboxMediaFilesProtocolCapability,
+		sandboxMediaNetworkProtocolCapability,
+		sandboxMCPNetworkProtocolCapability,
+		sandboxMCPHelpersProtocolCapability, sandboxMCPStdioProtocolCapability,
+		sandboxNotebookFilesProtocolCapability,
+		sandboxSkillFilesProtocolCapability,
+		sandboxContextFilesProtocolCapability,
+		sandboxProjectFilesProtocolCapability,
+		sandboxManagedPolicyProtocolCapability,
+		sandboxSettingsFilesProtocolCapability,
+		sandboxSettingsWritesProtocolCapability,
+		sandboxResourcesProtocolCapability,
 	}) {
 		t.Fatalf("nxs protocol capabilities = %#v", nxsRequest.ProtocolCapabilities)
 	}

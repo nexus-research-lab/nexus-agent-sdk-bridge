@@ -8,6 +8,9 @@ import (
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/permission"
 )
 
+// CapabilitySandboxSettingsWritesV1 是 nxs 普通配置受控写入的 initialize 能力名。
+const CapabilitySandboxSettingsWritesV1 = "sandbox_settings_writes_v1"
+
 // ControlRequestEnvelope 表示控制请求包。
 type ControlRequestEnvelope struct {
 	Type      string         `json:"type"`
@@ -19,62 +22,80 @@ type ControlRequestEnvelope struct {
 //
 // 它保留底层 wire 层 subtype union 形状，领域语义由 client、mcp、permission 等公开包承接。
 type ControlRequest struct {
-	Operation                 string              `json:"operation,omitempty"`
-	Subtype                   string              `json:"subtype"`
-	ProtocolCapabilities      []string            `json:"protocol_capabilities,omitempty"`
-	Reason                    string              `json:"reason,omitempty"`
-	Hooks                     map[string]any      `json:"hooks,omitempty"`
-	Agents                    map[string]any      `json:"agents,omitempty"`
-	SDKMCPServers             []string            `json:"sdkMcpServers,omitempty"`
-	Servers                   map[string]any      `json:"servers,omitempty"`
-	JSONSchema                map[string]any      `json:"jsonSchema,omitempty"`
-	Payload                   map[string]any      `json:"payload,omitempty"`
-	SystemPrompt              string              `json:"systemPrompt,omitempty"`
-	AppendSystemPrompt        string              `json:"appendSystemPrompt,omitempty"`
-	AppendSystemPromptStatic  string              `json:"appendSystemPromptStatic,omitempty"`
-	AppendSystemPromptDynamic string              `json:"appendSystemPromptDynamic,omitempty"`
-	ExcludeDynamicSections    *bool               `json:"excludeDynamicSections,omitempty"`
-	AgentProgressSummaries    *bool               `json:"agentProgressSummaries,omitempty"`
-	Skills                    *[]string           `json:"skills,omitempty"`
-	DisabledSkills            []string            `json:"disabledSkills,omitempty"`
-	ToolName                  string              `json:"tool_name,omitempty"`
-	Input                     map[string]any      `json:"input,omitempty"`
-	PermissionSuggestions     []permission.Update `json:"permission_suggestions,omitempty"`
-	BlockedPath               string              `json:"blocked_path,omitempty"`
-	DecisionReason            string              `json:"decision_reason,omitempty"`
-	Title                     string              `json:"title,omitempty"`
-	Name                      string              `json:"name,omitempty"`
-	DisplayName               string              `json:"display_name,omitempty"`
-	Description               string              `json:"description,omitempty"`
-	Question                  string              `json:"question,omitempty"`
-	DialogKind                string              `json:"dialog_kind,omitempty"`
-	ToolUseID                 string              `json:"tool_use_id,omitempty"`
-	AgentID                   string              `json:"agent_id,omitempty"`
-	Mode                      permission.Mode     `json:"mode,omitempty"`
-	CallbackID                string              `json:"callback_id,omitempty"`
-	Model                     string              `json:"model,omitempty"`
-	MaxThinkingTokens         *int                `json:"max_thinking_tokens,omitempty"`
-	UserMessageID             string              `json:"user_message_id,omitempty"`
-	MessageUUID               string              `json:"message_uuid,omitempty"`
-	MessageUUIDs              []string            `json:"message_uuids,omitempty"`
-	DryRun                    *bool               `json:"dry_run,omitempty"`
-	Persist                   *bool               `json:"persist,omitempty"`
-	ServerName                string              `json:"serverName,omitempty"`
-	Enabled                   *bool               `json:"enabled,omitempty"`
-	TaskID                    string              `json:"task_id,omitempty"`
-	Path                      string              `json:"path,omitempty"`
-	MTime                     int64               `json:"mtime,omitempty"`
-	Message                   map[string]any      `json:"message,omitempty"`
-	Settings                  map[string]any      `json:"settings,omitempty"`
-	Variables                 map[string]string   `json:"variables,omitempty"`
-	MCPServerName             string              `json:"mcp_server_name,omitempty"`
-	URL                       string              `json:"url,omitempty"`
-	CallbackURL               string              `json:"callbackUrl,omitempty"`
-	ElicitationID             string              `json:"elicitation_id,omitempty"`
-	RequestedSchema           map[string]any      `json:"requested_schema,omitempty"`
-	LoginWithWeb              *bool               `json:"login_with_web,omitempty"`
-	AuthorizationCode         string              `json:"authorization_code,omitempty"`
-	State                     string              `json:"state,omitempty"`
+	RequiredSandboxSearchTools    bool `json:"required_sandbox_search_tools,omitempty"`
+	RequiredSandboxMediaFiles     bool `json:"required_sandbox_media_files,omitempty"`
+	RequiredSandboxMediaNetwork   bool `json:"required_sandbox_media_network,omitempty"`
+	RequiredSandboxMCPNetwork     bool `json:"required_sandbox_mcp_network,omitempty"`
+	RequiredSandboxMCPHelpers     bool `json:"required_sandbox_mcp_helpers,omitempty"`
+	RequiredSandboxMCPStdio       bool `json:"required_sandbox_mcp_stdio,omitempty"`
+	RequiredSandboxNotebookFiles  bool `json:"required_sandbox_notebook_files,omitempty"`
+	RequiredSandboxSkillFiles     bool `json:"required_sandbox_skill_files,omitempty"`
+	RequiredSandboxContextFiles   bool `json:"required_sandbox_context_files,omitempty"`
+	RequiredSandboxProjectFiles   bool `json:"required_sandbox_project_files,omitempty"`
+	RequiredSandboxManagedPolicy  bool `json:"required_sandbox_managed_policy,omitempty"`
+	RequiredSandboxSettingsFiles  bool `json:"required_sandbox_settings_files,omitempty"`
+	RequiredSandboxSettingsWrites bool `json:"required_sandbox_settings_writes,omitempty"`
+
+	RequiredSandboxResources  *SandboxResourcePolicy `json:"required_sandbox_resources,omitempty"`
+	SandboxPolicy             map[string]any         `json:"sandbox_policy,omitempty"`
+	RequiredSandbox           bool                   `json:"required_sandbox,omitempty"`
+	RequiredSandboxFileTools  bool                   `json:"required_sandbox_file_tools,omitempty"`
+	Operation                 string                 `json:"operation,omitempty"`
+	Subtype                   string                 `json:"subtype"`
+	ProtocolCapabilities      []string               `json:"protocol_capabilities,omitempty"`
+	Reason                    string                 `json:"reason,omitempty"`
+	Hooks                     map[string]any         `json:"hooks,omitempty"`
+	Agents                    map[string]any         `json:"agents,omitempty"`
+	SDKMCPServers             []string               `json:"sdkMcpServers,omitempty"`
+	Servers                   map[string]any         `json:"servers,omitempty"`
+	JSONSchema                map[string]any         `json:"jsonSchema,omitempty"`
+	Payload                   map[string]any         `json:"payload,omitempty"`
+	SystemPrompt              string                 `json:"systemPrompt,omitempty"`
+	AppendSystemPrompt        string                 `json:"appendSystemPrompt,omitempty"`
+	AppendSystemPromptStatic  string                 `json:"appendSystemPromptStatic,omitempty"`
+	AppendSystemPromptDynamic string                 `json:"appendSystemPromptDynamic,omitempty"`
+	ExcludeDynamicSections    *bool                  `json:"excludeDynamicSections,omitempty"`
+	AgentProgressSummaries    *bool                  `json:"agentProgressSummaries,omitempty"`
+	Skills                    *[]string              `json:"skills,omitempty"`
+	DisabledSkills            []string               `json:"disabledSkills,omitempty"`
+	ToolName                  string                 `json:"tool_name,omitempty"`
+	Input                     map[string]any         `json:"input,omitempty"`
+	PermissionSuggestions     []permission.Update    `json:"permission_suggestions,omitempty"`
+	BlockedPath               string                 `json:"blocked_path,omitempty"`
+	DecisionReason            string                 `json:"decision_reason,omitempty"`
+	Title                     string                 `json:"title,omitempty"`
+	Name                      string                 `json:"name,omitempty"`
+	DisplayName               string                 `json:"display_name,omitempty"`
+	Description               string                 `json:"description,omitempty"`
+	Question                  string                 `json:"question,omitempty"`
+	DialogKind                string                 `json:"dialog_kind,omitempty"`
+	ToolUseID                 string                 `json:"tool_use_id,omitempty"`
+	AgentID                   string                 `json:"agent_id,omitempty"`
+	Mode                      permission.Mode        `json:"mode,omitempty"`
+	CallbackID                string                 `json:"callback_id,omitempty"`
+	Model                     string                 `json:"model,omitempty"`
+	MaxThinkingTokens         *int                   `json:"max_thinking_tokens,omitempty"`
+	UserMessageID             string                 `json:"user_message_id,omitempty"`
+	MessageUUID               string                 `json:"message_uuid,omitempty"`
+	MessageUUIDs              []string               `json:"message_uuids,omitempty"`
+	DryRun                    *bool                  `json:"dry_run,omitempty"`
+	Persist                   *bool                  `json:"persist,omitempty"`
+	ServerName                string                 `json:"serverName,omitempty"`
+	Enabled                   *bool                  `json:"enabled,omitempty"`
+	TaskID                    string                 `json:"task_id,omitempty"`
+	Path                      string                 `json:"path,omitempty"`
+	MTime                     int64                  `json:"mtime,omitempty"`
+	Message                   map[string]any         `json:"message,omitempty"`
+	Settings                  map[string]any         `json:"settings,omitempty"`
+	Variables                 map[string]string      `json:"variables,omitempty"`
+	MCPServerName             string                 `json:"mcp_server_name,omitempty"`
+	URL                       string                 `json:"url,omitempty"`
+	CallbackURL               string                 `json:"callbackUrl,omitempty"`
+	ElicitationID             string                 `json:"elicitation_id,omitempty"`
+	RequestedSchema           map[string]any         `json:"requested_schema,omitempty"`
+	LoginWithWeb              *bool                  `json:"login_with_web,omitempty"`
+	AuthorizationCode         string                 `json:"authorization_code,omitempty"`
+	State                     string                 `json:"state,omitempty"`
 }
 
 // ControlResponseEnvelope 表示控制响应包。

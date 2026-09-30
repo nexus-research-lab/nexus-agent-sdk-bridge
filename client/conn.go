@@ -16,6 +16,9 @@ import (
 )
 
 func (c *sessionCore) Connect(ctx context.Context) error {
+	if err := c.validateSandboxRequirements(); err != nil {
+		return err
+	}
 	lifecycle := c.lifecycle
 	var activeStreams *sessionStreams
 	var activeTransport Transport
@@ -60,6 +63,7 @@ func (c *sessionCore) Connect(ctx context.Context) error {
 		}
 		activeStreams = streams
 		activeTransport = c.transport
+		streams.readClaimed = true
 		lifecycle.setConnectedLocked(true)
 		lifecycle.unlockConnection()
 		break
@@ -86,6 +90,10 @@ func (c *sessionCore) Connect(ctx context.Context) error {
 
 	initializeResponse := runtimeinfo.DecodeInitializeResponse(response)
 	lifecycle.setInitializeResponse(initializeResponse)
+	if err := c.requireSandboxReadyForSend(); err != nil {
+		_ = c.Disconnect(ctx)
+		return fmt.Errorf("运行时未确认必需沙箱能力，已停止连接；请升级运行时: %w", err)
+	}
 	if c.options.Runtime.PermissionMode == permission.ModeAuto {
 		var modeErr error
 		if !c.supports(CapabilityAutoReview) {
@@ -206,6 +214,11 @@ func (c *sessionCore) Disconnect(ctx context.Context) error {
 		}
 		lifecycle.setConnectedLocked(false)
 		close(streams.readStop)
+		if !streams.readClaimed {
+			// 配置在 Start 前拒绝时没有读取循环；关闭仍要核对已提供 transport 的退出。
+			close(streams.messages)
+			close(streams.readDone)
+		}
 		closeState = &sessionCloseState{done: make(chan struct{})}
 		streams.closeState = closeState
 		activeTransport = c.transport
@@ -243,6 +256,10 @@ func (c *sessionCore) finishSessionClose(
 	var closeErr error
 	if activeTransport != nil {
 		closeErr = activeTransport.Close()
+		// Close may report a failed termination attempt while the process still
+		// exists. Only Wait confirms transport/process exit; caller cancellation
+		// stops its wait without releasing this shared lifecycle fence.
+		closeErr = joinErrors(closeErr, activeTransport.Wait())
 	}
 	<-readDone
 	closeState.err = joinErrors(closeErr, c.getReadError())
@@ -373,6 +390,9 @@ func (c *sessionCore) SendMessageWithOptions(ctx context.Context, message protoc
 
 // SendRawMessage 发送一条原始 SDK 消息。
 func (c *sessionCore) SendRawMessage(ctx context.Context, message map[string]any, sessionID string) error {
+	if err := c.requireSandboxReadyForSend(); err != nil {
+		return err
+	}
 	if !c.isConnected() {
 		return ErrNotConnected
 	}
@@ -645,6 +665,9 @@ func (c *sessionCore) emitStreamDiagnostic(streamStop StreamStopDiagnostics) {
 }
 
 func (c *sessionCore) sendInternalRawMessage(message map[string]any, sessionID string) error {
+	if err := c.requireSandboxReadyForSend(); err != nil {
+		return err
+	}
 	if !c.isConnected() {
 		return ErrNotConnected
 	}

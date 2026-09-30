@@ -1,12 +1,39 @@
 package client
 
-import "slices"
+import (
+	"slices"
+
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/protocol"
+)
 
 // Capability 表示当前会话后端公开的运行时能力。
 type Capability string
 
 // 支持的会话后端能力。
 const (
+	CapabilityRequiredSandbox       Capability = "required_sandbox"
+	CapabilitySandboxFileTools      Capability = "sandbox_file_tools"
+	CapabilitySandboxSearchTools    Capability = "sandbox_search_tools"
+	CapabilitySandboxMediaFiles     Capability = "sandbox_media_files"
+	CapabilitySandboxMediaNetwork   Capability = "sandbox_media_network"
+	CapabilitySandboxMCPNetwork     Capability = "sandbox_mcp_network"
+	CapabilitySandboxMCPHelpers     Capability = "sandbox_mcp_helpers"
+	CapabilitySandboxMCPStdio       Capability = "sandbox_mcp_stdio"
+	CapabilitySandboxNotebookFiles  Capability = "sandbox_notebook_files"
+	CapabilitySandboxSkillFiles     Capability = "sandbox_skill_files"
+	CapabilitySandboxContextFiles   Capability = "sandbox_context_files"
+	CapabilitySandboxProjectFiles   Capability = "sandbox_project_files"
+	CapabilitySandboxManagedPolicy  Capability = "sandbox_managed_policy"
+	CapabilitySandboxSettingsFiles  Capability = "sandbox_settings_files"
+	CapabilitySandboxSettingsWrites Capability = "sandbox_settings_writes"
+	CapabilitySandboxResources      Capability = "sandbox_resources"
+	// CapabilityClaudeRestricted 表示 Bridge 已为 Claude Code 安装原生
+	// --restricted 启动合同。它不表示 nxs 的 required_sandbox_v1，也不
+	// 代表 Claude SDK 的全部文件、网络或后台 IO 已隔离。
+	CapabilityClaudeRestricted Capability = "claude_restricted"
+	// CapabilityClaudeNativeSandbox 表示 Bridge 已安装 Claude 原生命令
+	// sandbox settings；它独立于 nxs 的 required_sandbox_v1。
+	CapabilityClaudeNativeSandbox    Capability = "claude_native_sandbox"
 	CapabilityAutoReview             Capability = "auto_review"
 	CapabilitySendOptions            Capability = "send_options"
 	CapabilityInternalContext        Capability = "internal_context"
@@ -27,6 +54,22 @@ const (
 const (
 	subagentControlProtocolCapability        = "subagent_control_v1"
 	autoReviewProtocolCapability             = "auto_review_v1"
+	requiredSandboxProtocolCapability        = "required_sandbox_v1"
+	sandboxFileToolsProtocolCapability       = "sandbox_file_tools_v1"
+	sandboxSearchToolsProtocolCapability     = "sandbox_search_tools_v1"
+	sandboxMediaFilesProtocolCapability      = "sandbox_media_files_v1"
+	sandboxMediaNetworkProtocolCapability    = "sandbox_media_network_v1"
+	sandboxMCPNetworkProtocolCapability      = "sandbox_mcp_network_v1"
+	sandboxMCPHelpersProtocolCapability      = "sandbox_mcp_helpers_v1"
+	sandboxMCPStdioProtocolCapability        = "sandbox_mcp_stdio_v1"
+	sandboxNotebookFilesProtocolCapability   = "sandbox_notebook_files_v1"
+	sandboxSkillFilesProtocolCapability      = "sandbox_skill_files_v1"
+	sandboxContextFilesProtocolCapability    = "sandbox_context_files_v1"
+	sandboxProjectFilesProtocolCapability    = "sandbox_project_files_v1"
+	sandboxManagedPolicyProtocolCapability   = "sandbox_managed_policy_v1"
+	sandboxSettingsFilesProtocolCapability   = "sandbox_settings_files_v1"
+	sandboxSettingsWritesProtocolCapability  = protocol.CapabilitySandboxSettingsWritesV1
+	sandboxResourcesProtocolCapability       = "sandbox_resources_v1"
 	hookResponseAckProtocolCapability        = "hook_response_ack_v1"
 	messageExecutionPolicyProtocolCapability = "message_execution_policy_v1"
 )
@@ -62,6 +105,42 @@ func (c *sessionCore) supports(capability Capability) bool {
 		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS
 	case CapabilityUpdateEnvironment:
 		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS
+	case CapabilityRequiredSandbox:
+		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS && slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, requiredSandboxProtocolCapability)
+	case CapabilitySandboxFileTools:
+		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS && slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, sandboxFileToolsProtocolCapability)
+	case CapabilitySandboxSearchTools:
+		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS && slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, sandboxSearchToolsProtocolCapability)
+	case CapabilitySandboxMCPNetwork:
+		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS && slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, sandboxMCPNetworkProtocolCapability)
+	case CapabilitySandboxMCPHelpers:
+		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS && slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, sandboxMCPHelpersProtocolCapability)
+	case CapabilitySandboxMCPStdio:
+		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS && slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, sandboxMCPStdioProtocolCapability)
+	case CapabilitySandboxMediaNetwork:
+		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS && slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, sandboxMediaNetworkProtocolCapability)
+	case CapabilitySandboxMediaFiles:
+		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS && slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, sandboxMediaFilesProtocolCapability)
+	case CapabilitySandboxNotebookFiles:
+		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS && slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, sandboxNotebookFilesProtocolCapability)
+	case CapabilitySandboxSkillFiles:
+		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS && slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, sandboxSkillFilesProtocolCapability)
+	case CapabilitySandboxContextFiles:
+		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS && slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, sandboxContextFilesProtocolCapability)
+	case CapabilitySandboxProjectFiles:
+		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS && slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, sandboxProjectFilesProtocolCapability)
+	case CapabilitySandboxManagedPolicy:
+		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS && slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, sandboxManagedPolicyProtocolCapability)
+	case CapabilitySandboxSettingsFiles:
+		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS && slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, sandboxSettingsFilesProtocolCapability)
+	case CapabilitySandboxSettingsWrites:
+		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS && slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, sandboxSettingsWritesProtocolCapability)
+	case CapabilitySandboxResources:
+		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeNXS && slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, sandboxResourcesProtocolCapability)
+	case CapabilityClaudeRestricted:
+		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeClaude && claudeRestrictedRequired(c.options)
+	case CapabilityClaudeNativeSandbox:
+		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeClaude && claudeNativeSandboxRequired(c.options)
 	case CapabilityAutoReview:
 		// Claude 使用原生控制确认模式；nxs 使用扩展协议协商。此能力不代表账号或模型可用性。
 		return normalizedRuntimeKind(c.options.Runtime.Kind) == RuntimeClaude || slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, autoReviewProtocolCapability)

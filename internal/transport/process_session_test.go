@@ -65,6 +65,16 @@ func TestProcessWaitTerminatesRuntimeDescendants(t *testing.T) {
 	}
 
 	markerPath := filepath.Join(t.TempDir(), "descendant.pid")
+	t.Cleanup(func() {
+		data, err := os.ReadFile(markerPath)
+		if err != nil {
+			return
+		}
+		pid, err := strconv.Atoi(strings.TrimSpace(string(data)))
+		if err == nil && pid > 1 {
+			_ = syscall.Kill(-pid, syscall.SIGKILL)
+		}
+	})
 	var diagnostics []ProcessDiagnosticEvent
 	manager := NewProcessManager(ProcessConfig{
 		CommandPath: os.Args[0],
@@ -94,9 +104,6 @@ func TestProcessWaitTerminatesRuntimeDescendants(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse descendant PID: %v", err)
 	}
-	defer func() {
-		_ = syscall.Kill(-descendantPID, syscall.SIGKILL)
-	}()
 
 	deadline := time.Now().Add(time.Second)
 	for {

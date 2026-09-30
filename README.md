@@ -15,7 +15,24 @@ runtime.
 
 Hosts can use `Session.Control().ControlSubagent` after negotiating `CapabilitySubagentControl` with nxs. This control runs within an active parent MCP call; see the [runtime contract](docs/runtime-contract.md#subagent-control). Claude Code does not provide this extension.
 
-Session reconfiguration refreshes SDK MCP handlers locally when the runtime-visible MCP configuration is unchanged; only configuration changes send `mcp_set_servers`. Control timeout errors identify the request subtype and ID.
+
+Hosts may set `SandboxSettings.RequireSandbox` to require `required_sandbox_v1` from nxs before sending a task. Unsupported runtimes fail connection. This guarantees required execution handling, not platform backend availability; see [the contract](docs/runtime-contract.md#required-sandbox-execution).
+
+Add `RequireFileTools: true` to require the separate `sandbox_file_tools_v1` contract for native Read/Write/Edit. A command-only runtime is rejected before receiving a task. This does not claim that all SDK IO is isolated; see [file-tool scope](docs/runtime-contract.md#native-file-tool-confinement).
+
+Add `RequireSearchTools: true` alongside both requirements to require `sandbox_search_tools_v1` for Glob/Grep path checks, ripgrep and result metadata. Older file-only runtimes are rejected before tasks; see [search scope](docs/runtime-contract.md#search-tool-confinement).
+
+Add `RequireMediaNetwork: true` with command, file and local media requirements to require per-request remote-image network checks, controlled redirects and URL materialization. See [remote image networking](docs/runtime-contract.md#remote-image-networking).
+
+Add `RequireMediaFiles: true` with the command and file requirements to require local image confinement for ViewImage and model preprocessing. Older runtimes are rejected before task writes. Remote image networking is separate; see [media scope](docs/runtime-contract.md#local-media-file-confinement).
+
+Add `RequireContextFiles: true` with the command and file requirements for startup instructions and compact file restoration. See [context scope](docs/runtime-contract.md#context-file-confinement).
+
+Add `RequireSkillFiles: true` with the command and file requirements for Skill catalogs, bodies, dynamic discovery, Git ignore queries and memory-availability settings. Startup settings, hooks and background IO remain separate; see [Skill scope](docs/runtime-contract.md#skill-file-confinement).
+
+`SandboxSettings.Resources` additionally requires `sandbox_resources_v1` to select a workspace write scope and a host-prepared private scratch directory. See [resource scope](docs/runtime-contract.md#host-resource-write-scope) for current macOS support and lifecycle limits.
+
+For Claude Code's own restricted mode, set `SandboxSettings.RequireClaudeRestricted: true`. Bridge adds and checks the typed `--restricted` launch contract only for `RuntimeClaude`; Full Access does not require it. This is not nxs `required_sandbox_v1` and does not prove complete Claude SDK IO isolation; see [Claude native restricted launch](docs/runtime-contract.md#claude-native-restricted-launch).
 
 ## Requirements
 
@@ -122,6 +139,37 @@ start an independent session at an exact completed message boundary. Both
 Hosts that run the child under another OS identity can use
 `WithProcessSignalHandler` as the trusted, PID-validating boundary for
 interrupt, shutdown, and descendant cleanup.
+`client.ProcessCleanupError` preserves cleanup failures through `Wait` and repeated
+`Close`, including forced termination. The built-in Unix sweep covers visible
+members of the original session. Windows runtimes and CLI probes start suspended
+and resume only after joining a per-runtime kill-on-close Job Object. Native tests
+cover immediate descendants, cancellation with inherited pipes and host termination
+after admission. A host crash before Job assignment can still leave a suspended
+process; atomic creation and durable resource recovery still require host/platform
+evidence. See [lifecycle limits](docs/runtime-contract.md#session-lifecycle).
+
+An internal macOS process-scope component now tests exact termination of detached
+descendants and kernel coalition retirement. Its control-connection registration
+compares the kernel peer audit identity against the expected launcher process;
+launcher/job authentication remains the caller’s responsibility. It is not connected to default runtime
+launch or cleanup, and does not change the lifecycle guarantees above. Its native
+API requirements and macOS 14.0 support remain separate integration work.
+
+The source-buildable `cmd/nexus-runtime-bootstrap` helper now authenticates its
+host and replaces itself with the runtime after receiving a bounded launch request
+and three standard pipes over the control connection. Task environment and arguments
+are not stored in the launchd plist. It is not bundled or enabled by default;
+the host launcher, durable admission and transport integration remain unfinished.
+An internal kqueue observer now captures the authenticated root’s exit status across
+exec; root exit remains independent of complete coalition retirement.
+
+The explicit `supervision` package connects these components for trusted hosts.
+Its `Host` callbacks must persist intent and registration before a non-replayable
+release, publish the job in a task-inaccessible directory, and persist exact
+retirement evidence. `Process.Close` is shared and caller cancellation only stops
+the wait; root exit also triggers coalition cleanup to release inherited pipes.
+This opt-in launcher does not replace the default client transport or provide
+restart recovery, sandbox policy or product packaging by itself.
 
 ## Documentation
 
@@ -136,6 +184,7 @@ interrupt, shutdown, and descendant cleanup.
 | --- | --- |
 | `client` | Queries, sessions, options, transport selection, capabilities, and runtime control |
 | `protocol` | Streamed messages, content blocks, lifecycle events, and control wire types |
+| `supervision` | Explicit macOS supervised launches with durable host callbacks; separate from default transport |
 | `agent` | Sole public source of subagent configuration types |
 | `hook` | Runtime hook events, matchers, and callbacks |
 | `permission` | Permission modes, requests, and decisions |
@@ -158,4 +207,32 @@ Apache License 2.0 · [LICENSE](./LICENSE)
 
 Automatic permission review (`permission_mode=auto`) uses negotiated `auto_review_v1` on nxs and native mode confirmation on Claude Code. Claude owns its classifier and rejection behavior; unsupported or unconfirmed mode changes return an error. See [runtime contract](docs/runtime-contract.md).
 
+Hosts can call `nxs.NewRuntimeInspector().SandboxStatus(ctx)` to query the configured runtime for versioned native backend diagnostics. This bounded local query is separate from runtime-path availability and does not prove effective isolation. See [runtime inspection](runtimes/nxs/README.md).
+
+Add `RequireProjectFiles: true` with command and file requirements for project definitions and hook-setting reads. See [project file scope](docs/runtime-contract.md#project-definition-file-confinement).
+
+Use `RequireManagedPolicy: true` alongside command and file requirements to require fixed managed-policy sources and integrity checks. See [managed policy scope](docs/runtime-contract.md#managed-policy-integrity).
+
+Use `RequireSettingsFiles: true` to require confined ordinary settings reads and checked snapshots. See [ordinary settings scope](docs/runtime-contract.md#ordinary-settings-files-and-snapshots).
+
+Use `RequireSettingsWrites: true` together with the required sandbox, file-tool and settings-file options to require nxs-controlled Config and permission persistence. Claude Code and older nxs runtimes are rejected before a task is sent. See [ordinary settings write scope](docs/runtime-contract.md#ordinary-settings-writes).
+
 SDK-hosted tools preserve `params._meta["claudecode/toolUseId"]` as `tools.Context.ToolUseID`. Missing metadata stays empty; business arguments and JSON-RPC request IDs are never treated as tool-use identity.
+
+### Remote MCP networking
+
+RequireMCPNetwork / sandbox_mcp_network_v1 requires an explicit MCP configuration (MCP.StrictConfig), mandatory sandboxing, and negotiated nxs support. Configured HTTP and legacy SSE servers receive only their own scheme/host/port grant; redirects and SSE POST endpoints cannot leave that origin. Tool network grants remain independent; explicit denies and managed-only domain policy still apply. Retirement, configuration replacement, shutdown and permission changes cancel the covered requests. Authentication helpers, stdio processes, OAuth discovery and model Provider networking remain separate contracts.
+
+`RequireMCPHelpers` / `sandbox_mcp_helpers_v1` independently requires confined macOS authentication helpers, mandatory sandboxing and explicit MCP configuration. Each request refreshes credentials under the command resource policy and filtered task environment; it cannot borrow the MCP endpoint grant. Execution/output are bounded, policy changes cancel helpers, shutdown waits for cleanup, and failures do not fall back to stale/static credentials. Stdio and detached-descendant supervision remain separate contracts.
+
+`RequireMCPStdio` / `sandbox_mcp_stdio_v1` separately confirms explicit macOS stdio MCP execution under the current command sandbox. It requires mandatory sandboxing and strict MCP configuration. Cancellation retires the whole service and all its pending calls; replacement waits for the old named process, and session shutdown awaits owned process cleanup. Requests are not replayed. Inherited model Provider credentials are filtered before explicit service credentials are applied; service environment cannot override reserved runtime, home or temporary-root inputs. Network access uses the command policy, without an endpoint or tool-approval grant. JSONL messages are capped at 10 MiB, pending calls at 64, and stderr is drained without exposing credentials. Ordinary process groups are covered; independently detached descendants and host-crash recovery require separate evidence.
+
+### Opt-in macOS process supervision
+
+`client.Options.ProcessSupervision` accepts a `supervision.Factory`. The host supplies a fresh `supervision.Config` and durable `Host` for each `Purpose` (runtime, version probe, Claude restricted probe, Claude sandbox probe). All these subprocesses use the same authenticated bootstrap/collection lifecycle; failed admission never falls back to ordinary execution. Use absolute trusted helper and command paths. Keep job/socket paths inaccessible to tasks and keep database callbacks alive until cleanup finishes.
+
+This option requires local same-user process transport; custom transports, DirectConnect, User and ProcessSignalHandler cannot be combined with it. Interrupt falls back to the existing runtime control request. Forced Close revokes the original collection; cleanup errors remain visible on Wait and repeated Close. It does not configure command/file/network sandbox policy, ship a trusted helper, perform host crash recovery, or establish support on every macOS version. Without this explicit option, the existing transport remains unchanged.
+
+`supervision.Recover` consumes the original trusted persisted intent and optional registration without starting a helper or replaying a task. Call it only after establishing exclusive host lifecycle ownership and confirming that the original host is no longer active. Registered launches require exact collection retirement before the host receives `Finish`; prepared launches can only be aborted. Recovery does not infer tool results or clear unrelated policy/lease records.
+
+MacOS supervised control sockets remain in the host-provided private directory even when its absolute path exceeds the Unix socket address limit. Binding and connection use the directory handle and a basename on a dedicated native thread; the process working directory stays unchanged. The host still owns directory protection and deletion. Missing thread-local cwd support fails closed; this does not expand the verified OS-version matrix.

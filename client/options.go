@@ -14,6 +14,7 @@ import (
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/mcp"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/permission"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/protocol"
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/supervision"
 )
 
 var errTransportDirectConnectConflict = errors.New("client: transport and direct connect cannot both be configured")
@@ -124,6 +125,47 @@ type SandboxSeccompConfig struct {
 
 // SandboxSettings 表示命令执行隔离配置。
 type SandboxSettings struct {
+	// Resources 只走独立 initialize 合同，要求命令与文件能力；变化必须替换进程。
+	Resources *SandboxResourcePolicy `json:"-"`
+	// RequireClaudeRestricted 要求 Claude Code 以原生 --restricted 启动。
+	// 这是 Claude 专属的宿主准入合同，不冒用 nxs 的 required_sandbox_v1，
+	// 也不代表 Claude 的整个 SDK IO 已经完成隔离验收。
+	RequireClaudeRestricted bool `json:"-"`
+	// RequireClaudeNativeSandbox 要求 Claude Code 使用其原生 sandbox
+	// settings 保留 Bash/构建命令，同时由 Claude 的 OS 后端限制命令。
+	// 该字段只由宿主 typed contract 设置，不进入普通 settings JSON。
+	RequireClaudeNativeSandbox bool `json:"-"`
+	// RequireFileTools 单独要求原生 Read/Write/Edit 隔离；必须同时设置 RequireSandbox。
+	// 只通过 nxs initialize 传递，不能作为普通 settings 或其他 runtime 的保证。
+	RequireFileTools bool `json:"-"`
+	// RequireSearchTools 单独要求 Glob/Grep 受限执行；依赖 RequireSandbox 和 RequireFileTools。
+	RequireSearchTools bool `json:"-"`
+	// RequireMediaFiles 要求 ViewImage 与图片预处理的本地读取受限；依赖命令和文件合同。
+	RequireMediaFiles bool `json:"-"`
+	// RequireMediaNetwork 要求远程图片逐请求准入并物化，依赖命令、文件和媒体文件合同。
+	RequireMediaNetwork bool `json:"-"`
+	// RequireMCPNetwork 要求显式远端 MCP 的端点专用网络，依赖必需沙箱及 StrictConfig。
+	RequireMCPNetwork bool `json:"-"`
+	// RequireMCPHelpers 要求显式认证命令复用当前沙箱并有界结束。
+	RequireMCPHelpers bool `json:"-"`
+	// RequireMCPStdio 要求显式 stdio MCP 复用命令沙箱并等待进程清理。
+	RequireMCPStdio bool `json:"-"`
+	// RequireNotebookFiles 要求 Notebook 内容与 cell output 的本地读取受限；依赖命令和文件合同。
+	RequireNotebookFiles bool `json:"-"`
+	// RequireSkillFiles 要求 Skill 发现、正文与其设置读取受限；依赖命令和文件合同。
+	RequireSkillFiles bool `json:"-"`
+	// RequireContextFiles 要求启动指令、指令排除配置及 compact 文件读取受限。
+	RequireContextFiles bool `json:"-"`
+	// RequireProjectFiles 要求项目 Agent/命令/Skill 和 hook 设置读取受限。
+	RequireProjectFiles bool `json:"-"`
+	// RequireManagedPolicy 要求托管来源固定，执行前核对完整性。
+	RequireManagedPolicy bool `json:"-"`
+	// RequireSettingsFiles 要求普通配置受限读取和完整性核验，不代表凭据或持久化保证。
+	RequireSettingsFiles bool `json:"-"`
+	// RequireSettingsWrites 要求普通配置写入走受控持久化边界；依赖普通配置读取合同。
+	RequireSettingsWrites bool `json:"-"`
+	// RequireSandbox 要求协商宿主执行保证；不代表当前平台已有可用后端。
+	RequireSandbox               bool                     `json:"requireSandbox,omitempty"`
 	Enabled                      *bool                    `json:"enabled,omitempty"`
 	FailIfUnavailable            *bool                    `json:"failIfUnavailable,omitempty"`
 	AutoAllowBashIfSandboxed     *bool                    `json:"autoAllowBashIfSandboxed,omitempty"`
@@ -167,7 +209,7 @@ func (s SandboxSettings) MarshalJSON() ([]byte, error) {
 // 静默改写成另一份 JSON。
 func mergeSandboxExtra(value map[string]any, extra map[string]any) {
 	known := map[string]struct{}{
-		"enabled": {}, "failIfUnavailable": {}, "autoAllowBashIfSandboxed": {},
+		"resources": {}, "requireClaudeRestricted": {}, "requireSandbox": {}, "requireFileTools": {}, "requireSearchTools": {}, "requireMediaFiles": {}, "requireMediaNetwork": {}, "requireMCPNetwork": {}, "requireMCPHelpers": {}, "requireMCPStdio": {}, "requireNotebookFiles": {}, "requireSkillFiles": {}, "requireContextFiles": {}, "requireProjectFiles": {}, "requireManagedPolicy": {}, "requireSettingsFiles": {}, "requireSettingsWrites": {}, "enabled": {}, "failIfUnavailable": {}, "autoAllowBashIfSandboxed": {},
 		"allowUnsandboxedCommands": {}, "enabledPlatforms": {}, "network": {},
 		"filesystem": {}, "ignoreViolations": {}, "enableWeakerNestedSandbox": {},
 		"enableWeakerNetworkIsolation": {}, "allowAppleEvents": {},
@@ -408,6 +450,9 @@ type CallbackOptions struct {
 
 // Options 表示 Nexus Agent SDK Go 客户端选项。
 type Options struct {
+	// ProcessSupervision 显式启用本机 macOS 精确生命周期。宿主为每个探测和正式
+	// 进程提供独立持久 Host；不兼容自定义 transport、远端连接或跨用户信号回调。
+	ProcessSupervision     supervision.Factory
 	CLIPath                string
 	Transport              Transport
 	DirectConnect          *DirectConnectOptions
@@ -514,6 +559,10 @@ func cloneSandboxSettings(input *SandboxSettings) *SandboxSettings {
 		return nil
 	}
 	result := *input
+	if input.Resources != nil {
+		resources := *input.Resources
+		result.Resources = &resources
+	}
 	if input.Network != nil {
 		network := *input.Network
 		network.AllowedDomains = append([]string(nil), input.Network.AllowedDomains...)
