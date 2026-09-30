@@ -1,5 +1,7 @@
 # Nexus Agent SDK Bridge
 
+Windows 沙箱接线正在实现：显式 `WindowsSandbox` 工厂为每次 runtime/probe 绑定独立持久准备、单次放行与完整清理回执。原生 helper/管道装配和产品安装验收仍未完成，此批未编译测试，不启用 Windows 沙箱能力。
+
 [English](./README.md) | 简体中文
 
 这是一个开源 Go client 和协议合同，用于让宿主应用通过 `stream-json` 连接本地

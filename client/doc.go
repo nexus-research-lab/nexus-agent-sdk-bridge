@@ -1,4 +1,5 @@
 // Package client 提供 bridge SDK 的查询、会话、执行连接与运行期控制 API。
+// WindowsSandbox为runtime/probe绑定独立机器监督；Reconfigure要求重建固定授权执行，不能热换工厂闭包。
 // subagent.go 提供协商后、当前父 MCP 调用内的原生子任务控制；不实现任务执行。
 // 必需沙箱通过 required_sandbox_v1 初始化协商，旧运行时不得静默降级。
 // RequireFileTools 额外要求 sandbox_file_tools_v1；不以命令能力推断原生文件工具已隔离。

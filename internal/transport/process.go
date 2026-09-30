@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/supervision"
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/windowssandbox"
 	"io"
 	"os"
 	"os/exec"
@@ -120,13 +121,14 @@ func (e *StdoutDecodeError) Unwrap() error {
 
 // ProcessConfig 表示子进程传输配置。
 type ProcessConfig struct {
-	Supervision   supervision.Factory
-	CommandPath   string
-	CWD           string
-	User          string
-	MaxBufferSize int
-	Args          []string
-	Env           map[string]string
+	Supervision    supervision.Factory
+	WindowsSandbox windowssandbox.Factory
+	CommandPath    string
+	CWD            string
+	User           string
+	MaxBufferSize  int
+	Args           []string
+	Env            map[string]string
 	// RequireClaudeRestricted makes process admission verify that the selected
 	// Claude CLI accepts the native restricted launch contract before the
 	// stream-json process is started. It is deliberately separate from the nxs
@@ -144,6 +146,7 @@ type ProcessConfig struct {
 // ProcessManager 管理 Claude CLI 子进程。
 type ProcessManager struct {
 	supervised          *supervision.Process
+	windowsSandbox      *windowssandbox.Process
 	supervisedAttempted bool
 	supervisedStartErr  error
 	config              ProcessConfig
@@ -187,9 +190,12 @@ func (m *ProcessManager) Start(ctx context.Context) (startErr error) {
 	if m.supervisedAttempted {
 		return m.supervisedStartErr
 	}
-	if m.config.Supervision != nil {
+	if m.config.Supervision != nil || m.config.WindowsSandbox != nil {
 		m.supervisedAttempted = true
 		defer func() { m.supervisedStartErr = startErr }()
+		if m.config.Supervision != nil && m.config.WindowsSandbox != nil {
+			return errors.New("process: cannot combine platform supervision backends")
+		}
 		if strings.TrimSpace(m.config.User) != "" || m.config.SignalProcess != nil {
 			return errors.New("process: supervision cannot combine with user or signal overrides")
 		}
@@ -232,6 +238,9 @@ func (m *ProcessManager) Start(ctx context.Context) (startErr error) {
 	}
 	if m.config.Supervision != nil {
 		return m.startSupervised(ctx, command)
+	}
+	if m.config.WindowsSandbox != nil {
+		return m.startWindowsSandbox(ctx, command)
 	}
 
 	cmd := exec.Command(command.executable, command.arguments(m.config.Args)...)
@@ -471,7 +480,7 @@ func (m *ProcessManager) EndInput() error {
 // Interrupt 发送中断信号。
 func (m *ProcessManager) Interrupt() error {
 	// 监督路径不按裸 PID 发信号；client 复用已有的 round control 中断协议。
-	if m.config.Supervision != nil {
+	if m.config.Supervision != nil || m.config.WindowsSandbox != nil {
 		return ErrInterruptUnsupported
 	}
 	if m.cmd == nil || m.cmd.Process == nil {
@@ -846,7 +855,7 @@ func (m *ProcessManager) checkCommandVersion(parent context.Context, command pro
 	probe.Stdout, probe.Stderr = &output, io.Discard
 	if err := runConfiguredProbe(ctx, probe, m.config, supervision.VersionProbe); err != nil {
 		// 传统版本检查仅为提示；监督路径不能吞掉 Host/回收失败再执行主任务。
-		if m.config.Supervision != nil {
+		if m.config.Supervision != nil || m.config.WindowsSandbox != nil {
 			return err
 		}
 		return nil
@@ -928,7 +937,7 @@ func semanticVersionParts(version string) [3]int {
 
 // Wait 等待进程结束。
 func (m *ProcessManager) Wait() error {
-	if m.cmd == nil && m.supervised == nil {
+	if m.cmd == nil && m.supervised == nil && m.windowsSandbox == nil {
 		return m.supervisedStartErr
 	}
 	if m.supervisedStartErr != nil {
@@ -947,6 +956,10 @@ func (m *ProcessManager) Close() error {
 	m.closeOnce.Do(func() {
 		defer func() { m.closeErr = closeErr }()
 		_ = m.EndInput()
+		if m.windowsSandbox != nil {
+			closeErr = m.closeWindowsSandbox()
+			return
+		}
 		if m.supervised != nil {
 			closeErr = m.closeSupervised()
 			return

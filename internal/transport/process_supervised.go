@@ -110,6 +110,9 @@ func (m *ProcessManager) closeSupervised() error {
 }
 
 func runConfiguredProbe(ctx context.Context, cmd *exec.Cmd, config ProcessConfig, purpose supervision.Purpose) error {
+	if config.WindowsSandbox != nil {
+		return runWindowsSandboxProbe(ctx, cmd, config, purpose)
+	}
 	if config.Supervision == nil {
 		return runProbeProcess(ctx, cmd)
 	}

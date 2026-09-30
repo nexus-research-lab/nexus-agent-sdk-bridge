@@ -10,6 +10,8 @@ All notable changes to this project are documented in this file.
 
 ### Added
 
+- Add an explicit Windows machine-sandbox factory and independent launch/prepared/cleanup contracts, with strict reply schemas and runtime/probe transport adapters. Unknown cleanup cannot fall back to ordinary execution. Native helper integration and product acceptance remain in progress; this batch is uncompiled and untested and enables no sandbox capability.
+
 - Add explicit recovery from a trusted persisted launch registration. Validate observer and original identity before revoking the job, require exact collection-retirement evidence, and leave failed recovery unresolved. A changed boot never authorizes revoking a new same-name job. Native tests recover a running launch after its original host exits without cleanup; host lifecycle exclusion and product recovery wiring remain the caller’s responsibility.
 
 ### Added

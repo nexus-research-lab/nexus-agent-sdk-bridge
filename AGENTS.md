@@ -12,6 +12,8 @@ Nexus product
 
 ## 边界约定
 
+- `windowssandbox/` 为机器 Windows Host 定义独立监督合同，不能复用 Darwin UID/launchd 证据；`Options.WindowsSandbox` 覆盖正式执行及 probe，与其他监督、transport、跨账号/裸 PID 信号配置互斥。准备、原子放行和完整清理分别持久化，helper 退出不是 cleaned 证明。当前接线未编译/原生验收，不启用能力。
+
 - `client/`：Session、能力发现、runtime control 与消息投影
 - `protocol/`：stdio control/message wire 真相源
   - `protocol/` 直接承载 Claude Code 的 mixed-casing control wire；不要再引入

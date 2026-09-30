@@ -15,6 +15,7 @@ import (
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/permission"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/protocol"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/supervision"
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/windowssandbox"
 )
 
 var errTransportDirectConnectConflict = errors.New("client: transport and direct connect cannot both be configured")
@@ -452,7 +453,9 @@ type CallbackOptions struct {
 type Options struct {
 	// ProcessSupervision 显式启用本机 macOS 精确生命周期。宿主为每个探测和正式
 	// 进程提供独立持久 Host；不兼容自定义 transport、远端连接或跨用户信号回调。
-	ProcessSupervision     supervision.Factory
+	ProcessSupervision supervision.Factory
+	// WindowsSandbox为每个本机执行提供独立持久授权，不能与其他transport或监督混用。
+	WindowsSandbox         windowssandbox.Factory
 	CLIPath                string
 	Transport              Transport
 	DirectConnect          *DirectConnectOptions

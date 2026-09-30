@@ -1,5 +1,15 @@
 # Runtime Contract
 
+## Windows machine sandbox integration (in progress)
+
+`Options.WindowsSandbox` selects a trusted Host factory for each runtime and CLI probe. It cannot be combined with another supervisor, custom transport, remote connection, user override, or process-signal callback. The factory provides a fixed installed machine helper and a Host that durably reserves a launch before creating that helper, records the actual prepared execution and both digests, and atomically claims one start.
+
+The `windowssandbox` protocol keeps the product launch ID distinct from the SDK execution ID. A successful cleanup requires a matching `cleaned` receipt and actual helper termination; EOF, exit code zero, or a prepared acknowledgment alone is insufficient. Failures preserve unknown ownership and never fall back to ordinary execution. Interrupts use runtime control, not signals to a bare PID. Reconfiguration currently requires process replacement because captured factory authorization cannot be compared or safely updated in place.
+
+The native implementation now includes fixed machine-image admission, authenticated local pipes, creation-time Job membership, and cleanup status broadcast to concurrent waiters. Input uses bounded length frames with an explicit EOF marker; output can drain the authenticated pipe after helper exit. The machine helper exits zero on protocol success, while the command exit code is taken only from its bound receipt. Partial cleanup writes retire the channel and retain their original error.
+
+This implementation is not yet compiled or natively accepted. Nexus persistence/installation integration and the complete Windows acceptance matrix remain pending; no sandbox capability is enabled by selecting this option.
+
 ## Boundary
 
 `nexus-agent-sdk-bridge` is the open-source process and protocol boundary

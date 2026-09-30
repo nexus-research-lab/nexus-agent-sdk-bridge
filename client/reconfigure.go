@@ -46,6 +46,10 @@ func (c *sessionCore) reconfigure(ctx context.Context, options Options) error {
 }
 
 func restartReasonForReconfigure(currentOptions Options, nextOptions Options) (RestartReason, bool) {
+	// 工厂闭包不能证明捕获的授权/代次未变；机器执行已固定准备正文，必须重建。
+	if currentOptions.WindowsSandbox != nil || nextOptions.WindowsSandbox != nil {
+		return RestartReasonSandboxPolicyChanged, true
+	}
 	if !reflect.DeepEqual(currentOptions.Sandbox, nextOptions.Sandbox) {
 		return RestartReasonSandboxPolicyChanged, true
 	}

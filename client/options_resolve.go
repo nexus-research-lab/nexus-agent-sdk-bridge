@@ -20,6 +20,7 @@ import (
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/mcp"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/permission"
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/supervision"
+	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/windowssandbox"
 )
 
 const (
@@ -270,6 +271,9 @@ func (o Options) normalized() (Options, error) {
 	if result.ProcessSupervision != nil && (result.Transport != nil || result.DirectConnect != nil || strings.TrimSpace(result.User) != "" || result.Callbacks.ProcessSignalHandler != nil) {
 		return Options{}, fmt.Errorf("client: process supervision requires local same-user transport without process signal overrides")
 	}
+	if result.WindowsSandbox != nil && (result.ProcessSupervision != nil || result.Transport != nil || result.DirectConnect != nil || strings.TrimSpace(result.User) != "" || result.Callbacks.ProcessSignalHandler != nil) {
+		return Options{}, fmt.Errorf("client: Windows sandbox requires exclusive local machine supervision without identity or signal overrides")
+	}
 	if result.Transport != nil && result.DirectConnect != nil {
 		return Options{}, errTransportDirectConnectConflict
 	}
@@ -450,6 +454,7 @@ type resolvedTaskBudget struct {
 
 type resolvedOptions struct {
 	ProcessSupervision              supervision.Factory
+	WindowsSandbox                  windowssandbox.Factory
 	RuntimeKind                     RuntimeKind
 	CommandPath                     string
 	Executable                      string
@@ -710,6 +715,7 @@ func (o Options) buildResolvedOptions(strictMCP bool) (resolvedOptions, error) {
 		Diagnostics:                     o.Callbacks.Diagnostics,
 		ProcessSignalHandler:            o.Callbacks.ProcessSignalHandler,
 		ProcessSupervision:              o.ProcessSupervision,
+		WindowsSandbox:                  o.WindowsSandbox,
 		InitializeTimeout:               o.Runtime.InitializeTimeout,
 		Debug:                           o.Runtime.Debug,
 		DebugFile:                       o.Runtime.DebugFile,
