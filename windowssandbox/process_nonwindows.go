@@ -12,6 +12,9 @@ import (
 
 type Process struct{}
 
+// CleanupPending 非Windows未创建任何机器owner。
+func (*Process) CleanupPending() bool { return false }
+
 func Start(context.Context, Config, Command) (*Process, error) {
 	return nil, errors.New("Windows machine sandbox is unavailable on this platform")
 }

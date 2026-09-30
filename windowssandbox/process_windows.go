@@ -30,6 +30,9 @@ type Process struct {
 	updates          chan struct{}
 	generation       uint64
 	cleanupError     error
+	finishPending    *Outcome
+	finishProofError error
+	locallyClosed    bool
 	phase            string
 	cleanupAttempted bool
 	stop             func() bool
@@ -70,7 +73,11 @@ func Start(ctx context.Context, config Config, command Command) (p *Process, res
 			return
 		}
 		cleanup, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		p.result = errors.Join(p.result, p.native.close(cleanup))
+		closeErr := p.native.close(cleanup)
+		if closeErr == nil {
+			p.locallyClosed = true
+		}
+		p.result = errors.Join(p.result, closeErr)
 		cancel()
 		result = p.result
 		if !monitoring {
@@ -189,6 +196,8 @@ func (p *Process) observe() {
 			outcome.Reason = err.Error()
 		}
 		finish, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		proof := outcome
+		proofError := err
 		finishErr := p.config.Host.Finish(finish, p.intent, outcome)
 		err = errors.Join(err, finishErr)
 		if finishErr != nil {
@@ -197,6 +206,10 @@ func (p *Process) observe() {
 		}
 		cancel()
 		p.mu.Lock()
+		if finishErr != nil && proof.Cleaned {
+			p.finishPending = &proof
+			p.finishProofError = proofError
+		}
 		p.outcome = outcome
 		p.result = err
 		if unknownReceipt {
@@ -288,7 +301,42 @@ func (p *Process) Close(ctx context.Context) error {
 	}
 	outcome, err := p.waitAfter(ctx, generation)
 	if !outcome.Cleaned {
+		outcome, err = p.retryFinish(ctx, outcome, err)
+	}
+	if !outcome.Cleaned {
 		return errors.Join(errors.New("machine cleanup remains unconfirmed"), err)
 	}
-	return errors.Join(err, p.native.close(ctx))
+	closeErr := p.native.close(ctx)
+	if closeErr == nil {
+		p.mu.Lock()
+		p.locallyClosed = true
+		p.mu.Unlock()
+	}
+	return errors.Join(err, closeErr)
+}
+
+// CleanupPending 只报告原owner是否仍持实际资源，不用断链/主进程退出推断完成。
+func (p *Process) CleanupPending() bool { p.mu.Lock(); defer p.mu.Unlock(); return !p.locallyClosed }
+
+// retryFinish 仅重交同一已证实cleaned的持久结果，不重发start或任何设备操作。
+func (p *Process) retryFinish(ctx context.Context, outcome Outcome, prior error) (Outcome, error) {
+	p.mu.Lock()
+	pending := p.finishPending
+	proofError := p.finishProofError
+	p.mu.Unlock()
+	if pending == nil {
+		return outcome, prior
+	}
+	if err := p.config.Host.Finish(ctx, p.intent, *pending); err != nil {
+		return outcome, errors.Join(prior, err)
+	}
+	p.mu.Lock()
+	p.outcome = *pending
+	p.result = proofError
+	p.finishPending = nil
+	p.generation++
+	close(p.updates)
+	p.updates = make(chan struct{})
+	p.mu.Unlock()
+	return *pending, proofError
 }

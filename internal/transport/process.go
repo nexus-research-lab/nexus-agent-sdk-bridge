@@ -159,6 +159,8 @@ type ProcessManager struct {
 	reader              *bufio.Reader
 	writeMu             sync.Mutex
 	closeOnce           sync.Once
+	windowsCloseMu      sync.Mutex
+	outputCloseMu       sync.Mutex
 	closeErr            error // closeOnce 发布的共享结果；重复关闭保留同一失败。
 	done                chan struct{}
 	waitErr             error
@@ -937,6 +939,10 @@ func semanticVersionParts(version string) [3]int {
 
 // Wait 等待进程结束。
 func (m *ProcessManager) Wait() error {
+	if m.windowsSandbox != nil {
+		outcome, err := m.windowsSandbox.Wait(context.Background())
+		return errors.Join(m.supervisedStartErr, normalizeExitErrorWithStderr(windowsSandboxOutcomeError(outcome, err), m.stderrTail.String()))
+	}
 	if m.cmd == nil && m.supervised == nil && m.windowsSandbox == nil {
 		return m.supervisedStartErr
 	}
@@ -952,14 +958,16 @@ func (m *ProcessManager) Wait() error {
 
 // Close 关闭进程。
 func (m *ProcessManager) Close() error {
+	if m.windowsSandbox != nil {
+		m.windowsCloseMu.Lock()
+		defer m.windowsCloseMu.Unlock()
+		inputErr := m.EndInput()
+		return errors.Join(inputErr, m.closeWindowsSandbox())
+	}
 	var closeErr error
 	m.closeOnce.Do(func() {
 		defer func() { m.closeErr = closeErr }()
 		_ = m.EndInput()
-		if m.windowsSandbox != nil {
-			closeErr = m.closeWindowsSandbox()
-			return
-		}
 		if m.supervised != nil {
 			closeErr = m.closeSupervised()
 			return
@@ -1018,6 +1026,8 @@ func (m *ProcessManager) Close() error {
 }
 
 func (m *ProcessManager) closeOutputPipes() {
+	m.outputCloseMu.Lock()
+	defer m.outputCloseMu.Unlock()
 	if m.stdout != nil {
 		_ = m.stdout.Close()
 		m.stdout = nil

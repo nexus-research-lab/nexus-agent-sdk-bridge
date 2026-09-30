@@ -43,6 +43,10 @@ func (c *sessionCore) Connect(ctx context.Context) error {
 			}
 			continue
 		}
+		if hasRetainedTransportCleanup(c.transport) {
+			lifecycle.unlockConnection()
+			return errors.New("previous Windows sandbox cleanup remains pending; retry Disconnect before reconnecting")
+		}
 		c.resetLifecycleIfNeededLocked()
 
 		normalizedOptions, err := c.options.normalized()
@@ -207,6 +211,13 @@ func (c *sessionCore) Disconnect(ctx context.Context) error {
 	var activeTransport Transport
 	var readDone <-chan struct{}
 	startClose := false
+	if closeState != nil && transport.ChannelClosed(closeState.done) && hasRetainedTransportCleanup(c.transport) {
+		closeState = &sessionCloseState{done: make(chan struct{})}
+		streams.closeState = closeState
+		activeTransport = c.transport
+		readDone = streams.readDone
+		startClose = true
+	}
 	if closeState == nil {
 		if !lifecycle.connectedLocked() && c.transport == nil {
 			lifecycle.unlockConnection()
@@ -276,6 +287,9 @@ func (c *sessionCore) isConnected() bool {
 }
 
 func (c *sessionCore) resetLifecycleIfNeededLocked() {
+	if hasRetainedTransportCleanup(c.transport) {
+		return
+	}
 	streams := c.streams
 	if !transport.ChannelClosed(streams.readDone) {
 		return
@@ -288,6 +302,12 @@ func (c *sessionCore) resetLifecycleIfNeededLocked() {
 	if !c.customTransport {
 		c.transport = nil
 	}
+}
+
+// hasRetainedTransportCleanup 仅识别显式原生owner状态，不把普通退出错误当成新的清理协议。
+func hasRetainedTransportCleanup(value Transport) bool {
+	owner, ok := value.(interface{ HasRetainedCleanup() bool })
+	return ok && owner.HasRetainedCleanup()
 }
 
 func (c *sessionCore) markDisconnected() {

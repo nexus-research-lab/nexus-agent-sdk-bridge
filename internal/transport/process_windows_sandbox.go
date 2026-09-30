@@ -16,6 +16,11 @@ import (
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/windowssandbox"
 )
 
+// HasRetainedCleanup 用于client关闭代次保留实际Windows owner，不授权自动重启。
+func (m *ProcessManager) HasRetainedCleanup() bool {
+	return m.windowsSandbox != nil && m.windowsSandbox.CleanupPending()
+}
+
 // startWindowsSandbox 在工厂和后端成功前不交出stdio，也不创建普通runtime进程。
 func (m *ProcessManager) startWindowsSandbox(ctx context.Context, command processCommand) error {
 	config, err := m.config.WindowsSandbox(ctx, supervision.Runtime)
@@ -33,7 +38,7 @@ func (m *ProcessManager) startWindowsSandbox(ctx context.Context, command proces
 		if p != nil {
 			cleanup, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
-			err = errors.Join(err, supervisedCleanupError(p.Close(cleanup)))
+			err = errors.Join(err, retainWindowsSandboxCleanup(p, p.Close(cleanup)))
 		}
 		return err
 	}
@@ -78,22 +83,15 @@ func windowsSandboxOutcomeError(outcome windowssandbox.Outcome, err error) error
 func (m *ProcessManager) closeWindowsSandbox() error {
 	cleanup, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	if m.supervisedStartErr != nil {
-		return errors.Join(m.supervisedStartErr, supervisedCleanupError(m.windowsSandbox.Close(cleanup)))
+	if m.supervisedStartErr == nil {
+		_ = m.waitForDone(defaultCloseTimeout)
 	}
-	forced := !m.waitForDone(defaultCloseTimeout)
-	closeErr := supervisedCleanupError(m.windowsSandbox.Close(cleanup))
-	select {
-	case <-m.done:
-	case <-cleanup.Done():
-		closeErr = errors.Join(closeErr, supervisedCleanupError(cleanup.Err()))
-	}
+	closeErr := retainWindowsSandboxCleanup(m.windowsSandbox, m.windowsSandbox.Close(cleanup))
+	// 不能采用第一次Wait缓存的unknown；同一owner的后续cleanup可得到新的真实终态。
+	outcome, waitErr := m.windowsSandbox.Wait(cleanup)
 	m.closeOutputPipes()
 	m.waitForStderrReader()
-	if forced {
-		return closeErr
-	}
-	return errors.Join(closeErr, normalizeExitErrorWithStderr(m.waitError(), m.stderrTail.String()))
+	return errors.Join(m.supervisedStartErr, closeErr, normalizeExitErrorWithStderr(windowsSandboxOutcomeError(outcome, waitErr), m.stderrTail.String()))
 }
 
 // runWindowsSandboxProbe 每次probe拥有独立授权与登记，不沿用主runtime的执行身份。
@@ -114,7 +112,7 @@ func runWindowsSandboxProbe(ctx context.Context, cmd *exec.Cmd, config ProcessCo
 		if p != nil {
 			cleanup, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
-			err = errors.Join(err, supervisedCleanupError(p.Close(cleanup)))
+			err = errors.Join(err, retainWindowsSandboxCleanup(p, p.Close(cleanup)))
 		}
 		return err
 	}
@@ -140,10 +138,32 @@ func runWindowsSandboxProbe(ctx context.Context, cmd *exec.Cmd, config ProcessCo
 	cleanup, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	closeErr := p.Close(cleanup)
+	if closeErr == nil {
+		outcome, waitErr = p.Wait(cleanup)
+		waitErr = errors.Join(waitErr, ctx.Err())
+	}
 	if inputErr != nil || waitErr != nil || closeErr != nil || !outcome.Cleaned {
 		_ = streams.Stdout.Close()
 		_ = streams.Stderr.Close()
 	}
 	copyErr := errors.Join(<-copies, <-copies)
-	return errors.Join(inputErr, windowsSandboxOutcomeError(outcome, waitErr), supervisedCleanupError(closeErr), copyErr)
+	return errors.Join(inputErr, windowsSandboxOutcomeError(outcome, waitErr), retainWindowsSandboxCleanup(p, closeErr), copyErr)
+}
+
+// retainedWindowsSandboxError 让仅返回error的probe也保留真实owner；重试只发cleanup，不重启任务。
+type retainedWindowsSandboxError struct {
+	owner *windowssandbox.Process
+	cause error
+}
+
+func (e *retainedWindowsSandboxError) Error() string { return e.cause.Error() }
+func (e *retainedWindowsSandboxError) Unwrap() error { return e.cause }
+func (e *retainedWindowsSandboxError) RetryCleanup(ctx context.Context) error {
+	return e.owner.Close(ctx)
+}
+func retainWindowsSandboxCleanup(owner *windowssandbox.Process, err error) error {
+	if err == nil {
+		return nil
+	}
+	return supervisedCleanupError(&retainedWindowsSandboxError{owner: owner, cause: err})
 }

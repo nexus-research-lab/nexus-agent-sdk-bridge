@@ -10,6 +10,8 @@ The `windowssandbox` protocol keeps the product launch ID distinct from the SDK 
 
 The native implementation now includes fixed machine-image admission, authenticated local pipes, creation-time Job membership, and cleanup status broadcast to concurrent waiters. Input uses bounded length frames with an explicit EOF marker; output can drain the authenticated pipe after helper exit. The machine helper exits zero on protocol success, while the command exit code is taken only from its bound receipt. Partial cleanup writes retire the channel and retain their original error.
 
+Unknown owners remain attached to the original transport. Repeated `Close`/`Disconnect` requests can retry cleanup on that owner, and reconnect is rejected until its resources are released. Concurrent waiters observe broadcast cleanup generations rather than consuming each other's notifications. Probe failures retain the owner in an error implementing `RetryCleanup(context.Context) error`. If actual cleanup was already proven but durable `Host.Finish` failed, retry submits only that same result; it never replays start or resource grants.
+
 This implementation is not yet compiled or natively accepted. Nexus persistence/installation integration and the complete Windows acceptance matrix remain pending; no sandbox capability is enabled by selecting this option.
 
 ## Boundary

@@ -1,5 +1,7 @@
 # Nexus Agent SDK Bridge
 
+Windows 清理未知时保留原 owner；请重试 Close/Disconnect 后再重连，清理重试不会重新启动命令。
+
 `windowssandbox.LoadInstalled(ctx)` 只读发现受保护机器清单并核验实际 helper，不启动进程。尚待原生验收，发现成功不代表沙箱能力已启用。
 
 Windows 沙箱接线正在实现：显式 `WindowsSandbox` 工厂为每次 runtime/probe 绑定独立持久准备、单次放行与完整清理回执。原生 helper/管道装配和产品安装验收仍未完成，此批未编译测试，不启用 Windows 沙箱能力。

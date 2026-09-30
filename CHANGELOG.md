@@ -6,6 +6,8 @@ All notable changes to this project are documented in this file.
 
 ### Changed
 
+- Preserve Windows machine-sandbox owners across unknown cleanup, concurrent waits and repeated Close/Disconnect. Block reconnect while the original owner remains retained; probe error chains expose explicit cleanup retry. A failed durable Finish can retry only the same proven cleanup outcome. These changes remain uncompiled and untested.
+
 - Bind/connect macOS bootstrap sockets relative to their original parent directory handle on a dedicated native thread. Long state-root paths no longer require a short alias or shared temporary socket. Keep the process working directory unchanged, retain host-owned unlink semantics, and fail when thread-local cwd support is unavailable. Native long-path launch and cleanup tests pass on the current arm64 host; supported-version acceptance remains separate.
 
 ### Added
