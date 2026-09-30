@@ -98,6 +98,21 @@ func openNativeImage(config Config) (*nativeImage, error) {
 	if err != nil || len(expected) != 32 || hex.EncodeToString(expected) != config.HelperSHA256 || bytes.Equal(expected, make([]byte, 32)) {
 		return o, errors.New("helper release digest is invalid")
 	}
+	o, err = openNativeProtectedFile(o.path)
+	if err != nil {
+		return o, err
+	}
+	hash := sha256.New()
+	n, err := io.Copy(hash, io.LimitReader(o.file, (256<<20)+1))
+	if err != nil || n == 0 || n > 256<<20 || !bytes.Equal(hash.Sum(nil), expected) {
+		return o, errors.Join(errors.New("machine helper differs from trusted release digest"), err)
+	}
+	return o, nil
+}
+
+// openNativeProtectedFile 仅供固定机器映像/manifest调用，复用实际祖先和叶pin。
+func openNativeProtectedFile(path string) (*nativeImage, error) {
+	o := &nativeImage{path: path}
 	volume := filepath.VolumeName(o.path)
 	if len(volume) != 2 || volume[1] != ':' {
 		return o, errors.New("machine helper requires a local volume")
@@ -107,13 +122,13 @@ func openNativeImage(config Config) (*nativeImage, error) {
 		return o, errors.New("helper is not on a fixed local volume")
 	}
 	parts := strings.Split(strings.TrimPrefix(o.path, volume+`\`), `\`)
-	path := volume + `\`
+	currentPath := volume + `\`
 	for index := -1; index < len(parts); index++ {
 		if index >= 0 {
-			path = filepath.Join(path, parts[index])
+			currentPath = filepath.Join(currentPath, parts[index])
 		}
 		leaf := index == len(parts)-1
-		name, _ := windows.UTF16PtrFromString(path)
+		name, _ := windows.UTF16PtrFromString(currentPath)
 		access := uint32(windows.READ_CONTROL | windows.FILE_READ_ATTRIBUTES)
 		if leaf {
 			access |= windows.GENERIC_READ
@@ -140,11 +155,6 @@ func openNativeImage(config Config) (*nativeImage, error) {
 		return o, errors.New("wrap machine image handle")
 	}
 	o.handles = o.handles[:len(o.handles)-1]
-	hash := sha256.New()
-	n, err := io.Copy(hash, io.LimitReader(o.file, (256<<20)+1))
-	if err != nil || n == 0 || n > 256<<20 || !bytes.Equal(hash.Sum(nil), expected) {
-		return o, errors.Join(errors.New("machine helper differs from trusted release digest"), err)
-	}
 	return o, nil
 }
 func (o *nativeImage) Close() error {

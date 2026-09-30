@@ -2,6 +2,8 @@
 
 ## Windows machine sandbox integration (in progress)
 
+`windowssandbox.LoadInstalled(ctx)` reads only the fixed Program Files installation. It validates the bounded manifest, protected path and ACLs, actual helper hash and PE architecture before returning its path and digest. The certificate thumbprint is metadata, not independent Authenticode evidence; trust comes from the machine-protected installation. Cleanup failures return no usable installation and retain failed pins in the error chain. This read-only discovery enables no capability and has not yet been compiled or accepted natively.
+
 `Options.WindowsSandbox` selects a trusted Host factory for each runtime and CLI probe. It cannot be combined with another supervisor, custom transport, remote connection, user override, or process-signal callback. The factory provides a fixed installed machine helper and a Host that durably reserves a launch before creating that helper, records the actual prepared execution and both digests, and atomically claims one start.
 
 The `windowssandbox` protocol keeps the product launch ID distinct from the SDK execution ID. A successful cleanup requires a matching `cleaned` receipt and actual helper termination; EOF, exit code zero, or a prepared acknowledgment alone is insufficient. Failures preserve unknown ownership and never fall back to ordinary execution. Interrupts use runtime control, not signals to a bare PID. Reconfiguration currently requires process replacement because captured factory authorization cannot be compared or safely updated in place.

@@ -1,5 +1,7 @@
 # Nexus Agent SDK Bridge
 
+`windowssandbox.LoadInstalled(ctx)` discovers and verifies the protected machine manifest and installed helper without launching a process. Native acceptance is pending; discovery does not enable sandbox capabilities.
+
 Windows sandbox integration is in progress. The explicit `WindowsSandbox` factory binds each runtime/probe to separate durable preparation, one-time release, and cleanup receipts. Native helper/pipe integration and product installation acceptance remain incomplete; this code is uncompiled and untested and does not enable Windows sandbox capabilities.
 
 English | [简体中文](./README_zh.md)
