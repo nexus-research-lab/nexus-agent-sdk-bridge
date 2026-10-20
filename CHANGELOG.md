@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.1.35] - 2026-10-20
+
 ### Changed
 
 - Bind/connect macOS bootstrap sockets relative to their original parent directory handle on a dedicated native thread. Long state-root paths no longer require a short alias or shared temporary socket. Keep the process working directory unchanged, retain host-owned unlink semantics, and fail when thread-local cwd support is unavailable. Native long-path launch and cleanup tests pass on the current arm64 host; supported-version acceptance remains separate.
