@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.1.35] - 2026-10-20
+
 ### Changed
 
 - Preserve Windows machine-sandbox owners across unknown cleanup, concurrent waits and repeated Close/Disconnect. Block reconnect while the original owner remains retained; probe error chains expose explicit cleanup retry. A failed durable Finish can retry only the same proven cleanup outcome. These changes remain uncompiled and untested.
