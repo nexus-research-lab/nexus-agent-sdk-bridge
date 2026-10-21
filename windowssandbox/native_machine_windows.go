@@ -16,7 +16,6 @@ import (
 	"strings"
 	"sync"
 	"unicode/utf16"
-	"unsafe"
 )
 
 type nativeMachine struct {

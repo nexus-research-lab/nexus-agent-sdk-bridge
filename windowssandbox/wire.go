@@ -24,6 +24,12 @@ type controlFrame struct {
 	ExitCode       uint32          `json:"exitCode"`
 	Reason         string          `json:"reason"`
 	Retained       bool            `json:"retained"`
+	ExitKnown      *bool           `json:"exitKnown,omitempty"`
+	Recovery       *recoveryFrame  `json:"recovery,omitempty"`
+}
+
+type recoveryFrame struct {
+	JournalRoot string `json:"journalRoot"`
 }
 
 // validCorrelation 只接受非零规范随机关联名，不把产品launch与SDK执行身份混用。
@@ -34,6 +40,15 @@ func validCorrelation(value string) bool {
 
 // decodeControlReply 在typed解码前核验原字段拼写、完整digest长度及所有层级重复键。
 func decodeControlReply(body []byte, launchID string) (controlFrame, error) {
+	return decodeMachineReply(body, launchID, false)
+}
+
+// decodeRecoveryReply additionally requires explicit knowledge of the original business exit.
+func decodeRecoveryReply(body []byte, launchID string) (controlFrame, error) {
+	return decodeMachineReply(body, launchID, true)
+}
+
+func decodeMachineReply(body []byte, launchID string, recovery bool) (controlFrame, error) {
 	var frame controlFrame
 	if len(body) == 0 || len(body) > maxControlFrame || !validCorrelation(launchID) {
 		return frame, errors.New("invalid Windows machine control reply size or launch")
@@ -47,8 +62,19 @@ func decodeControlReply(body []byte, launchID string) (controlFrame, error) {
 		return frame, errors.New("trailing Windows machine control reply")
 	}
 	var fields map[string]json.RawMessage
-	if err := json.Unmarshal(body, &fields); err != nil || len(fields) != 9 {
+	expectedFields := 9
+	if recovery {
+		expectedFields++
+	}
+	if err := json.Unmarshal(body, &fields); err != nil || len(fields) != expectedFields {
 		return frame, errors.New("incomplete Windows machine control reply")
+	}
+	if recovery {
+		value, ok := fields["exitKnown"]
+		var known bool
+		if !ok || bytes.Equal(bytes.TrimSpace(value), []byte("null")) || json.Unmarshal(value, &known) != nil {
+			return frame, errors.New("recovery reply lacks explicit original exit knowledge")
+		}
 	}
 	for _, key := range []string{"version", "kind", "launchID", "executionID", "prepareDigest", "manifestDigest", "exitCode", "reason", "retained"} {
 		value, ok := fields[key]
@@ -73,6 +99,9 @@ func decodeControlReply(body []byte, launchID string) (controlFrame, error) {
 	}
 	if frame.Version != 1 || frame.LaunchID != launchID || len(frame.Reason) > 2048 {
 		return frame, errors.New("Windows machine control reply differs from launch")
+	}
+	if recovery && (frame.Kind == "prepared" || frame.ExitKnown == nil || (!*frame.ExitKnown && frame.ExitCode != ^uint32(0))) {
+		return frame, errors.New("invalid recovery result knowledge")
 	}
 	switch frame.Kind {
 	case "prepared":

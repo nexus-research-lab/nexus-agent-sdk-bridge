@@ -209,7 +209,9 @@ func (m *nativeMachine) verifyAccount(process windows.Handle) (result error) {
 	}
 	var app uint32
 	var size uint32
-	if err = windows.GetTokenInformation(token, windows.TokenIsAppContainer, (*byte)(unsafe.Pointer(&app)), 4, &size); err != nil || app != 0 {
+	// TOKEN_INFORMATION_CLASS TokenIsAppContainer is 29 in the Windows ABI;
+	// x/sys does not expose this newer constant on all supported versions.
+	if err = windows.GetTokenInformation(token, 29, (*byte)(unsafe.Pointer(&app)), 4, &size); err != nil || app != 0 {
 		return errors.New("machine Host cannot be an AppContainer")
 	}
 	restricted, _, _ := windows.NewLazySystemDLL("advapi32.dll").NewProc("IsTokenRestricted").Call(uintptr(token))

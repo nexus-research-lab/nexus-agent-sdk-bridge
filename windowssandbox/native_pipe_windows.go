@@ -76,7 +76,7 @@ func (p *nativePipe) verifyPeer(live bool) error {
 	}
 	if live {
 		state, err := windows.WaitForSingleObject(p.owner.process.Process, 0)
-		if err != nil || state != windows.WAIT_TIMEOUT {
+		if err != nil || state != uint32(windows.WAIT_TIMEOUT) {
 			return errors.New("helper is not alive")
 		}
 	}
@@ -85,7 +85,7 @@ func (p *nativePipe) verifyPeer(live bool) error {
 	}
 	if live {
 		state, err := windows.WaitForSingleObject(p.owner.process.Process, 0)
-		if err != nil || state != windows.WAIT_TIMEOUT {
+		if err != nil || state != uint32(windows.WAIT_TIMEOUT) {
 			return errors.New("helper exited during verification")
 		}
 	}

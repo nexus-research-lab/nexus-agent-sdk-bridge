@@ -40,8 +40,36 @@ type Prepared struct {
 type Outcome struct {
 	Prepared
 	ExitCode uint32
-	Cleaned  bool
-	Reason   string
+	// ExitKnown distinguishes cleanup proof from an unknown original task result.
+	ExitKnown bool
+	Cleaned   bool
+	Reason    string
+}
+
+// Recovery names only an original prepared execution; it cannot carry a new command or grant.
+type Recovery struct {
+	Prepared
+	JournalRoot string
+}
+
+// RecoveryAttempt correlates durable recovery ownership without replacing the original launch ID.
+type RecoveryAttempt struct {
+	Recovery
+	AttemptID string
+}
+
+// RecoveryHost must claim this exact recovery before the helper is resumed.
+// FinishRecovery records cleanup separately from the original task's ExitKnown status.
+type RecoveryHost interface {
+	ClaimRecovery(context.Context, RecoveryAttempt) error
+	FinishRecovery(context.Context, RecoveryAttempt, Outcome) error
+}
+
+// RecoveryConfig uses the installed helper and a durable recovery adapter, never a task factory.
+type RecoveryConfig struct {
+	HelperPath   string
+	HelperSHA256 string
+	Host         RecoveryHost
 }
 
 // Host 由可信产品实现，不执行模型审批，也不自动重放请求。

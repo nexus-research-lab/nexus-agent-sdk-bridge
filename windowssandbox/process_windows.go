@@ -35,6 +35,7 @@ type Process struct {
 	locallyClosed    bool
 	phase            string
 	cleanupAttempted bool
+	recovery         bool
 	stop             func() bool
 }
 
@@ -167,8 +168,16 @@ func (p *Process) observe() {
 		body, err := p.native.pipes[0].readFrame(p.native.ctx)
 		if err == nil {
 			var receipt controlFrame
-			receipt, err = decodeControlReply(body, p.intent.LaunchID)
+			if p.recovery {
+				receipt, err = decodeRecoveryReply(body, p.intent.LaunchID)
+			} else {
+				receipt, err = decodeControlReply(body, p.intent.LaunchID)
+			}
 			if err == nil {
+				if p.recovery {
+					outcome.ExitKnown = *receipt.ExitKnown
+					outcome.ExitCode = receipt.ExitCode
+				}
 				if !receipt.matchesPrepared(p.prepared) {
 					err = errors.New("helper cleanup receipt is unknown or differs from prepared execution")
 				} else if receipt.Kind == "unknown" {
@@ -185,6 +194,9 @@ func (p *Process) observe() {
 					if err == nil {
 						outcome.Cleaned = true
 						outcome.ExitCode = receipt.ExitCode
+						if !p.recovery {
+							outcome.ExitKnown = true
+						}
 						if helperCode != 0 {
 							err = fmt.Errorf("machine helper failed after cleanup with exit code %d", helperCode)
 						}
