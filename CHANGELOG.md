@@ -4,6 +4,11 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.2.7] - 2026-11-04
+
+- Align the Bridge release with Nexus and nxs v0.2.7, including capability-negotiated sandbox controls and supervised runtime lifecycle support from v0.1.35.
+- This coordinated version retains the existing control wire and capability negotiation.
+
 ## [0.1.35] - 2026-10-20
 
 ### Changed
