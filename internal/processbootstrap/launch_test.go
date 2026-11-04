@@ -5,12 +5,14 @@ package processbootstrap
 
 import (
 	"encoding/json"
+	"path/filepath"
 	"strings"
 	"testing"
 )
 
 func TestLaunchRejectsMalformedInputs(t *testing.T) {
-	valid := Launch{Version: 1, Command: "/bin/sh", Directory: "/tmp", Env: []string{"A=1"}}
+	directory := t.TempDir()
+	valid := Launch{Version: 1, Command: filepath.Join(directory, "command"), Directory: directory, Env: []string{"A=1"}}
 	for _, name := range []string{"valid", "version", "command", "directory", "nul", "duplicate_env", "empty_key", "no_equals"} {
 		t.Run(name, func(t *testing.T) {
 			l := valid
