@@ -220,7 +220,7 @@ func (s *Session) ID() string {
 	return sessionID
 }
 
-// Close 关闭会话。
+// Close 等待会话退出与清理；执行退出码和读取诊断由 Wait 保留，真实清理失败仍返回错误。
 func (s *Session) Close(ctx context.Context) error {
 	if s == nil || s.core == nil {
 		return nil
@@ -236,7 +236,7 @@ func (s *Session) Recv(ctx context.Context) (protocol.ReceivedMessage, error) {
 	return (&Stream{core: s.core}).Recv(ctx)
 }
 
-// Wait 等待会话底层传输结束。
+// Wait 等待会话底层传输结束，并保留执行、读取与清理错误。
 func (s *Session) Wait() error {
 	if s == nil || s.core == nil {
 		return nil

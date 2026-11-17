@@ -69,7 +69,7 @@ Runtime names are not a substitute for capability checks.
 2. `Session.Send` or `SendWithOptions` starts a turn.
 3. The host consumes typed messages with `Recv` or waits for `Result`.
 4. Controls use the active session and preserve the runtime request identity.
-5. `Session.Close` waits for both transport `Close` and `Wait`, then the read loop, before completing cleanup. A failed termination attempt does not prove process exit. Caller cancellation stops only that caller's wait; shared cleanup remains pending. Close and exit diagnostics are both preserved.
+5. `Session.Close` waits for both transport `Close` and `Wait`, then the read loop, before completing cleanup. A failed termination attempt does not prove process exit. Caller cancellation stops only that caller's wait; shared cleanup remains pending. Confirmed native process exit statuses are execution diagnostics, retained by `Wait` rather than returned as session cleanup failures. Prior read errors likewise remain on `StreamError`/`Wait`. Unknown transport close/wait errors and typed cleanup failures still fail Close, including when joined with an exit error. This does not change the diagnostic result of the lower-level process transport's `Close`.
 
 Process cleanup failures are returned as `client.ProcessCleanupError`, matchable
 with `errors.As`. They survive a successful main-process exit, forced shutdown,

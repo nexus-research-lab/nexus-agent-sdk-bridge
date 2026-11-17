@@ -139,6 +139,9 @@ start an independent session at an exact completed message boundary. Both
 Hosts that run the child under another OS identity can use
 `WithProcessSignalHandler` as the trusted, PID-validating boundary for
 interrupt, shutdown, and descendant cleanup.
+`Session.Close` waits for exit and cleanup; confirmed nonzero exit codes and prior
+read errors remain available through `Wait` without making cleanup fail.
+Unknown close/wait errors still block successful cleanup.
 `client.ProcessCleanupError` preserves cleanup failures through `Wait` and repeated
 `Close`, including forced termination. The built-in Unix sweep covers visible
 members of the original session. Windows runtimes and CLI probes start suspended

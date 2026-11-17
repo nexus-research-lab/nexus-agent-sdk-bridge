@@ -130,6 +130,8 @@ Code 则通过原生 `UserPromptSubmit` hook 的 `additionalContext` 生成 atta
 `client.CapabilitySessionFork`。
 宿主若以另一个 OS 身份运行子进程，可通过 `WithProcessSignalHandler` 提供可信且
 校验 PID 的进程信号边界，统一处理中断、关闭和遗留子进程清理。
+`Session.Close` 等待退出与清理；已确认的非零退出码和之前的读取错误保留在 `Wait`
+诊断中，不单独判定清理失败。未知关闭/等待错误仍阻止清理成功。
 `client.ProcessCleanupError` 在 Wait、主动终止和重复 Close 中保留清理失败。
 内置 Unix 清理只覆盖原 session 的可见成员；另建 session 的后代与跨重启资源恢复
 仍需宿主监督。Windows runtime 与 CLI probe 挂起创建，绑定关闭即终止的 Job 后才

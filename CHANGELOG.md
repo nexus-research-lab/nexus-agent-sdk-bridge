@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Separate session cleanup from execution failure: `Session.Close` still waits for transport exit and the read loop, but confirmed nonzero process exits and prior read errors no longer report cleanup failure. `Wait` retains execution diagnostics; descendant cleanup failures and unknown close/wait errors remain errors across repeated closes.
+
 ## [0.2.7] - 2026-11-04
 
 - Align the Bridge release with Nexus and nxs v0.2.7, including capability-negotiated sandbox controls and supervised runtime lifecycle support from v0.1.35.
