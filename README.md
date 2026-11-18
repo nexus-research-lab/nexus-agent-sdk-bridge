@@ -141,7 +141,7 @@ Hosts that run the child under another OS identity can use
 interrupt, shutdown, and descendant cleanup.
 `Session.Close` waits for exit and cleanup; confirmed nonzero exit codes and prior
 read errors remain available through `Wait` without making cleanup fail.
-Unknown close/wait errors still block successful cleanup.
+Custom transport errors and nonzero cleanup helpers still fail session cleanup.
 `client.ProcessCleanupError` preserves cleanup failures through `Wait` and repeated
 `Close`, including forced termination. The built-in Unix sweep covers visible
 members of the original session. Windows runtimes and CLI probes start suspended

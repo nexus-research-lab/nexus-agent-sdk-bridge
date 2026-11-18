@@ -52,11 +52,11 @@ func (m *ProcessManager) startSupervised(ctx context.Context, command processCom
 	go func() {
 		defer close(m.done)
 		exit, err := p.Wait(context.Background())
-		err = errors.Join(supervisedExitError(exit), supervisedCleanupError(err))
-		m.setWaitError(err)
+		result := processWaitResult{status: supervisedExitError(exit), cleanup: supervisedCleanupError(err)}
+		m.setWaitResult(result)
 		m.waitForStderrReader()
 		attrs := map[string]any{"supervised": true, "launch_id": p.Intent().ID}
-		if err != nil {
+		if err := result.diagnostic("", nil); err != nil {
 			attrs["error"] = err.Error()
 		}
 		m.emitDiagnostic("process_exit", attrs)
@@ -103,10 +103,11 @@ func (m *ProcessManager) closeSupervised() error {
 	<-m.done
 	m.closeOutputPipes()
 	m.waitForStderrReader()
+	result := m.processResult()
 	if forced {
-		return cleanupErr
+		return errors.Join(cleanupErr, result.cleanup)
 	}
-	return errors.Join(cleanupErr, normalizeExitErrorWithStderr(m.waitError(), m.stderrTail.String()))
+	return result.diagnostic(m.stderrTail.String(), cleanupErr)
 }
 
 func runConfiguredProbe(ctx context.Context, cmd *exec.Cmd, config ProcessConfig, purpose supervision.Purpose) error {

@@ -27,16 +27,17 @@ func TestDisconnectSeparatesExecutionFailureFromCleanup(t *testing.T) {
 	cleanupErr := &ProcessCleanupError{Err: exitErr}
 	unknownErr := errors.New("exit observation failed")
 	for _, test := range []struct {
-		name    string
-		waitErr error
-		want    error
+		name     string
+		closeErr error
+		waitErr  error
+		want     error
 	}{
-		{"nonzero exit", fmt.Errorf("runtime exit: %w", exitErr), nil},
-		{"cleanup failure", errors.Join(exitErr, cleanupErr), cleanupErr},
-		{"unknown failure", errors.Join(exitErr, unknownErr), unknownErr},
+		{"cleanup helper exit", fmt.Errorf("cleanup helper exit: %w", exitErr), nil, exitErr},
+		{"cleanup failure", nil, errors.Join(exitErr, cleanupErr), cleanupErr},
+		{"unknown failure", nil, errors.Join(exitErr, unknownErr), unknownErr},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			tr := &deferredExitTransport{scriptedTransport: newScriptedTransport(), exit: make(chan struct{}), waitStarted: make(chan struct{}), closeErr: test.waitErr, exitErr: test.waitErr}
+			tr := &deferredExitTransport{scriptedTransport: newScriptedTransport(), exit: make(chan struct{}), waitStarted: make(chan struct{}), closeErr: test.closeErr, exitErr: test.waitErr}
 			close(tr.exit)
 			core := newSessionCoreWithTransport(Options{Transport: tr, Runtime: RuntimeOptions{InitializeTimeout: time.Second}}, tr)
 			connected := make(chan error, 1)
@@ -55,7 +56,7 @@ func TestDisconnectSeparatesExecutionFailureFromCleanup(t *testing.T) {
 					t.Fatalf("Disconnect = %v, want %v", err, test.want)
 				}
 			}
-			if err := core.Wait(); !errors.Is(err, exitErr) || !errors.Is(err, io.ErrUnexpectedEOF) {
+			if err := core.Wait(); (test.waitErr != nil && !errors.Is(err, exitErr)) || !errors.Is(err, io.ErrUnexpectedEOF) {
 				t.Fatalf("Wait 丢失执行诊断: %v", err)
 			}
 		})

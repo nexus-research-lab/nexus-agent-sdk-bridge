@@ -6,7 +6,6 @@ package transport
 import (
 	"errors"
 	"fmt"
-	"os/exec"
 )
 
 // ProcessCleanupError 表示后代 session 清理没有确认成功；主进程退出不能消除它。
@@ -24,25 +23,32 @@ func (e *ProcessCleanupError) Error() string {
 // Unwrap 保留宿主信号或平台观察错误的原始身份。
 func (e *ProcessCleanupError) Unwrap() error { return e.Err }
 
-// CleanupError 只剔除已确认的进程退出状态；清理失败与未知错误继续阻止会话复用。
-// 必须逐项处理 joined error，不能因其中存在非零退出码而吞掉其他清理失败。
-func CleanupError(err error) error {
-	if _, ok := err.(*ProcessCleanupError); ok {
-		return err
-	}
-	switch value := err.(type) {
-	case *exec.ExitError, *supervisedProcessExitError:
+// processWaitResult 由持有主进程的 transport 在 Wait 处记录错误来源。
+type processWaitResult struct {
+	status  error
+	cleanup error
+}
+
+type processDiagnostic struct {
+	error
+	cleanup error
+}
+
+func (d *processDiagnostic) Unwrap() error { return d.error }
+
+func (w processWaitResult) diagnostic(stderr string, closeErr error) error {
+	cleanup := errors.Join(w.cleanup, closeErr)
+	err := normalizeExitErrorWithStderr(errors.Join(w.status, cleanup), stderr)
+	if err == nil {
 		return nil
-	case interface{ Unwrap() []error }:
-		var failures []error
-		for _, cause := range value.Unwrap() {
-			failures = append(failures, CleanupError(cause))
-		}
-		return errors.Join(failures...)
-	case interface{ Unwrap() error }:
-		if cause := value.Unwrap(); cause != nil && CleanupError(cause) == nil {
-			return nil
-		}
+	}
+	return &processDiagnostic{error: err, cleanup: cleanup}
+}
+
+// CleanupError 只采用本 transport 已拆分的进程结果；自定义 transport 的错误保持原义。
+func CleanupError(err error) error {
+	if result, ok := err.(*processDiagnostic); ok {
+		return result.cleanup
 	}
 	return err
 }

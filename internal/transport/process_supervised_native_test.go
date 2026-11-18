@@ -154,7 +154,7 @@ func TestSupervisedTransportNative(t *testing.T) {
 			t.Fatalf("exit=%v", err)
 		}
 		for range 2 {
-			if err := m.Close(); !errors.As(err, &exit) || exit.ExitCode() != 7 {
+			if err := m.Close(); !errors.As(err, &exit) || exit.ExitCode() != 7 || CleanupError(err) != nil {
 				t.Fatalf("close=%v", err)
 			}
 		}
