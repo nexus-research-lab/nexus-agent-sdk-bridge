@@ -1,7 +1,7 @@
 //go:build darwin
 
 // INPUT: 内核进程快照及每个进程当前的 Unix session。
-// OUTPUT: 目标 session 的进程集合，观察失败必须返回错误。
+// OUTPUT: 目标 session 的存活进程集合（跳过僵尸），观察失败必须返回错误。
 // POS: macOS runtime session 清理的可见性边界。
 package transport
 
@@ -13,6 +13,9 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// darwinProcessZombie 对应 <sys/proc.h> 的 SZOMB。
+const darwinProcessZombie = 5
+
 // processIDsInSession 只忽略快照之后已退出的进程，不把观察错误解释为空集合。
 func processIDsInSession(sessionID int) ([]int, error) {
 	processes, err := unix.SysctlKinfoProcSlice("kern.proc.all")
@@ -23,7 +26,8 @@ func processIDsInSession(sessionID int) ([]int, error) {
 	processIDs := make([]int, 0)
 	for _, process := range processes {
 		processID := int(process.Proc.P_pid)
-		if processID <= 1 {
+		// 僵尸进程已不再运行，只等父进程回收，不能视为残留后代。
+		if processID <= 1 || process.Proc.P_stat == darwinProcessZombie {
 			continue
 		}
 		currentSessionID, err := syscall.Getsid(processID)

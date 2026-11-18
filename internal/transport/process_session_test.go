@@ -13,6 +13,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"golang.org/x/sys/unix"
 )
 
 func TestCleanupProcessSessionUsesHostSignalHandler(t *testing.T) {
@@ -107,12 +109,12 @@ func TestProcessWaitTerminatesRuntimeDescendants(t *testing.T) {
 
 	deadline := time.Now().Add(time.Second)
 	for {
-		err := syscall.Kill(descendantPID, 0)
-		if errors.Is(err, syscall.ESRCH) {
-			break
-		}
+		gone, err := testProcessGone(descendantPID)
 		if err != nil {
 			t.Fatalf("inspect descendant %d: %v", descendantPID, err)
+		}
+		if gone {
+			break
 		}
 		if time.Now().After(deadline) {
 			t.Fatalf("descendant process %d survived runtime exit", descendantPID)
@@ -126,4 +128,33 @@ func TestProcessWaitTerminatesRuntimeDescendants(t *testing.T) {
 		}
 	}
 	t.Fatalf("missing descendant cleanup diagnostics: %#v", diagnostics)
+}
+
+// testProcessGone 把已退出及等待回收的僵尸进程都视为终止；无 reaper 的容器中孤儿会停留在僵尸状态。
+func testProcessGone(pid int) (bool, error) {
+	err := syscall.Kill(pid, 0)
+	if errors.Is(err, syscall.ESRCH) {
+		return true, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	processes, err := processIDsInSession(testProcessSession(pid))
+	if err != nil {
+		return false, err
+	}
+	for _, processID := range processes {
+		if processID == pid {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+func testProcessSession(pid int) int {
+	sessionID, err := unix.Getsid(pid)
+	if err != nil {
+		return pid
+	}
+	return sessionID
 }
