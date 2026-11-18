@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+## [0.2.10] - 2026-11-18
+
 ### Fixed
 
 - Expose the optional run generation and status on task message acknowledgements and decode `run_generation` on both `task_updated` and `task_notification`, so hosts can match late terminal events to the correct run.
