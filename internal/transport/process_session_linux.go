@@ -6,11 +6,13 @@
 package transport
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 )
 
 // processIDsInSession 只忽略已经消失的进程，读取或格式未知不能当作清理完成。
@@ -27,7 +29,8 @@ func processIDsInSession(sessionID int) ([]int, error) {
 			continue
 		}
 		data, err := os.ReadFile(filepath.Join("/proc", entry.Name(), "stat"))
-		if os.IsNotExist(err) {
+		// 进程可在枚举后消失，procfs 的 open 和 read 分别可能返回 ENOENT、ESRCH。
+		if errors.Is(err, os.ErrNotExist) || errors.Is(err, syscall.ESRCH) {
 			continue
 		}
 		if err != nil {
