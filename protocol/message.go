@@ -1103,6 +1103,8 @@ type TaskProgressMessage struct {
 
 // TaskNotificationMessage 表示任务通知消息。
 type TaskNotificationMessage struct {
+	// RunGeneration 与 TaskUpdatedMessage 相同；旧 runtime 不发送时为零。
+	RunGeneration  int            `json:"run_generation,omitempty"`
 	TaskID         string         `json:"task_id,omitempty"`
 	ToolUseID      string         `json:"tool_use_id,omitempty"`
 	AgentID        string         `json:"agent_id,omitempty"`
@@ -1328,6 +1330,7 @@ func decodeTaskProgressMessage(payload map[string]any) *TaskProgressMessage {
 
 func decodeTaskNotificationMessage(payload map[string]any) *TaskNotificationMessage {
 	return &TaskNotificationMessage{
+		RunGeneration:  jsonvalue.IntValue(payload["run_generation"]),
 		TaskID:         jsonvalue.StringValue(payload["task_id"]),
 		ToolUseID:      jsonvalue.StringValue(payload["tool_use_id"]),
 		AgentID:        jsonvalue.StringValue(payload["agent_id"]),

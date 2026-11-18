@@ -46,6 +46,8 @@ func (w processWaitResult) diagnostic(stderr string, closeErr error) error {
 }
 
 // CleanupError 只采用本 transport 已拆分的进程结果；自定义 transport 的错误保持原义。
+// 这里刻意用类型断言而非 errors.As：结果一旦被外层包装，就无法确认包装层
+// 没有附加清理失败，于是整体保守地视为清理错误，继续保留关闭栅栏。
 func CleanupError(err error) error {
 	if result, ok := err.(*processDiagnostic); ok {
 		return result.cleanup

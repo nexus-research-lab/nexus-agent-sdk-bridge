@@ -6,7 +6,7 @@ All notable changes to this project are documented in this file.
 
 ### Fixed
 
-- Expose the optional run generation and status on task message acknowledgements so hosts can match late events to the correct run.
+- Expose the optional run generation and status on task message acknowledgements and decode `run_generation` on both `task_updated` and `task_notification`, so hosts can match late terminal events to the correct run.
 
 - Separate session cleanup from execution failure: `Session.Close` still waits for transport exit and the read loop, but confirmed nonzero process exits and prior read errors no longer report cleanup failure. `Wait` retains execution diagnostics; nonzero cleanup helpers, descendant cleanup failures and opaque transport errors remain errors across repeated closes.
 
