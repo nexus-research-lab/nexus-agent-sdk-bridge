@@ -53,6 +53,8 @@ Capability 真相源位于 [`client/capability.go`](../client/capability.go)。�
 
 ## Session 生命周期
 
+`send_task_message` 回执可携带含 `generation` 和 `status` 的 `run` 快照，对应 `task_updated` 的 `run_generation`。同一任务 ID 每次重新启动都会增加代次，旧 runtime 可省略这些字段。
+
 1. `client.NewSession` 解析 transport 并初始化 runtime。
 2. `Session.Send` 或 `SendWithOptions` 启动一轮执行。
 3. 宿主通过 `Recv` 消费类型化消息，或通过 `Result` 等待终态。

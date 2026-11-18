@@ -63,6 +63,8 @@ control messages, so the bridge returns the context through its native
 Capability values are defined in [`client/capability.go`](../client/capability.go).
 Runtime names are not a substitute for capability checks.
 
+A `send_task_message` acknowledgement may include a `run` snapshot with `generation` and `status`. Sibling `task_updated` events carry `run_generation`. A generation identifies one run of a reusable task ID. Older runtimes can omit both fields.
+
 ## Session lifecycle
 
 1. `client.NewSession` resolves a transport and initializes the runtime.

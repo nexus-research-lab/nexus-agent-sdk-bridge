@@ -370,12 +370,18 @@ func (c *SessionControl) StopTask(ctx context.Context, taskID string) error {
 
 // SendTaskMessage 向后台 subagent task 排队一条后续消息。
 func (c *SessionControl) SendTaskMessage(ctx context.Context, taskID string, message string, summary string) error {
+	_, err := c.SendTaskMessageWithState(ctx, taskID, message, summary)
+	return err
+}
+
+// SendTaskMessageWithState 读取同一投递回执中的可选运行代次；旧 runtime 返回零值。
+func (c *SessionControl) SendTaskMessageWithState(ctx context.Context, taskID, message, summary string) (protocol.TaskRunState, error) {
 	core, err := c.activeCore()
 	if err != nil {
-		return err
+		return protocol.TaskRunState{}, err
 	}
 	if !core.supports(CapabilitySendTaskMessage) {
-		return &UnsupportedCapabilityError{Capability: CapabilitySendTaskMessage}
+		return protocol.TaskRunState{}, &UnsupportedCapabilityError{Capability: CapabilitySendTaskMessage}
 	}
 	return core.sendTaskMessage(ctx, taskID, message, summary)
 }
