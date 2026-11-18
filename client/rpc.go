@@ -269,20 +269,20 @@ func (c *sessionCore) stopTask(ctx context.Context, taskID string) error {
 	return err
 }
 
-func (c *sessionCore) sendTaskMessage(ctx context.Context, taskID string, message string, summary string) error {
+func (c *sessionCore) sendTaskMessage(ctx context.Context, taskID string, message string, summary string) (protocol.TaskRunState, error) {
 	if !c.isConnected() {
-		return ErrNotConnected
+		return protocol.TaskRunState{}, ErrNotConnected
 	}
 	taskID = strings.TrimSpace(taskID)
 	if taskID == "" {
-		return errors.New("client: task id is required")
+		return protocol.TaskRunState{}, errors.New("client: task id is required")
 	}
 	message = strings.TrimSpace(message)
 	if message == "" {
-		return errors.New("client: message is required")
+		return protocol.TaskRunState{}, errors.New("client: message is required")
 	}
 
-	_, err := c.sendControlRequest(
+	response, err := c.sendControlRequest(
 		ctx,
 		protocol.ControlRequest{
 			Subtype: "send_task_message",
@@ -294,7 +294,11 @@ func (c *sessionCore) sendTaskMessage(ctx context.Context, taskID string, messag
 		},
 		c.options.Runtime.InitializeTimeout,
 	)
-	return err
+	if err != nil {
+		return protocol.TaskRunState{}, err
+	}
+	run := jsonvalue.MapValue(response["run"])
+	return protocol.TaskRunState{Generation: jsonvalue.IntValue(run["generation"]), Status: jsonvalue.StringValue(run["status"])}, nil
 }
 
 // tryAutoDream 请求 nxs 检查并在满足条件时执行一次记忆巩固。

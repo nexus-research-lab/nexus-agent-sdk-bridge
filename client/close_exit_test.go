@@ -3,6 +3,9 @@ package client
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io"
+	"os/exec"
 	"sync"
 	"testing"
 	"time"
@@ -16,6 +19,48 @@ type deferredExitTransport struct {
 	waitOnce    sync.Once
 	closeErr    error
 	exitErr     error
+}
+
+// TestDisconnectSeparatesExecutionFailureFromCleanup 验证退出和断流诊断不占用已清理的会话。
+func TestDisconnectSeparatesExecutionFailureFromCleanup(t *testing.T) {
+	exitErr := &exec.ExitError{}
+	cleanupErr := &ProcessCleanupError{Err: exitErr}
+	unknownErr := errors.New("exit observation failed")
+	for _, test := range []struct {
+		name     string
+		closeErr error
+		waitErr  error
+		want     error
+	}{
+		{"cleanup helper exit", fmt.Errorf("cleanup helper exit: %w", exitErr), nil, exitErr},
+		{"cleanup failure", nil, errors.Join(exitErr, cleanupErr), cleanupErr},
+		{"unknown failure", nil, errors.Join(exitErr, unknownErr), unknownErr},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			tr := &deferredExitTransport{scriptedTransport: newScriptedTransport(), exit: make(chan struct{}), waitStarted: make(chan struct{}), closeErr: test.closeErr, exitErr: test.waitErr}
+			close(tr.exit)
+			core := newSessionCoreWithTransport(Options{Transport: tr, Runtime: RuntimeOptions{InitializeTimeout: time.Second}}, tr)
+			connected := make(chan error, 1)
+			go func() { connected <- core.Connect(context.Background()) }()
+			assertInitializeRequest(t, receiveWrite(t, tr.scriptedTransport))
+			tr.pushRead(successfulInitializeResponse(map[string]any{"session_id": "cleanup-result"}))
+			if err := receiveDone(t, connected); err != nil {
+				t.Fatal(err)
+			}
+			core.setReadError(io.ErrUnexpectedEOF)
+			for range 2 {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				err := core.Disconnect(ctx)
+				cancel()
+				if !errors.Is(err, test.want) {
+					t.Fatalf("Disconnect = %v, want %v", err, test.want)
+				}
+			}
+			if err := core.Wait(); (test.waitErr != nil && !errors.Is(err, exitErr)) || !errors.Is(err, io.ErrUnexpectedEOF) {
+				t.Fatalf("Wait 丢失执行诊断: %v", err)
+			}
+		})
+	}
 }
 
 func (t *deferredExitTransport) Close() error {

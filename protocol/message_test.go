@@ -347,6 +347,7 @@ func TestParseSystemTaskNotificationMessage(t *testing.T) {
 		"subtype":"task_notification",
 		"session_id":"session-1",
 		"task_id":"task-1",
+		"run_generation":3,
 		"tool_use_id":"tool-1",
 		"agent_id":"agent-1",
 		"agent_type":"worker",
@@ -366,6 +367,9 @@ func TestParseSystemTaskNotificationMessage(t *testing.T) {
 	}
 	if message.System.TaskNotification.Status != "completed" {
 		t.Fatalf("Status = %q, want completed", message.System.TaskNotification.Status)
+	}
+	if message.System.TaskNotification.RunGeneration != 3 {
+		t.Fatalf("RunGeneration = %d, want 3", message.System.TaskNotification.RunGeneration)
 	}
 	if message.System.TaskNotification.AgentID != "agent-1" || message.System.TaskNotification.AgentType != "worker" {
 		t.Fatalf("Agent fields = %#v, want agent-1/worker", message.System.TaskNotification)

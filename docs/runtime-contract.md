@@ -63,13 +63,15 @@ control messages, so the bridge returns the context through its native
 Capability values are defined in [`client/capability.go`](../client/capability.go).
 Runtime names are not a substitute for capability checks.
 
+A `send_task_message` acknowledgement may include a `run` snapshot with `generation` and `status`. Sibling `task_updated` events carry `run_generation`. A generation identifies one run of a reusable task ID. Older runtimes can omit both fields.
+
 ## Session lifecycle
 
 1. `client.NewSession` resolves a transport and initializes the runtime.
 2. `Session.Send` or `SendWithOptions` starts a turn.
 3. The host consumes typed messages with `Recv` or waits for `Result`.
 4. Controls use the active session and preserve the runtime request identity.
-5. `Session.Close` waits for both transport `Close` and `Wait`, then the read loop, before completing cleanup. A failed termination attempt does not prove process exit. Caller cancellation stops only that caller's wait; shared cleanup remains pending. Close and exit diagnostics are both preserved.
+5. `Session.Close` waits for both transport `Close` and `Wait`, then the read loop, before completing cleanup. A failed termination attempt does not prove process exit. Caller cancellation stops only that caller's wait; shared cleanup remains pending. Confirmed native process exit statuses are execution diagnostics, retained by `Wait` rather than returned as session cleanup failures. Prior read errors likewise remain on `StreamError`/`Wait`. Custom transport errors, including helper exit statuses, and typed cleanup failures still fail Close, including when joined with an exit error. This does not change the diagnostic result of the lower-level process transport's `Close`.
 
 Process cleanup failures are returned as `client.ProcessCleanupError`, matchable
 with `errors.As`. They survive a successful main-process exit, forced shutdown,

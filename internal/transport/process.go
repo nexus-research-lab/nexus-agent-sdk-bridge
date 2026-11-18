@@ -158,7 +158,7 @@ type ProcessManager struct {
 	closeOnce           sync.Once
 	closeErr            error // closeOnce 发布的共享结果；重复关闭保留同一失败。
 	done                chan struct{}
-	waitErr             error
+	waitResult          processWaitResult
 	waitMu              sync.Mutex
 	stderrWG            sync.WaitGroup
 	maxBufferSize       int
@@ -339,12 +339,17 @@ func (m *ProcessManager) Start(ctx context.Context) (startErr error) {
 
 	go func() {
 		defer close(m.done)
-		err := errors.Join(cmd.Wait(), m.cleanupProcessSession(processSession))
-		m.setWaitError(err)
+		status := cmd.Wait()
+		cleanup := m.cleanupProcessSession(processSession)
+		if _, exited := status.(*exec.ExitError); status != nil && !exited {
+			cleanup, status = errors.Join(status, cleanup), nil
+		}
+		result := processWaitResult{status: status, cleanup: cleanup}
+		m.setWaitResult(result)
 		m.waitForStderrReader()
 		stderrTail := strings.TrimSpace(m.stderrTail.String())
 		attributes := map[string]any{"pid": cmd.Process.Pid}
-		if normalizedErr := normalizeExitErrorWithStderr(err, stderrTail); normalizedErr != nil {
+		if normalizedErr := result.diagnostic(stderrTail, nil); normalizedErr != nil {
 			attributes["error"] = normalizedErr.Error()
 		}
 		if stderrTail != "" {
@@ -938,7 +943,7 @@ func (m *ProcessManager) Wait() error {
 	<-m.done
 	m.closeOutputPipes()
 	m.waitForStderrReader()
-	return normalizeExitErrorWithStderr(m.waitError(), m.stderrTail.String())
+	return m.processResult().diagnostic(m.stderrTail.String(), nil)
 }
 
 // Close 关闭进程。
@@ -992,13 +997,11 @@ func (m *ProcessManager) Close() error {
 
 		m.closeOutputPipes()
 		m.waitForStderrReader()
-		if !forcedExit {
-			closeErr = normalizeExitErrorWithStderr(m.waitError(), m.stderrTail.String())
+		result := m.processResult()
+		if forcedExit {
+			closeErr = errors.Join(closeErr, result.cleanup)
 		} else {
-			var cleanupErr *ProcessCleanupError
-			if errors.As(m.waitError(), &cleanupErr) {
-				closeErr = errors.Join(closeErr, cleanupErr)
-			}
+			closeErr = result.diagnostic(m.stderrTail.String(), closeErr)
 		}
 	})
 	return m.closeErr
@@ -1087,16 +1090,16 @@ func (m *ProcessManager) readStderr(stderr io.Reader) {
 	}
 }
 
-func (m *ProcessManager) setWaitError(err error) {
+func (m *ProcessManager) setWaitResult(result processWaitResult) {
 	m.waitMu.Lock()
 	defer m.waitMu.Unlock()
-	m.waitErr = err
+	m.waitResult = result
 }
 
-func (m *ProcessManager) waitError() error {
+func (m *ProcessManager) processResult() processWaitResult {
 	m.waitMu.Lock()
 	defer m.waitMu.Unlock()
-	return m.waitErr
+	return m.waitResult
 }
 
 func (m *ProcessManager) newStdoutDecodeError(err error, line []byte) error {
@@ -1125,7 +1128,7 @@ func (m *ProcessManager) newStdoutDecodeError(err error, line []byte) error {
 func (m *ProcessManager) processExitSnapshot() (bool, string) {
 	select {
 	case <-m.done:
-		if err := normalizeExitError(m.waitError()); err != nil {
+		if err := m.processResult().diagnostic("", nil); err != nil {
 			return true, err.Error()
 		}
 		return true, ""

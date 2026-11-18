@@ -1103,6 +1103,8 @@ type TaskProgressMessage struct {
 
 // TaskNotificationMessage 表示任务通知消息。
 type TaskNotificationMessage struct {
+	// RunGeneration 与 TaskUpdatedMessage 相同；旧 runtime 不发送时为零。
+	RunGeneration  int            `json:"run_generation,omitempty"`
 	TaskID         string         `json:"task_id,omitempty"`
 	ToolUseID      string         `json:"tool_use_id,omitempty"`
 	AgentID        string         `json:"agent_id,omitempty"`
@@ -1115,6 +1117,12 @@ type TaskNotificationMessage struct {
 	TranscriptPath string         `json:"transcript_path,omitempty"`
 	Usage          TaskUsage      `json:"usage,omitempty"`
 	Additional     map[string]any `json:"additional,omitempty"`
+}
+
+// TaskRunState 是 send_task_message 回执中的可选运行快照。旧 runtime 只返回排队状态。
+type TaskRunState struct {
+	Generation int    `json:"generation"`
+	Status     string `json:"status"`
 }
 
 // TaskUpdatedPatch 表示 task_updated 生命周期补丁。
@@ -1130,10 +1138,11 @@ type TaskUpdatedPatch struct {
 
 // TaskUpdatedMessage 表示后台任务状态变更消息。
 type TaskUpdatedMessage struct {
-	TaskID     string           `json:"task_id,omitempty"`
-	Patch      TaskUpdatedPatch `json:"patch,omitempty"`
-	Status     string           `json:"status,omitempty"`
-	Additional map[string]any   `json:"additional,omitempty"`
+	RunGeneration int              `json:"run_generation,omitempty"`
+	TaskID        string           `json:"task_id,omitempty"`
+	Patch         TaskUpdatedPatch `json:"patch,omitempty"`
+	Status        string           `json:"status,omitempty"`
+	Additional    map[string]any   `json:"additional,omitempty"`
 }
 
 // SystemMessage 表示统一系统消息。
@@ -1321,6 +1330,7 @@ func decodeTaskProgressMessage(payload map[string]any) *TaskProgressMessage {
 
 func decodeTaskNotificationMessage(payload map[string]any) *TaskNotificationMessage {
 	return &TaskNotificationMessage{
+		RunGeneration:  jsonvalue.IntValue(payload["run_generation"]),
 		TaskID:         jsonvalue.StringValue(payload["task_id"]),
 		ToolUseID:      jsonvalue.StringValue(payload["tool_use_id"]),
 		AgentID:        jsonvalue.StringValue(payload["agent_id"]),
@@ -1339,10 +1349,11 @@ func decodeTaskNotificationMessage(payload map[string]any) *TaskNotificationMess
 func decodeTaskUpdatedMessage(payload map[string]any) *TaskUpdatedMessage {
 	patch := decodeTaskUpdatedPatch(payload["patch"])
 	return &TaskUpdatedMessage{
-		TaskID:     jsonvalue.StringValue(payload["task_id"]),
-		Patch:      patch,
-		Status:     patch.Status,
-		Additional: payload,
+		RunGeneration: jsonvalue.IntValue(payload["run_generation"]),
+		TaskID:        jsonvalue.StringValue(payload["task_id"]),
+		Patch:         patch,
+		Status:        patch.Status,
+		Additional:    payload,
 	}
 }
 

@@ -255,14 +255,14 @@ func (c *sessionCore) finishSessionClose(
 ) {
 	var closeErr error
 	if activeTransport != nil {
-		closeErr = activeTransport.Close()
-		// Close may report a failed termination attempt while the process still
-		// exists. Only Wait confirms transport/process exit; caller cancellation
-		// stops its wait without releasing this shared lifecycle fence.
-		closeErr = joinErrors(closeErr, activeTransport.Wait())
+		closeErr = transport.CleanupError(activeTransport.Close())
+		// Close 失败后也必须等 Wait 确认退出；退出码只描述执行结果，
+		// 真实清理失败和未知错误仍保留关闭栅栏。
+		closeErr = joinErrors(closeErr, transport.CleanupError(activeTransport.Wait()))
 	}
 	<-readDone
-	closeState.err = joinErrors(closeErr, c.getReadError())
+	// 断流和解码失败由 StreamError/Wait 保留；读取循环退出后不再占用清理栅栏。
+	closeState.err = closeErr
 	close(closeState.done)
 }
 

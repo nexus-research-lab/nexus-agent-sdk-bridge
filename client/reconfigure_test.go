@@ -268,9 +268,12 @@ func TestSendTaskMessageSendsControlRequest(t *testing.T) {
 	}()
 
 	sendDone := make(chan error, 1)
+	generation := make(chan int, 1)
 	session := &Session{core: core}
 	go func() {
-		sendDone <- session.Control().SendTaskMessage(context.Background(), "task-1", "please continue", "continue")
+		run, err := session.Control().SendTaskMessageWithState(context.Background(), "task-1", "please continue", "continue")
+		generation <- run.Generation
+		sendDone <- err
 	}()
 	payload := receiveWrite(t, transport)
 	assertControlRequest(t, payload, "send_task_message")
@@ -282,9 +285,12 @@ func TestSendTaskMessageSendsControlRequest(t *testing.T) {
 	if !ok || requestPayload["message"] != "please continue" || requestPayload["summary"] != "continue" {
 		t.Fatalf("payload = %#v, want message and summary", request["payload"])
 	}
-	transport.pushRead(successfulControlResponse("req_2", map[string]any{}))
+	transport.pushRead(successfulControlResponse("req_2", map[string]any{"run": map[string]any{"generation": 2, "status": "running"}}))
 	if err := receiveDone(t, sendDone); err != nil {
 		t.Fatalf("SendTaskMessage() error = %v", err)
+	}
+	if got := <-generation; got != 2 {
+		t.Fatalf("run generation = %d, want 2", got)
 	}
 }
 

@@ -53,11 +53,13 @@ Capability 真相源位于 [`client/capability.go`](../client/capability.go)。�
 
 ## Session 生命周期
 
+`send_task_message` 回执可携带含 `generation` 和 `status` 的 `run` 快照，对应 `task_updated` 的 `run_generation`。同一任务 ID 每次重新启动都会增加代次，旧 runtime 可省略这些字段。
+
 1. `client.NewSession` 解析 transport 并初始化 runtime。
 2. `Session.Send` 或 `SendWithOptions` 启动一轮执行。
 3. 宿主通过 `Recv` 消费类型化消息，或通过 `Result` 等待终态。
 4. 控制请求复用活跃 session，并保留 runtime request identity。
-5. `Session.Close` 依次等待 transport 的 `Close`、`Wait` 和读取循环退出，之后才确认清理完成。终止尝试失败不代表进程已经退出；调用方取消只结束自身等待，不解除共享清理栅栏。关闭与退出错误均保留。
+5. `Session.Close` 依次等待 transport 的 `Close`、`Wait` 和读取循环退出，之后才确认清理完成。终止尝试失败不代表进程已经退出；调用方取消只结束自身等待，不解除共享清理栅栏。已确认的原生进程退出码属于执行诊断，由 `Wait` 保留，不作为 Session 清理失败；之前的读取错误继续由 `StreamError`/`Wait` 保留。自定义 transport 错误（含清理辅助程序的退出码）与类型化清理失败仍使 Close 失败，不能因 joined error 中含退出码而忽略。底层进程 transport 的 `Close` 诊断语义保持不变。
 
 进程清理失败通过 `client.ProcessCleanupError` 返回，可用 `errors.As` 匹配。
 主进程正常退出、主动终止以及重复调用进程 Close 都不能消除该错误。Unix 清理在
