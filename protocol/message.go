@@ -2,6 +2,7 @@ package protocol
 
 import (
 	"encoding/json"
+	"slices"
 	"strings"
 
 	"github.com/nexus-research-lab/nexus-agent-sdk-bridge/hook"
@@ -194,7 +195,10 @@ func (b ToolUseBlock) InputMap() map[string]any {
 // ToolResultBlock 表示工具结果内容块。
 type ToolResultBlock struct {
 	ToolUseID string
-	Content   json.RawMessage
+	// Content 是解码后的工具结果内容，与 RawPayload()["content"] 同源，只读。
+	// 解码时不再预先编码成 JSON：大结果只在调用方需要字节时才付出编码成本。
+	// 手工构造时也接受 json.RawMessage。
+	Content   any
 	IsError   bool
 	ErrorCode string
 	MimeType  string
@@ -216,21 +220,37 @@ func (b ToolResultBlock) RawPayload() map[string]any {
 	return payload
 }
 
-// DecodeContent 将工具结果内容解码到目标结构。
-func (b ToolResultBlock) DecodeContent(target any) error {
-	if len(b.Content) == 0 || target == nil {
-		return nil
+// ContentJSON 返回工具结果内容的 JSON 编码；内容缺失或无法编码时为 nil。
+func (b ToolResultBlock) ContentJSON() json.RawMessage {
+	if raw, ok := b.Content.(json.RawMessage); ok {
+		if len(raw) == 0 {
+			return nil
+		}
+		return slices.Clone(raw)
 	}
-	return json.Unmarshal(b.Content, target)
+	return rawJSONValue(b.Content)
 }
 
-// ContentString 返回字符串形式的工具结果内容。
+// DecodeContent 将工具结果内容解码到目标结构。
+func (b ToolResultBlock) DecodeContent(target any) error {
+	encoded := b.ContentJSON()
+	if len(encoded) == 0 || target == nil {
+		return nil
+	}
+	return json.Unmarshal(encoded, target)
+}
+
+// ContentString 返回字符串形式的工具结果内容；字符串结果直接取值，不经 JSON 往返。
 func (b ToolResultBlock) ContentString() (string, bool) {
-	if len(b.Content) == 0 {
+	if text, ok := b.Content.(string); ok {
+		return text, true
+	}
+	encoded := b.ContentJSON()
+	if len(encoded) == 0 {
 		return "", false
 	}
 	var result string
-	if err := json.Unmarshal(b.Content, &result); err != nil {
+	if err := json.Unmarshal(encoded, &result); err != nil {
 		return "", false
 	}
 	return result, true
@@ -1630,7 +1650,7 @@ func decodeContentBlocks(raw any) []ContentBlock {
 		case ContentBlockTypeToolResult:
 			blocks = append(blocks, ToolResultBlock{
 				ToolUseID: jsonvalue.StringValue(payload["tool_use_id"]),
-				Content:   rawJSONValue(payload["content"]),
+				Content:   payload["content"],
 				IsError:   jsonvalue.BoolValue(payload["is_error"]),
 				ErrorCode: jsonvalue.StringValue(payload["error_code"]),
 				MimeType:  jsonvalue.StringValue(payload["mime_type"]),

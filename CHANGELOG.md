@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** `protocol.ToolResultBlock.Content` is now the decoded content (`any`, shared with `RawPayload()["content"]`, read-only) instead of a pre-encoded `json.RawMessage`, matching the outbound `ToolResultContent.Content`. Decoding a message no longer marshals every tool result body: a 256 KiB tool result now decodes in about 0.9 µs with 1 KB allocated, down from about 535 µs and 420 KB. `ContentString()` returns string content directly, `DecodeContent()` encodes only when called, and the new `ContentJSON()` returns the JSON bytes on demand. Blocks built by hand may still set `Content` to a `json.RawMessage`. The stream-json wire format is unchanged.
+
 ## [0.2.10] - 2026-11-18
 
 ### Fixed
