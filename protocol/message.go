@@ -1176,7 +1176,16 @@ type SystemMessage struct {
 	TaskProgress     *TaskProgressMessage        `json:"task_progress,omitempty"`
 	TaskNotification *TaskNotificationMessage    `json:"task_notification,omitempty"`
 	TaskUpdated      *TaskUpdatedMessage         `json:"task_updated,omitempty"`
+	InputConsumed    *InputConsumedMessage       `json:"input_consumed,omitempty"`
 	Data             map[string]any              `json:"data,omitempty"`
+}
+
+// SystemSubtypeInputConsumed 是 runtime 对运行中输入的回执：这些输入已进入即将发出的模型请求。
+const SystemSubtypeInputConsumed = "input_consumed"
+
+// InputConsumedMessage 列出本次安全点被追加进对话的运行中输入，顺序与宿主发送顺序一致。
+type InputConsumedMessage struct {
+	InputIDs []string `json:"input_ids"`
 }
 
 func decodeSystemMessage(payload map[string]any) *SystemMessage {
@@ -1234,6 +1243,8 @@ func decodeSystemMessage(payload map[string]any) *SystemMessage {
 		system.TaskNotification = decodeTaskNotificationMessage(payload)
 	case "task_updated":
 		system.TaskUpdated = decodeTaskUpdatedMessage(payload)
+	case SystemSubtypeInputConsumed:
+		system.InputConsumed = &InputConsumedMessage{InputIDs: jsonvalue.StringSliceValue(payload["input_ids"])}
 	}
 
 	return system

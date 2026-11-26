@@ -41,6 +41,7 @@ Nexus product
 - Skill 目录、正文、动态发现及 remember 设置通过 sandbox_skill_files_v1 独立确认；RequireSkillFiles 依赖命令和文件合同，不代表启动配置、hook 或后台 IO 已收口。
 - Resources 通过 sandbox_resources_v1 独立协商写范围与宿主 scratch，依赖命令和文件合同；Bridge 不拥有目录生命周期，也不推断全 SDK IO 隔离
 - 单条消息的无工具与输出预算共用 `message_execution_policy_v1`；未协商时宿主必须拒绝受限消息
+- 运行中输入只在 `running_input_v1` 协商后发送；`input_consumed` 是唯一的消费事实，result 前未回执即未消费，bridge 不维护未消费列表
 - 下一条消息的宿主上下文由 bridge 确定性排序；nxs 将其作为只进入 live model history、不落 transcript 的隐藏 reminder，Claude Code 通过 `UserPromptSubmit` hook 的 `additionalContext` 生成同语义 attachment
 - AutoDream 只由原生 nxs 提供；宿主负责唤醒，nxs 负责最终执行判断
 - 长时 control 的 context 取消必须携带同一 `request_id` 传播到 runtime

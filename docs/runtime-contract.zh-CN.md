@@ -87,6 +87,25 @@ Claude Code 可能到首个用户回合才持久化目标 transcript，但 bridg
 Context 取消和用户中断可通过 Go error matching 区分。长时 control 会使用同一个
 `request_id` 传播取消，使 runtime 能停止原始操作。
 
+## 运行中输入
+
+`CapabilityRunningInput`（`running_input_v1`，在初始化阶段协商）允许宿主把用户输入交给
+正在运行的一轮。`Session.SendRunningInput(ctx, inputID, message)` 写出一条带 `input_id`
+的普通 `user` 消息；它不同于 `Send`，既不开启新一轮，也不消费下一轮内部上下文。
+
+- runtime 缓存运行中输入，在每次模型请求之前（包括工具结果写回后的那次请求）的安全点
+  取走，不会打断正在流式输出的回复。模型正在收尾无工具调用的回复时到达的输入，runtime
+  会在同一轮再发一次请求，而不是结束本轮。
+- 发出该请求前，runtime 按宿主发送顺序回执 `system/input_consumed{input_ids}`；此后
+  输入已进入对话与 runtime 的 transcript。
+- 本轮 `result` 之前没有 `input_consumed` 回执的输入都没有被消费，无论本轮正常结束、
+  被中断，还是输入在本轮结束后或 runtime 空闲时才到达。runtime 丢弃这些输入，绝不带入
+  后续轮次；宿主保留并重新投递（例如作为下一轮的 prompt）。协议不再单独发送未消费列表，
+  没有回执本身就是信号。
+
+Claude Code 不声明该能力：它的 stream-json 输入没有逐条回执，宿主无法得知运行中发送的
+消息是否已进入模型上下文，因此对 Claude Code 保留 `PostToolUse` hook 降级路径。
+
 ## 安全职责
 
 - 宿主决定信任哪个 runtime 可执行程序和进程环境。

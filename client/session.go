@@ -186,6 +186,19 @@ func (s *Session) SendMessageWithOptions(ctx context.Context, message protocol.O
 	return &Stream{core: s.core}, nil
 }
 
+// SendRunningInput 把一条用户输入交给正在运行的一轮，需协商 CapabilityRunningInput。
+// runtime 在下一次模型请求前追加该输入并回执 system/input_consumed；本轮 result 之前
+// 没有回执的输入未被消费，runtime 会丢弃它，宿主负责保留并在之后重投。
+func (s *Session) SendRunningInput(ctx context.Context, inputID string, message protocol.OutboundMessage) error {
+	if s == nil || s.core == nil {
+		return ErrNotConnected
+	}
+	if err := ctx.Err(); err != nil {
+		return abortError(err)
+	}
+	return s.core.sendRunningInput(inputID, message)
+}
+
 // StreamInput 绑定一个持续输入通道，后续用户消息会按通道顺序进入会话。
 func (s *Session) StreamInput(ctx context.Context, messages <-chan protocol.OutboundMessage) (*Stream, error) {
 	if s == nil || s.core == nil {

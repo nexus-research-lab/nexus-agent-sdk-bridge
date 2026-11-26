@@ -49,6 +49,8 @@ const (
 	CapabilityRuntimeLifecycle       Capability = "runtime_lifecycle"
 	CapabilitySessionFork            Capability = "session_fork"
 	CapabilitySubagentControl        Capability = "subagent_control"
+	// CapabilityRunningInput 表示 runtime 接受运行中输入：在下一次模型请求前追加并逐条回执 input_consumed。
+	CapabilityRunningInput Capability = "running_input"
 )
 
 const (
@@ -72,6 +74,7 @@ const (
 	sandboxResourcesProtocolCapability       = "sandbox_resources_v1"
 	hookResponseAckProtocolCapability        = "hook_response_ack_v1"
 	messageExecutionPolicyProtocolCapability = "message_execution_policy_v1"
+	runningInputProtocolCapability           = "running_input_v1"
 )
 
 // InternalContextBlock 表示下一轮可注入的内部上下文块。
@@ -156,6 +159,8 @@ func (c *sessionCore) supports(capability Capability) bool {
 			c.lifecycle.initializeResponseValue().ProtocolCapabilities,
 			messageExecutionPolicyProtocolCapability,
 		)
+	case CapabilityRunningInput:
+		return slices.Contains(c.lifecycle.initializeResponseValue().ProtocolCapabilities, runningInputProtocolCapability)
 	default:
 		return false
 	}

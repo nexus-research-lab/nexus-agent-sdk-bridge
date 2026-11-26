@@ -155,6 +155,34 @@ Context cancellation and user aborts remain distinguishable through Go error
 matching. Long-running controls propagate cancellation with the same
 `request_id`, allowing the runtime to cancel the original operation.
 
+## Running input
+
+`CapabilityRunningInput` (`running_input_v1`, negotiated during initialization)
+lets a host hand user input to a turn that is already running.
+`Session.SendRunningInput(ctx, inputID, message)` writes an ordinary `user`
+message with an `input_id`. Unlike `Send`, it does not start a turn and does
+not take the next-turn internal context.
+
+- The runtime buffers running input and takes it at the safe point before each
+  model request, including the request after tool results are written back. It
+  never splits a streaming reply. If input arrives while the model is finishing
+  a reply without tool calls, the runtime continues the same turn with one more
+  request instead of ending it.
+- Before sending that request, the runtime emits
+  `system/input_consumed{input_ids}` in the order the host sent the inputs. From
+  then on the input is part of the conversation and the runtime's transcript.
+- Input with no `input_consumed` before the turn's `result` was not consumed,
+  whether the turn ended normally, was interrupted, or the input arrived after
+  the turn ended or while the runtime was idle. The runtime discards it and
+  never carries it into a later turn. The host keeps it and delivers it again,
+  for example as the next turn's prompt. No separate unconsumed list is sent:
+  the absence of an acknowledgement is the signal.
+
+Claude Code does not advertise this capability. Its stream-json input has no
+per-input acknowledgement, so a host cannot tell whether a message sent during a
+turn entered the model context. Hosts keep their `PostToolUse` hook fallback for
+Claude Code.
+
 ## Security responsibilities
 
 - The host decides which runtime executable and environment to trust.

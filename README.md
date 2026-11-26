@@ -125,6 +125,10 @@ When `client.CapabilityMessageExecutionPolicy` is negotiated, hosts may use
 `OutboundMessageOptions.ToolAccess = "none"`, `MaxOutputTokens`, and
 `SkipAutoMemory` to restrict one turn; unsupported runtimes must be rejected
 rather than treated as safely restricted.
+When `client.CapabilityRunningInput` is negotiated,
+`Session.SendRunningInput` hands input to the running turn; the runtime
+acknowledges it with `system/input_consumed` before the next model request,
+and input without an acknowledgement by the turn's result was not consumed.
 `Session.Control().SetNextTurnContext` accepts internal context blocks. The
 bridge orders and binds them to the next user message. NXS retains the reminder
 in live model history without writing it to the transcript. Claude Code's public

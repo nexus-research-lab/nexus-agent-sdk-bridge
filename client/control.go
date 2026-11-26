@@ -238,6 +238,7 @@ func (c *sessionCore) buildInitializeRequest() protocol.ControlRequest {
 			hookResponseAckProtocolCapability,
 			subagentControlProtocolCapability,
 			messageExecutionPolicyProtocolCapability,
+			runningInputProtocolCapability,
 			autoReviewProtocolCapability,
 			requiredSandboxProtocolCapability,
 			sandboxFileToolsProtocolCapability,

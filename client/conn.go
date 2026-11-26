@@ -1,6 +1,7 @@
 package client
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -388,28 +389,44 @@ func (c *sessionCore) SendMessageWithOptions(ctx context.Context, message protoc
 	return c.SendRawMessage(ctx, protocol.EncodeOutboundMessageWithOptions(message, sessionID, options), sessionID)
 }
 
-// SendRawMessage 发送一条原始 SDK 消息。
+// SendRawMessage 发送一条原始 SDK 消息；它开启新一轮，下一轮内部上下文随之附上。
 func (c *sessionCore) SendRawMessage(ctx context.Context, message map[string]any, sessionID string) error {
+	if len(message) == 0 {
+		return nil
+	}
+	return c.writeOutbound(c.applyNextTurnContext(c.withSessionID(message, sessionID)))
+}
+
+// sendRunningInput 把输入交给正在运行的一轮；它不开启新一轮，也不消费下一轮内部上下文。
+// 没有 input_consumed 回执的输入在该轮结束后即视为未消费，由宿主自行保留重投。
+func (c *sessionCore) sendRunningInput(inputID string, message protocol.OutboundMessage) error {
+	if !c.supports(CapabilityRunningInput) {
+		return &UnsupportedCapabilityError{Capability: CapabilityRunningInput}
+	}
+	inputID = strings.TrimSpace(inputID)
+	if inputID == "" || message == nil {
+		return errors.New("client: running input requires input_id and message")
+	}
+	payload := c.withSessionID(protocol.EncodeOutboundMessage(message, ""), "")
+	payload["input_id"] = inputID
+	return c.writeOutbound(payload)
+}
+
+func (c *sessionCore) withSessionID(message map[string]any, sessionID string) map[string]any {
+	payload := cloneMap(message)
+	if payload["session_id"] == nil {
+		payload["session_id"] = cmp.Or(sessionID, c.currentSessionID())
+	}
+	return payload
+}
+
+func (c *sessionCore) writeOutbound(payload map[string]any) error {
 	if err := c.requireSandboxReadyForSend(); err != nil {
 		return err
 	}
 	if !c.isConnected() {
 		return ErrNotConnected
 	}
-	if len(message) == 0 {
-		return nil
-	}
-
-	payload := cloneMap(message)
-	if payload["session_id"] == nil {
-		effectiveSessionID := sessionID
-		if effectiveSessionID == "" {
-			effectiveSessionID = c.currentSessionID()
-		}
-		payload["session_id"] = effectiveSessionID
-	}
-	payload = c.applyNextTurnContext(payload)
-
 	if c.transport == nil {
 		return ErrNotConnected
 	}

@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Add running input: with `client.CapabilityRunningInput` (`running_input_v1`) negotiated, `Session.SendRunningInput` sends a `user` message with an `input_id` to the running turn without starting a new one. The runtime adds it before the next model request and acknowledges it with the new `system/input_consumed` message (`SystemMessage.InputConsumed`). Input not acknowledged before the turn's result was not consumed and is discarded by the runtime; the host keeps it for redelivery. nxs is offered the capability during initialization; Claude Code does not advertise it.
+
 ## [0.3.0] - 2026-11-24
 
 ### Changed
