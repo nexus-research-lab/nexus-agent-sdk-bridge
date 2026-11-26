@@ -68,6 +68,7 @@ func TestBuildInitializeRequestAdvertisesNXSProtocolCapabilities(t *testing.T) {
 		hookResponseAckProtocolCapability,
 		subagentControlProtocolCapability,
 		messageExecutionPolicyProtocolCapability,
+		runningInputProtocolCapability,
 		autoReviewProtocolCapability,
 		requiredSandboxProtocolCapability,
 		sandboxFileToolsProtocolCapability,
